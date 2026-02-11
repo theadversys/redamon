@@ -5,7 +5,9 @@ import { existsSync } from 'fs'
 import path from 'path'
 
 // Path to recon output directory (mounted volume or local path)
-const RECON_OUTPUT_PATH = process.env.RECON_OUTPUT_PATH || '/home/samuele/Progetti didattici/RedAmon/recon/output'
+// In Docker: /app/recon/output (mounted from host ./recon/output)
+// In local dev: use environment variable or default to relative path
+const RECON_OUTPUT_PATH = process.env.RECON_OUTPUT_PATH || './recon/output'
 
 interface RouteParams {
   params: Promise<{ projectId: string }>

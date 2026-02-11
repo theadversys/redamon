@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AGENT_SETTINGS: dict[str, Any] = {
     # LLM Configuration
-    'OPENAI_MODEL': 'gpt-5.2',
+    'OPENAI_MODEL': 'gpt-4o',
     'INFORMATIONAL_SYSTEM_PROMPT': '',
     'EXPL_SYSTEM_PROMPT': '',
     'POST_EXPL_SYSTEM_PROMPT': '',
@@ -42,6 +42,14 @@ DEFAULT_AGENT_SETTINGS: dict[str, Any] = {
     # Approval Gates
     'REQUIRE_APPROVAL_FOR_EXPLOITATION': True,
     'REQUIRE_APPROVAL_FOR_POST_EXPLOITATION': True,
+    
+    # Autonomous Mode & Risk Assessment
+    'AUTONOMOUS_MODE': False,
+    'RISK_THRESHOLD': 30,
+    'MAX_PARALLEL_TASKS': 5,
+    
+    # Multi-Agent Coordination
+    'MULTI_AGENT_ENABLED': False,
 
     # Neo4j
     'CYPHER_MAX_RETRIES': 3,
@@ -117,6 +125,9 @@ def fetch_agent_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
     settings['LOG_BACKUP_COUNT'] = project.get('agentLogBackupCount', DEFAULT_AGENT_SETTINGS['LOG_BACKUP_COUNT'])
     settings['TOOL_PHASE_MAP'] = project.get('agentToolPhaseMap', DEFAULT_AGENT_SETTINGS['TOOL_PHASE_MAP'])
     settings['BRUTE_FORCE_MAX_WORDLIST_ATTEMPTS'] = project.get('agentBruteForceMaxWordlistAttempts', DEFAULT_AGENT_SETTINGS['BRUTE_FORCE_MAX_WORDLIST_ATTEMPTS'])
+    settings['AUTONOMOUS_MODE'] = project.get('agentAutonomousMode', DEFAULT_AGENT_SETTINGS['AUTONOMOUS_MODE'])
+    settings['RISK_THRESHOLD'] = project.get('agentRiskThreshold', DEFAULT_AGENT_SETTINGS['RISK_THRESHOLD'])
+    settings['MAX_PARALLEL_TASKS'] = project.get('agentMaxParallelTasks', DEFAULT_AGENT_SETTINGS['MAX_PARALLEL_TASKS'])
 
     logger.info(f"Loaded {len(settings)} agent settings for project {project_id}")
     return settings

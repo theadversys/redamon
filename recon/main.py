@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RedAmon - Main Reconnaissance Controller
+PandaExploit - Main Reconnaissance Controller
 =========================================
 Orchestrates all OSINT reconnaissance modules:
 1. WHOIS lookup (integrated into domain recon JSON)
@@ -202,7 +202,7 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
     full_subdomains = target_info["full_subdomains"]
 
     print("\n" + "=" * 70)
-    print("               RedAmon - Domain Reconnaissance")
+    print("               PandaExploit - Domain Reconnaissance")
     print("=" * 70)
     print(f"  Target: {root_domain}")
     if filtered_mode:
@@ -561,7 +561,7 @@ def run_github_recon(token: str, target: str, settings: dict = None) -> list:
         List of findings
     """
     print("\n" + "=" * 70)
-    print("               RedAmon - GitHub Secret Hunt")
+    print("               PandaExploit - GitHub Secret Hunt")
     print("=" * 70)
     print(f"  Target: {target}")
     print("=" * 70 + "\n")
@@ -588,7 +588,7 @@ def main():
     """
     print("\n")
     print("╔" + "═" * 68 + "╗")
-    print("║" + " " * 20 + "RedAmon OSINT Framework" + " " * 25 + "║")
+    print("║" + " " * 20 + "PandaExploit OSINT Framework" + " " * 25 + "║")
     print("║" + " " * 15 + "Automated Reconnaissance Pipeline" + " " * 18 + "║")
     print("╚" + "═" * 68 + "╝")
     print()

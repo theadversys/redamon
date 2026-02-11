@@ -1,5 +1,5 @@
 """
-RedAmon - Vulnerability Scan Helper Functions
+PandaExploit - Vulnerability Scan Helper Functions
 =============================================
 Security check functions for detecting misconfigurations and vulnerabilities.
 These are custom checks that complement Nuclei template scanning.
@@ -2031,7 +2031,7 @@ def run_security_checks(
         Dictionary with security check findings
     """
     print("\n" + "=" * 70)
-    print("         RedAmon - Custom Security Checks")
+    print("         PandaExploit - Custom Security Checks")
     print("=" * 70)
 
     # Extract IPs and hostnames from recon data

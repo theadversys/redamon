@@ -1,5 +1,5 @@
 """
-RedAmon - Classification Helpers
+PandaExploit - Classification Helpers
 ================================
 Parameter and endpoint classification utilities for resource enumeration.
 """

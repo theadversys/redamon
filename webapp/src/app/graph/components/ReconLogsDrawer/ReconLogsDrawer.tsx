@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X, Terminal, CheckCircle, AlertCircle, Pause, Play, Trash2 } from 'lucide-react'
+import { X, Terminal, CheckCircle, AlertCircle, Pause, Play, Trash2, MessageCircle } from 'lucide-react'
 import { RECON_PHASES } from '@/lib/recon-types'
 import type { ReconLogEvent, ReconStatus } from '@/lib/recon-types'
 import styles from './ReconLogsDrawer.module.css'
@@ -14,6 +14,12 @@ interface ReconLogsDrawerProps {
   currentPhaseNumber: number | null
   status: ReconStatus
   onClearLogs: () => void
+  panelMode?: boolean // When true, disables drawer positioning
+  /** Phase 1: "Explain this" — called with selected log text; parent switches to Chat and sends to agent */
+  onAskAI?: (selectedLogText: string) => void
+  /** Phase 2: deep link — highlight this text in the log list and scroll into view */
+  highlightRequest?: { text: string } | null
+  onClearHighlight?: () => void
 }
 
 export function ReconLogsDrawer({
@@ -24,10 +30,28 @@ export function ReconLogsDrawer({
   currentPhaseNumber,
   status,
   onClearLogs,
+  panelMode = false,
+  onAskAI,
+  highlightRequest,
+  onClearHighlight,
 }: ReconLogsDrawerProps) {
   const logsEndRef = useRef<HTMLDivElement>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null)
+
+  const handleAskAI = () => {
+    if (!onAskAI) return
+    const sel = window.getSelection()
+    const text = sel?.toString()?.trim()
+    if (text) {
+      onAskAI(text)
+    } else if (logs.length > 0) {
+      // No selection: send last 20 log lines as context
+      const lastLines = logs.slice(-20).map(l => `[${l.level}] ${l.log}`).join('\n')
+      onAskAI(lastLines)
+    }
+  }
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -35,6 +59,36 @@ export function ReconLogsDrawer({
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [logs, autoScroll])
+
+  // Phase 2: deep link — when highlightRequest is set, find matching log line and scroll + highlight
+  const lastHighlightRequestRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!highlightRequest?.text?.trim() || logs.length === 0) return
+    if (lastHighlightRequestRef.current === highlightRequest.text) return
+    lastHighlightRequestRef.current = highlightRequest.text
+    const searchText = highlightRequest.text.trim()
+    const firstLine = searchText.split('\n')[0].trim()
+    const index = logs.findIndex((log) => log.log.includes(firstLine) || log.log.includes(searchText))
+    if (index === -1) {
+      lastHighlightRequestRef.current = null
+      onClearHighlight?.()
+      return
+    }
+    setHighlightedIndex(index)
+    const timer = setTimeout(() => {
+      const row = logsContainerRef.current?.querySelector(`[data-log-index="${index}"]`)
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 150)
+    const clearTimer = setTimeout(() => {
+      setHighlightedIndex(null)
+      lastHighlightRequestRef.current = null
+      onClearHighlight?.()
+    }, 4500)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(clearTimer)
+    }
+  }, [highlightRequest?.text, logs, onClearHighlight])
 
   // Detect manual scroll to disable auto-scroll
   const handleScroll = () => {
@@ -93,7 +147,7 @@ export function ReconLogsDrawer({
   }
 
   return (
-    <div className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''}`}>
+    <div className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''} ${panelMode ? styles.panelMode : ''}`} data-panel-mode={panelMode ? 'true' : undefined}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.titleContainer}>
@@ -116,6 +170,16 @@ export function ReconLogsDrawer({
           <span className={styles.statusText}>{getStatusText()}</span>
         </div>
         <div className={styles.statusActions}>
+          {onAskAI && (
+            <button
+              className={styles.askAIButton}
+              onClick={handleAskAI}
+              title="Explain selected logs in Chat (or last 20 lines if nothing selected)"
+            >
+              <MessageCircle size={14} />
+              <span>Ask AI</span>
+            </button>
+          )}
           <button
             className={styles.iconButton}
             onClick={() => setAutoScroll(!autoScroll)}
@@ -168,8 +232,10 @@ export function ReconLogsDrawer({
           <>
             {logs.map((log, index) => (
               <div
-                key={index}
-                className={`${styles.logLine} ${getLogClassName(log.level)}`}
+                key={log.eventId ?? index}
+                data-log-index={index}
+                data-event-id={log.eventId}
+                className={`${styles.logLine} ${getLogClassName(log.level)} ${highlightedIndex === index ? styles.logLineHighlighted : ''}`}
               >
                 <span className={styles.logTimestamp}>
                   {new Date(log.timestamp).toLocaleTimeString()}

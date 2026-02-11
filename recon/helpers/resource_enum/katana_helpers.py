@@ -1,5 +1,5 @@
 """
-RedAmon - Katana Crawler Helpers for Resource Enumeration
+PandaExploit - Katana Crawler Helpers for Resource Enumeration
 =========================================================
 Active URL discovery using Katana web crawler.
 """

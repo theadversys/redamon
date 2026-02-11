@@ -1,5 +1,5 @@
 """
-RedAmon - Vulnerability Scan Helpers
+PandaExploit - Vulnerability Scan Helpers
 =====================================
 
 This package contains helper functions organized by category:

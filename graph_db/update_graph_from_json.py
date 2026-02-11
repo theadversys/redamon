@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RedAmon - Graph Database Update Script
+PandaExploit - Graph Database Update Script
 =======================================
 Standalone script to update Neo4j graph database from recon and GVM JSON files.
 
@@ -147,7 +147,7 @@ def run_graph_updates(
         modules_to_run = [m for m in UPDATE_ORDER if m in modules]
 
     print("\n" + "=" * 70)
-    print("           RedAmon - Graph Database Update Script")
+    print("           PandaExploit - Graph Database Update Script")
     print("=" * 70)
     print(f"  User ID: {user_id}")
     print(f"  Project ID: {project_id}")

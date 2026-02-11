@@ -1,10 +1,10 @@
-# RedAmon - Resource Enumeration Module
+# PandaExploit - Resource Enumeration Module
 
 ## Complete Technical Documentation
 
 > **Module:** `recon/resource_enum.py`
 > **Purpose:** Endpoint discovery, classification, and parameter extraction
-> **Author:** RedAmon Security Suite
+> **Author:** PandaExploit Security Suite
 
 ---
 
@@ -1288,4 +1288,4 @@ KITERUNNER_THREADS = 20
 
 ---
 
-*Documentation generated for RedAmon v1.0 - Resource Enumeration Module*
+*Documentation generated for PandaExploit v1.0 - Resource Enumeration Module*

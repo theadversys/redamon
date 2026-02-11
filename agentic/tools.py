@@ -1,5 +1,5 @@
 """
-RedAmon Agent Tools
+PandaExploit Agent Tools
 
 MCP tools and Neo4j graph query tool definitions.
 Includes phase-aware tool management.
@@ -188,6 +188,11 @@ class Neo4jToolManager:
 
             if existing_props_content is not None:
                 # Has existing properties - merge with tenant props
+                # Ensure existing_props_content is a string before calling strip()
+                if isinstance(existing_props_content, list):
+                    existing_props_content = ' '.join(str(item) for item in existing_props_content)
+                elif not isinstance(existing_props_content, str):
+                    existing_props_content = str(existing_props_content)
                 existing_props_content = existing_props_content.strip()
                 if existing_props_content:
                     # Append tenant props after existing ones
@@ -264,7 +269,38 @@ User Question: {question}
 Cypher Query:"""
 
         response = await self.llm.ainvoke(prompt)
-        cypher = response.content.strip()
+        # Ensure content is a string (handle case where it might be a list or dict)
+        content = response.content
+        if isinstance(content, str):
+            cypher = content
+        elif isinstance(content, list):
+            # Handle list of content blocks (MCP format)
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict):
+                    if 'text' in item:
+                        text_parts.append(item['text'])
+                    elif 'content' in item:
+                        text_parts.append(str(item['content']))
+                    else:
+                        text_parts.append(str(item))
+                elif isinstance(item, str):
+                    text_parts.append(item)
+                else:
+                    text_parts.append(str(item))
+            cypher = '\n'.join(text_parts)
+        elif isinstance(content, dict):
+            # Handle dict format (like {'type': 'text', 'text': '...'})
+            if 'text' in content:
+                cypher = str(content['text'])
+            elif 'content' in content:
+                cypher = str(content['content'])
+            else:
+                cypher = str(content)
+        else:
+            cypher = str(content)
+        
+        cypher = cypher.strip()
 
         # Clean up the response - remove markdown code blocks if present
         if cypher.startswith("```"):

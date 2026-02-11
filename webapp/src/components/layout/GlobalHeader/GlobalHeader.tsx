@@ -10,9 +10,9 @@ export function GlobalHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.logo}>
-        <Image src="/logo.png" alt="RedAmon" width={28} height={28} className={styles.logoImg} />
+        <Image src="/logo.png" alt="PandaExploit" width={28} height={28} className={styles.logoImg} unoptimized />
         <span className={styles.logoText}>
-          <span className={styles.logoAccent}>Red</span>Amon
+          <span className={styles.logoAccent}>Panda</span>Exploit
         </span>
       </div>
 

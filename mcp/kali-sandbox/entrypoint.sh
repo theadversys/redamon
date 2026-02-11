@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "[*] Starting RedAmon MCP container..."
+echo "[*] Starting PandaExploit MCP container..."
 
 # Ensure Metasploit database is running
 echo "[*] Initializing Metasploit database..."

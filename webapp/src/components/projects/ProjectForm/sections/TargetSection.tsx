@@ -93,7 +93,16 @@ export function TargetSection({ data, updateField }: TargetSectionProps) {
                 type="text"
                 className="textInput"
                 value={data.targetDomain}
-                onChange={(e) => updateField('targetDomain', e.target.value)}
+                onChange={(e) => {
+                  let value = e.target.value.trim()
+                  // Strip http:// or https:// prefix if user enters it
+                  if (value.startsWith('http://') || value.startsWith('https://')) {
+                    value = value.replace(/^https?:\/\//, '')
+                  }
+                  // Remove trailing slashes and paths
+                  value = value.split('/')[0].split(':')[0]
+                  updateField('targetDomain', value)
+                }}
                 placeholder="example.com"
               />
             </div>

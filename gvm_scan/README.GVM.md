@@ -27,9 +27,9 @@
 3. **Compliance Checking** - Validates against security standards (CIS, DISA STIG)
 4. **Risk Assessment** - Assigns severity scores (CVSS) to findings
 
-### RedAmon Integration
+### PandaExploit Integration
 
-RedAmon uses GVM in **headless API mode** (no web GUI) to:
+PandaExploit uses GVM in **headless API mode** (no web GUI) to:
 - Consume reconnaissance data from Phase 1 (IPs, hostnames from recon)
 - Automatically create scan targets and tasks
 - Execute vulnerability scans via Python API
@@ -45,7 +45,7 @@ RedAmon uses GVM in **headless API mode** (no web GUI) to:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                              RedAmon GVM Architecture                               │
+│                              PandaExploit GVM Architecture                               │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
 │   ┌─────────────────┐                                                               │
@@ -736,7 +736,7 @@ GVM does **NOT calculate CVSS scores** - it retrieves pre-calculated scores from
 
 ### Feed Architecture in Docker
 
-RedAmon uses **data containers** that download feeds once and populate Docker volumes:
+PandaExploit uses **data containers** that download feeds once and populate Docker volumes:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1005,7 +1005,7 @@ Unauthorized vulnerability scanning may violate:
 ## File Structure
 
 ```
-RedAmon/
+PandaExploit/
 ├── params.py                   # Configuration parameters
 ├── .env                        # Secrets (GVM_PASSWORD)
 │

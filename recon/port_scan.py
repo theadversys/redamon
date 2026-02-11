@@ -1,5 +1,5 @@
 """
-RedAmon - Port Scanner Module
+PandaExploit - Port Scanner Module
 
 Fast, lightweight port scanning.
 Runs via Docker for consistent environment and no installation required.

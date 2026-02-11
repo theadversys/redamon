@@ -1,4 +1,4 @@
-# RedAmon Reconnaissance Module
+# PandaExploit Reconnaissance Module
 
 **Unmask the hidden before the world does.**
 
@@ -174,7 +174,7 @@ flowchart TB
         end
 
         subgraph Containers["Sibling Containers"]
-            Recon["redamon-recon<br/>Python Orchestrator<br/>📋 Coordinates all scans"]
+            Recon["pandaexploit-recon<br/>Python Orchestrator<br/>📋 Coordinates all scans"]
             NaabuC["naabu<br/>projectdiscovery/naabu<br/>🔌 Port Scanner"]
             HttpxC["httpx<br/>projectdiscovery/httpx<br/>🌐 HTTP Prober"]
             NucleiC["nuclei<br/>projectdiscovery/nuclei<br/>🎯 Vuln Scanner"]
@@ -205,7 +205,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant Recon as redamon-recon
+    participant Recon as pandaexploit-recon
     participant Docker as Docker Daemon
     participant Naabu as naabu container
     participant Httpx as httpx container
@@ -280,7 +280,7 @@ sequenceDiagram
 
 ## 🔄 Scanning Pipeline Overview
 
-RedAmon executes scans in a modular pipeline. Each module adds data to a single JSON output file.
+PandaExploit executes scans in a modular pipeline. Each module adds data to a single JSON output file.
 
 ### High-Level Pipeline
 
@@ -1058,7 +1058,7 @@ NUCLEI_DAST_MODE = True
 
 **Only scan systems you own or have explicit written permission to test.**
 
-Unauthorized scanning is illegal. RedAmon is intended for:
+Unauthorized scanning is illegal. PandaExploit is intended for:
 - Penetration testers with proper authorization
 - Security researchers on approved targets
 - Bug bounty hunters within program scope

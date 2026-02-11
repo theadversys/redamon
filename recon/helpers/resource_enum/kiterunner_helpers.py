@@ -1,5 +1,5 @@
 """
-RedAmon - Kiterunner API Discovery Helpers
+PandaExploit - Kiterunner API Discovery Helpers
 ==========================================
 API endpoint bruteforcing using Kiterunner.
 """
@@ -94,7 +94,7 @@ def ensure_kiterunner_binary(wordlist_name: str) -> Tuple[Optional[str], Optiona
             # Download archive with User-Agent header
             request = urllib.request.Request(
                 download_url,
-                headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) RedAmon/1.0'}
+                headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) PandaExploit/1.0'}
             )
             with urllib.request.urlopen(request) as response:
                 with open(archive_path, 'wb') as f:
@@ -142,7 +142,7 @@ def ensure_kiterunner_binary(wordlist_name: str) -> Tuple[Optional[str], Optiona
                 # Download compressed wordlist with User-Agent header (required by CDN)
                 request = urllib.request.Request(
                     wordlist_url,
-                    headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) RedAmon/1.0'}
+                    headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) PandaExploit/1.0'}
                 )
                 with urllib.request.urlopen(request) as response:
                     with open(archive_path, 'wb') as f:

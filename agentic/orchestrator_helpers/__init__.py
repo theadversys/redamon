@@ -40,6 +40,44 @@ from .config import (
     is_session_config_complete,
 )
 
+from .planning import (
+    parse_plan_response,
+    validate_plan,
+    mark_step_complete,
+    mark_step_failed,
+    get_next_pending_step,
+    get_completed_steps,
+    should_adapt_plan,
+    format_plan_for_prompt,
+)
+
+from .context_management import (
+    compress_execution_steps,
+    score_step_importance,
+    find_relevant_steps,
+    mark_important_events,
+    format_compressed_trace,
+)
+
+from .parallel_execution import (
+    TaskDAG,
+    TaskNode,
+    ParallelExecutor,
+    build_dag_from_plan,
+    identify_parallelizable_tasks,
+)
+
+from .risk_assessment import (
+    assess_risk,
+    RiskAssessment,
+    RiskFactors,
+)
+
+from .templates import (
+    ExploitTemplate,
+    TemplateLibrary,
+)
+
 __all__ = [
     # json_utils
     "DateTimeEncoder",
@@ -65,4 +103,32 @@ __all__ = [
     "get_config_values",
     "get_identifiers",
     "is_session_config_complete",
+    # planning
+    "parse_plan_response",
+    "validate_plan",
+    "mark_step_complete",
+    "mark_step_failed",
+    "get_next_pending_step",
+    "get_completed_steps",
+    "should_adapt_plan",
+    "format_plan_for_prompt",
+    # context_management
+    "compress_execution_steps",
+    "score_step_importance",
+    "find_relevant_steps",
+    "mark_important_events",
+    "format_compressed_trace",
+    # parallel_execution
+    "TaskDAG",
+    "TaskNode",
+    "ParallelExecutor",
+    "build_dag_from_plan",
+    "identify_parallelizable_tasks",
+    # risk_assessment
+    "assess_risk",
+    "RiskAssessment",
+    "RiskFactors",
+    # templates
+    "ExploitTemplate",
+    "TemplateLibrary",
 ]

@@ -45,7 +45,7 @@ PHASE_PATTERNS = [
 class ContainerManager:
     """Manages Docker containers for recon processes"""
 
-    def __init__(self, recon_image: str = "redamon-recon:latest"):
+    def __init__(self, recon_image: str = "pandaexploit-recon:latest"):
         self.client = docker.from_env()
         self.recon_image = recon_image
         self.running_states: dict[str, ReconState] = {}
@@ -55,7 +55,7 @@ class ContainerManager:
         """Generate container name for a project"""
         # Sanitize project_id for container name
         safe_id = re.sub(r'[^a-zA-Z0-9_.-]', '_', project_id)
-        return f"redamon-recon-{safe_id}"
+        return f"pandaexploit-recon-{safe_id}"
 
     async def get_status(self, project_id: str) -> ReconState:
         """Get current status of a recon process"""
@@ -115,7 +115,7 @@ class ContainerManager:
         project_id: str,
         user_id: str,
         webapp_api_url: str,
-        recon_path: str = "/home/samuele/Progetti didattici/RedAmon/recon",
+        recon_path: str = "/home/samuele/Progetti didattici/PandaExploit/recon",
     ) -> ReconState:
         """Start a recon container for a project"""
 
@@ -146,13 +146,84 @@ class ContainerManager:
             try:
                 self.client.images.get(self.recon_image)
             except NotFound:
-                logger.info(f"Building recon image from {recon_path}")
-                self.client.images.build(
-                    path=recon_path,
-                    tag=self.recon_image,
-                    rm=True,
-                )
+                # Docker SDK needs a path accessible from Docker daemon's perspective
+                # If recon_path is a host path that doesn't exist in container, use mounted path
+                build_path = recon_path
+                if not os.path.exists(recon_path):
+                    # Try the mounted path inside container
+                    container_mount_path = "/app/recon"
+                    if os.path.exists(container_mount_path):
+                        build_path = container_mount_path
+                        logger.info(f"Using container mount path {build_path} for build")
+                    else:
+                        raise ValueError(f"Recon directory not found at {recon_path} or {container_mount_path}")
+                
+                # Verify Dockerfile exists
+                dockerfile_path = os.path.join(build_path, "Dockerfile")
+                if not os.path.exists(dockerfile_path):
+                    raise ValueError(f"Dockerfile not found at {dockerfile_path}")
+                
+                # Dockerfile expects build context to be parent directory (contains recon/ and graph_db/)
+                # Check if we need to adjust build context
+                build_context = build_path
+                dockerfile_rel_path = "Dockerfile"
+                
+                # Check if Dockerfile references parent directories (recon/, graph_db/)
+                dockerfile_content = ""
+                try:
+                    with open(dockerfile_path, 'r') as f:
+                        dockerfile_content = f.read()
+                except Exception as e:
+                    logger.warning(f"Could not read Dockerfile to check context: {e}")
+                
+                # If Dockerfile uses paths like "recon/" or "graph_db/", it expects parent context
+                if "COPY recon/" in dockerfile_content or "COPY graph_db/" in dockerfile_content:
+                    # Try to find parent directory with both recon and graph_db
+                    parent_path = os.path.dirname(build_path)
+                    graph_db_path = os.path.join(parent_path, "graph_db")
+                    
+                    # Check if graph_db exists at parent level (might be mounted separately)
+                    # For now, build from recon directory and fix COPY paths
+                    # We'll need to adjust the Dockerfile or mount graph_db
+                    if os.path.exists(graph_db_path):
+                        build_context = parent_path
+                        dockerfile_rel_path = os.path.join(os.path.basename(build_path), "Dockerfile")
+                        logger.info(f"Using parent directory {build_context} as build context")
+                    else:
+                        # Build from recon directory - Dockerfile will need to be fixed
+                        # For now, try building anyway and see what happens
+                        logger.warning(f"graph_db not found at {graph_db_path}, building from {build_path} may fail")
+                
+                logger.info(f"Building recon image from {build_context} (dockerfile: {dockerfile_rel_path})")
+                build_kwargs = {
+                    "path": build_context,
+                    "tag": self.recon_image,
+                    "rm": True,
+                }
+                if dockerfile_rel_path != "Dockerfile":
+                    build_kwargs["dockerfile"] = dockerfile_rel_path
+                
+                self.client.images.build(**build_kwargs)
 
+            # Get host path for volume mounts (Docker daemon needs host paths, not container paths)
+            # RECON_PATH env var should contain the host path (e.g., /Users/ow49488/Downloads/redamon/recon)
+            # Note: We can't check os.path.exists() for host paths inside container, so we trust RECON_PATH
+            host_recon_path = os.environ.get("RECON_PATH", "")
+            
+            # Validate RECON_PATH is set
+            if not host_recon_path:
+                logger.error(f"RECON_PATH environment variable not set")
+                logger.error(f"recon_path parameter: {recon_path}")
+                raise ValueError(f"RECON_PATH must be set to a valid host path in docker-compose.yml")
+            
+            # Don't check os.path.exists() - it's a host path, not accessible from inside container
+            # Docker daemon will validate the path when mounting
+            logger.info(f"Using host recon path: {host_recon_path} for volume mounts")
+            
+            # Get graph_db host path (should be sibling of recon directory)
+            host_graph_db_path = os.path.join(os.path.dirname(host_recon_path), "graph_db")
+            logger.info(f"Using host graph_db path: {host_graph_db_path} for volume mounts")
+            
             # Start container with environment variables
             container = self.client.containers.run(
                 self.recon_image,
@@ -167,7 +238,7 @@ class ContainerManager:
                     "UPDATE_GRAPH_DB": "true",
                     # HOST_RECON_OUTPUT_PATH: Required for nested Docker containers (naabu, httpx, etc.)
                     # These run as sibling containers and need host paths for volume mounts
-                    "HOST_RECON_OUTPUT_PATH": f"{recon_path}/output",
+                    "HOST_RECON_OUTPUT_PATH": f"{host_recon_path}/output",
                     # Forward credentials from orchestrator environment
                     "NVD_API_KEY": os.environ.get("NVD_API_KEY", ""),
                     "NEO4J_URI": os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
@@ -176,13 +247,9 @@ class ContainerManager:
                 },
                 volumes={
                     "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "ro"},
-                    # Mount source code for development (no rebuild needed)
-                    # Note: rw needed because output/data are subdirectories
-                    f"{recon_path}": {"bind": "/app/recon", "mode": "rw"},
-                    # Mount graph_db module
-                    f"{Path(recon_path).parent}/graph_db": {"bind": "/app/graph_db", "mode": "ro"},
-                    # Mount /tmp for Docker-in-Docker temp files (avoids spaces in paths)
-                    "/tmp/redamon": {"bind": "/tmp/redamon", "mode": "rw"},
+                    host_recon_path: {"bind": "/app/recon", "mode": "rw"},
+                    host_graph_db_path: {"bind": "/app/graph_db", "mode": "ro"},
+                    "/tmp/pandaexploit": {"bind": "/tmp/pandaexploit", "mode": "rw"},
                 },
                 command="python /app/recon/main.py",
             )
@@ -293,14 +360,20 @@ class ContainerManager:
         elif "[*]" in line:
             level = "action"  # Blue
 
-        # Detect phase changes
-        for pattern, phase_name, num in PHASE_PATTERNS:
-            if re.search(pattern, line, re.IGNORECASE):
-                if phase_name != current_phase:
-                    phase = phase_name
-                    phase_num = num
-                    is_phase_start = True
-                break
+        # Skip "Graph Database Update" messages - these are internal operations, not phase changes
+        # They happen after each phase completes but shouldn't trigger phase detection
+        if "Graph Database Update" in line or "GRAPH UPDATE" in line:
+            # Keep current phase, don't change it
+            pass
+        else:
+            # Detect phase changes
+            for pattern, phase_name, num in PHASE_PATTERNS:
+                if re.search(pattern, line, re.IGNORECASE):
+                    if phase_name != current_phase:
+                        phase = phase_name
+                        phase_num = num
+                        is_phase_start = True
+                        break
 
         return ReconLogEvent(
             log=line.strip(),

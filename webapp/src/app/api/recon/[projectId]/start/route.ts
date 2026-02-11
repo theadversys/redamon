@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { createActionLog } from '@/lib/actionLog'
 
 const RECON_ORCHESTRATOR_URL = process.env.RECON_ORCHESTRATOR_URL || 'http://localhost:8010'
 const WEBAPP_URL = process.env.WEBAPP_URL || 'http://localhost:3000'
@@ -32,6 +33,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // Create ActionLog entry for recon start
+    try {
+      await createActionLog({
+        projectId,
+        userId: project.userId,
+        type: 'recon',
+        action: 'Start Reconnaissance',
+        description: `Started reconnaissance scan for ${project.targetDomain}`,
+        status: 'running',
+        metadata: {
+          targetDomain: project.targetDomain,
+          projectName: project.name,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to create ActionLog:', error)
+      // Continue even if ActionLog creation fails
+    }
+
     // Call recon orchestrator to start the recon
     const response = await fetch(`${RECON_ORCHESTRATOR_URL}/recon/${projectId}/start`, {
       method: 'POST',
@@ -47,6 +67,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      
+      // Update ActionLog to error status
+      try {
+        await createActionLog({
+          projectId,
+          userId: project.userId,
+          type: 'recon',
+          action: 'Start Reconnaissance',
+          description: `Failed to start reconnaissance: ${errorData.detail || 'Unknown error'}`,
+          status: 'error',
+          metadata: {
+            targetDomain: project.targetDomain,
+            error: errorData.detail || 'Unknown error',
+          },
+        })
+      } catch (logError) {
+        console.error('Failed to create error ActionLog:', logError)
+      }
+      
       return NextResponse.json(
         { error: errorData.detail || 'Failed to start recon' },
         { status: response.status }

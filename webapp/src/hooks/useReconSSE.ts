@@ -39,11 +39,14 @@ export function useReconSSE({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttempts = useRef(0)
   const maxReconnectAttempts = 5
+  /** Phase 2: stable id for each log line (citations / deep link) */
+  const logIdRef = useRef(0)
 
   const clearLogs = useCallback(() => {
     setLogs([])
     setCurrentPhase(null)
     setCurrentPhaseNumber(null)
+    logIdRef.current = 0
   }, [])
 
   const connect = useCallback(() => {
@@ -63,6 +66,39 @@ export function useReconSSE({
       reconnectAttempts.current = 0
     }
 
+    // Handle completion event to log ActionLog
+    eventSource.addEventListener('complete', async (event) => {
+      try {
+        const eventData = (event as MessageEvent).data
+        if (!eventData) return
+
+        const data = JSON.parse(eventData)
+        
+        // Create ActionLog entry for recon completion
+        try {
+          const { createActionLog } = await import('@/lib/actionLog')
+          await createActionLog({
+            projectId,
+            userId: '', // Will be set by the API if needed
+            type: 'recon',
+            action: 'Reconnaissance Complete',
+            description: data.status === 'completed' 
+              ? 'Reconnaissance scan completed successfully'
+              : `Reconnaissance scan ${data.status}: ${data.error || 'Unknown error'}`,
+            status: data.status === 'completed' ? 'success' : 'error',
+            metadata: {
+              completedAt: data.completedAt,
+              error: data.error,
+            },
+          })
+        } catch (logError) {
+          console.error('Failed to create completion ActionLog:', logError)
+        }
+      } catch (err) {
+        console.error('Error handling completion event:', err)
+      }
+    })
+
     // Handle named 'log' events
     eventSource.addEventListener('log', (event) => {
       try {
@@ -71,6 +107,7 @@ export function useReconSSE({
 
         const data = JSON.parse(eventData)
 
+        logIdRef.current += 1
         const logEvent: ReconLogEvent = {
           log: data.log,
           timestamp: data.timestamp,
@@ -78,6 +115,29 @@ export function useReconSSE({
           phaseNumber: data.phaseNumber,
           isPhaseStart: data.isPhaseStart,
           level: data.level || 'info',
+          eventId: `recon-${projectId}-${logIdRef.current}`,
+        }
+
+        // Log to browser console/terminal in real-time
+        const timestamp = new Date(data.timestamp).toLocaleTimeString()
+        const phaseInfo = data.phase ? `[${data.phase}]` : ''
+        const logPrefix = `${timestamp} ${phaseInfo}`
+        
+        switch (data.level || 'info') {
+          case 'error':
+            console.error(`${logPrefix}`, data.log)
+            break
+          case 'warning':
+            console.warn(`${logPrefix}`, data.log)
+            break
+          case 'success':
+            console.log(`%c${logPrefix} ${data.log}`, 'color: #10b981')
+            break
+          case 'action':
+            console.log(`%c${logPrefix} ${data.log}`, 'color: #3b82f6')
+            break
+          default:
+            console.log(`${logPrefix}`, data.log)
         }
 
         setLogs(prev => [...prev, logEvent])
@@ -112,12 +172,43 @@ export function useReconSSE({
     })
 
     // Handle named 'complete' events
-    eventSource.addEventListener('complete', (event) => {
+    eventSource.addEventListener('complete', async (event) => {
       try {
         const eventData = (event as MessageEvent).data
         if (!eventData) return
 
         const data = JSON.parse(eventData)
+        
+        // Create ActionLog entry for recon completion
+        try {
+          // Get userId from project - we'll need to fetch it
+          const projectResponse = await fetch(`/api/projects/${projectId}`)
+          if (projectResponse.ok) {
+            const project = await projectResponse.json()
+            await fetch('/api/actions/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                projectId,
+                userId: project.userId || '',
+                type: 'recon',
+                action: 'Reconnaissance Complete',
+                description: data.status === 'completed' 
+                  ? 'Reconnaissance scan completed successfully'
+                  : `Reconnaissance scan ${data.status}: ${data.error || 'Unknown error'}`,
+                status: data.status === 'completed' ? 'success' : 'error',
+                metadata: {
+                  completedAt: data.completedAt,
+                  error: data.error,
+                },
+              }),
+            })
+          }
+        } catch (logError) {
+          console.error('Failed to create completion ActionLog:', logError)
+          // Don't fail the completion handler if logging fails
+        }
+        
         onComplete?.(data.status, data.error)
         // Close connection after completion
         eventSource.close()
@@ -155,6 +246,28 @@ export function useReconSSE({
             phaseNumber: data.phaseNumber,
             isPhaseStart: data.isPhaseStart,
             level: data.level || 'info',
+          }
+
+          // Log to browser console/terminal in real-time
+          const timestamp = new Date(data.timestamp).toLocaleTimeString()
+          const phaseInfo = data.phase ? `[${data.phase}]` : ''
+          const logPrefix = `${timestamp} ${phaseInfo}`
+          
+          switch (data.level || 'info') {
+            case 'error':
+              console.error(`${logPrefix}`, data.log)
+              break
+            case 'warning':
+              console.warn(`${logPrefix}`, data.log)
+              break
+            case 'success':
+              console.log(`%c${logPrefix} ${data.log}`, 'color: #10b981')
+              break
+            case 'action':
+              console.log(`%c${logPrefix} ${data.log}`, 'color: #3b82f6')
+              break
+            default:
+              console.log(`${logPrefix}`, data.log)
           }
 
           setLogs(prev => [...prev, logEvent])

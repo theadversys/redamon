@@ -1,5 +1,5 @@
 """
-RedAmon Attack Path Classification Prompt
+PandaExploit Attack Path Classification Prompt
 
 LLM-based classification of user intent to select the appropriate attack path and phase.
 Determines both the attack methodology AND the required phase (informational/exploitation).

@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Sparkles, Play, Download, Loader2, Terminal, Settings } from 'lucide-react'
+import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft } from 'lucide-react'
 import { Toggle } from '@/components/ui'
 import type { ReconStatus } from '@/lib/recon-types'
+import type { ViewMode } from '../../hooks/usePanelLayout'
 import styles from './GraphToolbar.module.css'
 
 interface GraphToolbarProps {
@@ -12,18 +13,19 @@ interface GraphToolbarProps {
   showLabels: boolean
   onToggle3D: (value: boolean) => void
   onToggleLabels: (value: boolean) => void
-  onToggleAI?: () => void
-  isAIOpen?: boolean
+  effectiveViewMode: ViewMode
+  activeTab: 'graph' | 'ai'
+  onHideAI?: () => void
+  onShowAI?: () => void
+  onSelectTab?: (tab: 'graph' | 'ai') => void
   // Target info
   targetDomain?: string
   subdomainList?: string[]
   // Recon props
   onStartRecon?: () => void
   onDownloadJSON?: () => void
-  onToggleLogs?: () => void
   reconStatus?: ReconStatus
   hasReconData?: boolean
-  isLogsOpen?: boolean
 }
 
 export function GraphToolbar({
@@ -32,18 +34,19 @@ export function GraphToolbar({
   showLabels,
   onToggle3D,
   onToggleLabels,
-  onToggleAI,
-  isAIOpen = false,
+  effectiveViewMode,
+  activeTab,
+  onHideAI,
+  onShowAI,
+  onSelectTab,
   // Target info
   targetDomain,
   subdomainList = [],
   // Recon props
   onStartRecon,
   onDownloadJSON,
-  onToggleLogs,
   reconStatus = 'idle',
   hasReconData = false,
-  isLogsOpen = false,
 }: GraphToolbarProps) {
   const router = useRouter()
   const isReconRunning = reconStatus === 'running' || reconStatus === 'starting'
@@ -118,16 +121,6 @@ export function GraphToolbar({
             <span>{isReconRunning ? 'Running...' : 'Start Recon'}</span>
           </button>
 
-          {isReconRunning && (
-            <button
-              className={`${styles.logsButton} ${isLogsOpen ? styles.logsButtonActive : ''}`}
-              onClick={onToggleLogs}
-              title="View Logs"
-            >
-              <Terminal size={14} />
-            </button>
-          )}
-
           <button
             className={styles.downloadButton}
             onClick={onDownloadJSON}
@@ -156,16 +149,57 @@ export function GraphToolbar({
 
       <div className={styles.divider} />
 
-      <button
-        className={`${styles.aiButton} ${isAIOpen ? styles.aiButtonActive : ''}`}
-        onClick={onToggleAI}
-        aria-label="Toggle RedAmon Agent"
-        aria-expanded={isAIOpen}
-        title="RedAmon Agent"
-      >
-        <Sparkles size={14} />
-        <span>RedAmon Agent</span>
-      </button>
+      {/* Tab mode: show Graph/AI switcher */}
+      {effectiveViewMode === 'tab' && (
+        <>
+          <button
+            className={`${styles.tabButton} ${activeTab === 'graph' ? styles.tabButtonActive : ''}`}
+            onClick={() => onSelectTab?.('graph')}
+            aria-label="Show Graph"
+            title="Show Graph"
+          >
+            <PanelLeft size={14} />
+            <span>Graph</span>
+          </button>
+          <button
+            className={`${styles.tabButton} ${activeTab === 'ai' ? styles.tabButtonActive : ''}`}
+            onClick={() => onSelectTab?.('ai')}
+            aria-label="Show AI Assistant"
+            title="Show AI Assistant"
+          >
+            <Sparkles size={14} />
+            <span>AI</span>
+          </button>
+        </>
+      )}
+
+      {/* Split mode: show Hide/Show AI buttons */}
+      {effectiveViewMode === 'split' && (
+        <>
+          {onHideAI && (
+            <button
+              className={styles.aiButton}
+              onClick={onHideAI}
+              aria-label="Hide AI Assistant"
+              title="Hide AI Assistant"
+            >
+              <X size={14} />
+              <span>Hide AI</span>
+            </button>
+          )}
+          {onShowAI && (
+            <button
+              className={styles.aiButton}
+              onClick={onShowAI}
+              aria-label="Show AI Assistant"
+              title="Show AI Assistant"
+            >
+              <Sparkles size={14} />
+              <span>Show AI</span>
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 }

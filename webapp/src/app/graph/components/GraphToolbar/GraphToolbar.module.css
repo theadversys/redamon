@@ -227,6 +227,45 @@
   color: var(--text-on-accent);
 }
 
+/* Tab Mode Switcher Buttons */
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.tabButton:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.tabButton:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.tabButtonActive {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.tabButtonActive:hover {
+  background: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+  color: var(--text-on-accent);
+}
+
 /* Recon Buttons */
 .reconButton {
   display: flex;

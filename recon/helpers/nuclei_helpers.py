@@ -1,5 +1,5 @@
 """
-RedAmon - Nuclei Helper Functions
+PandaExploit - Nuclei Helper Functions
 ==================================
 Functions for building Nuclei commands, parsing output, and detecting false positives.
 """

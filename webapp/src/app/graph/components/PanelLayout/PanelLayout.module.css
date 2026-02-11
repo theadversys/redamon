@@ -1,0 +1,102 @@
+/* =============================================================================
+   PANEL LAYOUT
+   Container for split/tab panel system
+   ============================================================================= */
+
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.panelGroup {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0; /* Allow flex shrinking */
+}
+
+.graphPanel {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.aiPanel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* =============================================================================
+   RESIZE HANDLE
+   ============================================================================= */
+
+.resizeHandle {
+  width: 4px;
+  background: var(--border-default);
+  cursor: col-resize;
+  transition: background-color 150ms ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.resizeHandle:hover {
+  background: var(--accent-primary);
+}
+
+.resizeHandle:active {
+  background: var(--accent-primary);
+}
+
+/* Visual indicator during drag */
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-primary);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.resizeHandle:hover::before,
+.resizeHandle:active::before {
+  opacity: 1;
+}
+
+/* =============================================================================
+   TAB MODE
+   ============================================================================= */
+
+.tabContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullPanel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

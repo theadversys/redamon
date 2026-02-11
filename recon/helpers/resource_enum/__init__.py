@@ -1,5 +1,5 @@
 """
-RedAmon - Resource Enumeration Helpers
+PandaExploit - Resource Enumeration Helpers
 ======================================
 
 This package contains helper functions for resource enumeration:

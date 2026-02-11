@@ -48,7 +48,37 @@ async def classify_attack_path(
     for attempt in range(max_retries):
         try:
             response = await llm.ainvoke(messages)
-            json_str = extract_json(response.content)
+            # Ensure content is a string (handle case where it might be a list or dict)
+            content = response.content
+            if isinstance(content, str):
+                content_str = content
+            elif isinstance(content, list):
+                # Handle list of content blocks (MCP format)
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict):
+                        if 'text' in item:
+                            text_parts.append(item['text'])
+                        elif 'content' in item:
+                            text_parts.append(str(item['content']))
+                        else:
+                            text_parts.append(str(item))
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+                    else:
+                        text_parts.append(str(item))
+                content_str = '\n'.join(text_parts)
+            elif isinstance(content, dict):
+                # Handle dict format (like {'type': 'text', 'text': '...'})
+                if 'text' in content:
+                    content_str = str(content['text'])
+                elif 'content' in content:
+                    content_str = str(content['content'])
+                else:
+                    content_str = str(content)
+            else:
+                content_str = str(content)
+            json_str = extract_json(content_str)
 
             if json_str:
                 data = json.loads(json_str)

@@ -1,5 +1,5 @@
 """
-RedAmon - Vulnerability Scanner Module
+PandaExploit - Vulnerability Scanner Module
 ======================================
 Template-based vulnerability scanning.
 Enriches reconnaissance data with comprehensive web application vulnerability detection:
@@ -80,7 +80,7 @@ def run_vuln_scan(recon_data: dict, output_file: Path = None, settings: dict = N
         Updated recon_data with nuclei results added
     """
     print("\n" + "=" * 70)
-    print("         RedAmon - Nuclei Vulnerability Scanner")
+    print("         PandaExploit - Nuclei Vulnerability Scanner")
     print("=" * 70)
 
     # Use passed settings or empty dict as fallback

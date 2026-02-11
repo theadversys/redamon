@@ -23,6 +23,8 @@ export interface ReconLogEvent {
   phaseNumber?: number | null
   isPhaseStart?: boolean
   level: 'info' | 'warning' | 'error' | 'success' | 'action'
+  /** Phase 2: stable id for citations and deep links (client-assigned when consuming SSE) */
+  eventId?: string
 }
 
 export interface ReconSSEEvent {

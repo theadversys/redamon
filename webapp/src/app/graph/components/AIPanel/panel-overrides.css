@@ -1,0 +1,19 @@
+/* Global overrides for drawer components when used in panel mode */
+/* This file is imported globally to ensure drawer styles are overridden */
+
+[data-panel-mode="true"] .drawer,
+[data-panel-mode="true"] .drawerOpen {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  visibility: visible !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: auto !important;
+  box-shadow: none !important;
+  border-left: none !important;
+  transition: none !important;
+}

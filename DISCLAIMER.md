@@ -4,7 +4,7 @@
 
 ### Purpose and Intended Use
 
-RedAmon is an **educational and research tool** designed exclusively for:
+PandaExploit is an **educational and research tool** designed exclusively for:
 
 - Authorized penetration testing engagements
 - Security research and academic study

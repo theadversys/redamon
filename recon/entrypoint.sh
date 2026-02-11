@@ -1,5 +1,5 @@
 #!/bin/bash
-# RedAmon Reconnaissance Module - Docker Entrypoint
+# PandaExploit Reconnaissance Module - Docker Entrypoint
 # ==================================================
 # Handles initialization, Tor setup, and executes the recon pipeline
 
@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║           RedAmon Reconnaissance Module                    ║${NC}"
+echo -e "${BLUE}║           PandaExploit Reconnaissance Module                    ║${NC}"
 echo -e "${BLUE}║              Containerized OSINT Framework                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""

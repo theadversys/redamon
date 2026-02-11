@@ -1,5 +1,5 @@
 """
-RedAmon - GAU (GetAllUrls) Helpers
+PandaExploit - GAU (GetAllUrls) Helpers
 ==================================
 Passive URL discovery from web archives using GAU.
 """

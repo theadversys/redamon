@@ -329,7 +329,21 @@ def fetch_project_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
     settings['USER_ID'] = project.get('userId', DEFAULT_SETTINGS['USER_ID'])
 
     # Target Configuration
-    settings['TARGET_DOMAIN'] = project.get('targetDomain', DEFAULT_SETTINGS['TARGET_DOMAIN'])
+    # Clean target domain: strip http://https:// prefixes and extract domain
+    target_domain_raw = project.get('targetDomain', DEFAULT_SETTINGS['TARGET_DOMAIN'])
+    if target_domain_raw:
+        # Remove http:// or https:// prefix if present
+        target_domain_clean = target_domain_raw.strip()
+        for prefix in ['http://', 'https://']:
+            if target_domain_clean.startswith(prefix):
+                target_domain_clean = target_domain_clean[len(prefix):]
+        # Remove trailing slashes and paths
+        target_domain_clean = target_domain_clean.split('/')[0].strip()
+        # Remove port if present (e.g., example.com:8080 -> example.com)
+        target_domain_clean = target_domain_clean.split(':')[0].strip()
+        settings['TARGET_DOMAIN'] = target_domain_clean
+    else:
+        settings['TARGET_DOMAIN'] = target_domain_raw
     settings['SUBDOMAIN_LIST'] = project.get('subdomainList', DEFAULT_SETTINGS['SUBDOMAIN_LIST'])
     settings['VERIFY_DOMAIN_OWNERSHIP'] = project.get('verifyDomainOwnership', DEFAULT_SETTINGS['VERIFY_DOMAIN_OWNERSHIP'])
     settings['OWNERSHIP_TOKEN'] = project.get('ownershipToken', DEFAULT_SETTINGS['OWNERSHIP_TOKEN'])

@@ -1,5 +1,5 @@
 """
-RedAmon Agent Utility Functions
+PandaExploit Agent Utility Functions
 
 Utility functions for API and prompts that are not orchestrator-specific.
 Orchestrator-specific helpers are in orchestrator_helpers/.

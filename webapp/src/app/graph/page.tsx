@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { GraphToolbar } from './components/GraphToolbar'
 import { GraphCanvas } from './components/GraphCanvas'
 import { NodeDrawer } from './components/NodeDrawer'
-import { AIAssistantDrawer } from './components/AIAssistantDrawer'
+import { AIPanel } from './components/AIPanel/AIPanel'
 import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
-import { ReconLogsDrawer } from './components/ReconLogsDrawer'
-import { useGraphData, useDimensions, useNodeSelection } from './hooks'
+import { PanelLayout } from './components/PanelLayout/PanelLayout'
+import { useGraphData, useNodeSelection } from './hooks'
 import { useTheme, useSession, useReconStatus, useReconSSE } from '@/hooks'
 import { useProject } from '@/providers/ProjectProvider'
+import { usePanelLayout } from './hooks/usePanelLayout'
 import styles from './page.module.css'
 
 export default function GraphPage() {
@@ -20,23 +21,28 @@ export default function GraphPage() {
 
   const [is3D, setIs3D] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
-  const [isAIOpen, setIsAIOpen] = useState(false)
   const [isReconModalOpen, setIsReconModalOpen] = useState(false)
-  const [isLogsOpen, setIsLogsOpen] = useState(false)
   const [hasReconData, setHasReconData] = useState(false)
   const [graphStats, setGraphStats] = useState<{ totalNodes: number; nodesByType: Record<string, number> } | null>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<'graph' | 'ai'>('graph')
 
   const { selectedNode, drawerOpen, selectNode, clearSelection } = useNodeSelection()
-  const dimensions = useDimensions(contentRef)
   const { isDark } = useTheme()
   const { sessionId, resetSession } = useSession()
+  
+  // Panel layout state management
+  const {
+    effectiveViewMode,
+    hideAI,
+    showAI,
+  } = usePanelLayout()
 
   // Recon status hook - must be before useGraphData to provide isReconRunning
   const {
     state: reconState,
     isLoading: isReconLoading,
     startRecon,
+    stopRecon,
   } = useReconStatus({
     projectId,
     enabled: !!projectId,
@@ -102,20 +108,12 @@ export default function GraphPage() {
     }
   }, [reconState?.status, refetchGraph, checkReconData])
 
-  // Auto-open logs when recon starts
+  // Auto-switch to AI tab when recon starts (if in tab mode)
   useEffect(() => {
-    if (reconState?.status === 'running' || reconState?.status === 'starting') {
-      setIsLogsOpen(true)
+    if ((reconState?.status === 'running' || reconState?.status === 'starting') && effectiveViewMode === 'tab') {
+      setActiveTab('ai')
     }
-  }, [reconState?.status])
-
-  const handleToggleAI = useCallback(() => {
-    setIsAIOpen((prev) => !prev)
-  }, [])
-
-  const handleCloseAI = useCallback(() => {
-    setIsAIOpen(false)
-  }, [])
+  }, [reconState?.status, effectiveViewMode])
 
   const handleStartRecon = useCallback(() => {
     setIsReconModalOpen(true)
@@ -126,9 +124,16 @@ export default function GraphPage() {
     const result = await startRecon()
     if (result) {
       setIsReconModalOpen(false)
-      setIsLogsOpen(true)
+      // Auto-switch to AI tab (Recon tab) when recon starts
+      if (effectiveViewMode === 'tab') {
+        setActiveTab('ai')
+      }
     }
-  }, [startRecon, clearLogs])
+  }, [startRecon, clearLogs, effectiveViewMode])
+
+  const handleStopRecon = useCallback(async () => {
+    await stopRecon()
+  }, [stopRecon])
 
   const handleDownloadJSON = useCallback(async () => {
     if (!projectId) return
@@ -148,8 +153,8 @@ export default function GraphPage() {
     refetchGraph()
   }, [projectId, refetchGraph])
 
-  const handleToggleLogs = useCallback(() => {
-    setIsLogsOpen(prev => !prev)
+  const handleSelectTab = useCallback((tab: 'graph' | 'ai') => {
+    setActiveTab(tab)
   }, [])
 
   // Show message if no project is selected
@@ -169,24 +174,27 @@ export default function GraphPage() {
 
   return (
     <div className={styles.page}>
+      {/* Build marker to verify new code is deployed */}
+      <div data-build-version="panel-layout-v1-2026-02-10" style={{ display: 'none' }} />
       <GraphToolbar
         projectId={projectId || ''}
         is3D={is3D}
         showLabels={showLabels}
         onToggle3D={setIs3D}
         onToggleLabels={setShowLabels}
-        onToggleAI={handleToggleAI}
-        isAIOpen={isAIOpen}
+        effectiveViewMode={effectiveViewMode}
+        activeTab={activeTab}
+        onHideAI={hideAI}
+        onShowAI={showAI}
+        onSelectTab={handleSelectTab}
         // Target info
         targetDomain={currentProject?.targetDomain}
         subdomainList={currentProject?.subdomainList}
         // Recon props
         onStartRecon={handleStartRecon}
         onDownloadJSON={handleDownloadJSON}
-        onToggleLogs={handleToggleLogs}
         reconStatus={reconState?.status || 'idle'}
         hasReconData={hasReconData}
-        isLogsOpen={isLogsOpen}
       />
 
       <div className={styles.body}>
@@ -196,43 +204,43 @@ export default function GraphPage() {
           onClose={clearSelection}
           onDeleteNode={handleDeleteNode}
         />
-
-        <div ref={contentRef} className={styles.content}>
-          <GraphCanvas
-            data={data}
-            isLoading={isLoading}
-            error={error}
-            projectId={projectId || ''}
-            is3D={is3D}
-            width={dimensions.width}
-            height={dimensions.height}
-            showLabels={showLabels}
-            selectedNode={selectedNode}
-            onNodeClick={selectNode}
-            isDark={isDark}
-          />
-
-          <ReconLogsDrawer
-            isOpen={isLogsOpen}
-            onClose={() => setIsLogsOpen(false)}
-            logs={reconLogs}
-            currentPhase={currentPhase}
-            currentPhaseNumber={currentPhaseNumber}
-            status={reconState?.status || 'idle'}
-            onClearLogs={clearLogs}
-          />
-        </div>
+        <PanelLayout
+          graphContent={(dimensions) => (
+            <GraphCanvas
+              data={data}
+              isLoading={isLoading}
+              error={error}
+              projectId={projectId || ''}
+              is3D={is3D}
+              width={dimensions.width}
+              height={dimensions.height}
+              showLabels={showLabels}
+              selectedNode={selectedNode}
+              onNodeClick={selectNode}
+              isDark={isDark}
+            />
+          )}
+          aiContent={
+            <AIPanel
+              userId={userId || ''}
+              projectId={projectId || ''}
+              sessionId={sessionId || ''}
+              onResetSession={resetSession}
+              modelName={currentProject?.agentOpenaiModel}
+              reconLogs={reconLogs}
+              currentPhase={currentPhase}
+              currentPhaseNumber={currentPhaseNumber}
+              reconStatus={reconState?.status || 'idle'}
+              onClearLogs={clearLogs}
+              onStartRecon={handleStartRecon}
+              onStopRecon={handleStopRecon}
+              isReconLoading={isReconLoading}
+            />
+          }
+          activeTab={activeTab}
+          onTabChange={handleSelectTab}
+        />
       </div>
-
-      <AIAssistantDrawer
-        isOpen={isAIOpen}
-        onClose={handleCloseAI}
-        userId={userId || ''}
-        projectId={projectId || ''}
-        sessionId={sessionId || ''}
-        onResetSession={resetSession}
-        modelName={currentProject?.agentOpenaiModel}
-      />
 
       <ReconConfirmModal
         isOpen={isReconModalOpen}

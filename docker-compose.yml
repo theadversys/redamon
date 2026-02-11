@@ -1,5 +1,5 @@
 # =============================================================================
-# RedAmon - Unified Docker Compose
+# PandaExploit - Unified Docker Compose
 # =============================================================================
 # Start:  docker compose up -d
 # Stop:   docker compose down
@@ -15,27 +15,27 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: redamon-postgres
+    container_name: pandaexploit-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-redamon}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-redamon_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-redamon}
+      POSTGRES_USER: ${POSTGRES_USER:-pandaexploit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pandaexploit_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-pandaexploit}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-redamon} -d ${POSTGRES_DB:-redamon}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pandaexploit} -d ${POSTGRES_DB:-pandaexploit}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - redamon
+      - pandaexploit
 
   neo4j:
     image: neo4j:5.26-community
-    container_name: redamon-neo4j
+    container_name: pandaexploit-neo4j
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-changeme123}
       NEO4J_PLUGINS: '["apoc"]'
@@ -56,7 +56,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - redamon
+      - pandaexploit
 
   # ===========================================================================
   # Recon Scanner Image (build only — not a running service)
@@ -68,7 +68,7 @@ services:
       context: .
       dockerfile: recon/Dockerfile
       network: host
-    image: redamon-recon:latest
+    image: pandaexploit-recon:latest
     profiles: ["tools"]
 
   # ===========================================================================
@@ -77,7 +77,7 @@ services:
 
   recon-orchestrator:
     build: ./recon_orchestrator
-    container_name: redamon-recon-orchestrator
+    container_name: pandaexploit-recon-orchestrator
     ports:
       - "${RECON_ORCH_PORT:-8010}:8010"
     volumes:
@@ -85,9 +85,10 @@ services:
       - ./recon_orchestrator:/app
       - ./recon:/app/recon:ro
       - ./recon/output:/app/recon/output:rw
+      - ./graph_db:/app/graph_db:ro
     environment:
       RECON_PATH: ${PWD}/recon
-      RECON_IMAGE: redamon-recon:latest
+      RECON_IMAGE: pandaexploit-recon:latest
       # Forwarded to spawned recon containers (host network, so localhost)
       NVD_API_KEY: ${NVD_API_KEY:-}
       NEO4J_URI: bolt://localhost:7687
@@ -101,14 +102,14 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - redamon
+      - pandaexploit
 
   kali-sandbox:
     build:
       context: ./mcp
       dockerfile: kali-sandbox/Dockerfile
       network: host
-    container_name: redamon-kali
+    container_name: pandaexploit-kali
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -149,12 +150,12 @@ services:
       retries: 3
       start_period: 180s
     networks:
-      redamon:
+      pandaexploit:
       pentest-net:
 
   agent:
     build: ./agentic
-    container_name: redamon-agent
+    container_name: pandaexploit-agent
     ports:
       - "${AGENT_PORT:-8090}:8080"
     environment:
@@ -164,7 +165,10 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-changeme123}
       # AI provider keys (from root .env)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_VERIFY_SSL: ${OPENAI_VERIFY_SSL:-false}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_VERIFY_SSL: ${GOOGLE_VERIFY_SSL:-false}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       # WebSocket config
       WS_HEARTBEAT_INTERVAL: "30"
@@ -193,7 +197,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - redamon
+      - pandaexploit
 
   # ===========================================================================
   # Frontend
@@ -210,19 +214,22 @@ services:
       - ./webapp/prisma:/app/prisma
       - webapp_prisma_cache:/app/node_modules
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-redamon}:${POSTGRES_PASSWORD:-redamon_secret}@postgres:5432/${POSTGRES_DB:-redamon}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-pandaexploit}:${POSTGRES_PASSWORD:-pandaexploit_secret}@postgres:5432/${POSTGRES_DB:-pandaexploit}"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - redamon
+      - pandaexploit
     restart: "no"
 
   webapp:
     build: ./webapp
-    container_name: redamon-webapp
+    container_name: pandaexploit-webapp
     ports:
       - "${WEBAPP_PORT:-3000}:3000"
+    volumes:
+      # Mount recon output directory so webapp can serve download files
+      - ./recon/output:/app/recon/output:ro
     environment:
       # PostgreSQL (Prisma)
       DATABASE_URL: "postgresql://${POSTGRES_USER:-redamon}:${POSTGRES_PASSWORD:-redamon_secret}@postgres:5432/${POSTGRES_DB:-redamon}"
@@ -236,6 +243,8 @@ services:
       AGENT_WS_URL: ws://agent:8080/ws/agent
       # Recon container connects via host network, needs host-accessible webapp URL
       WEBAPP_URL: http://localhost:${WEBAPP_PORT:-3000}
+      # Recon output path (mounted volume)
+      RECON_OUTPUT_PATH: /app/recon/output
     depends_on:
       postgres:
         condition: service_healthy
@@ -251,15 +260,15 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - redamon
+      - pandaexploit
 
 # =============================================================================
 # Networks
 # =============================================================================
 
 networks:
-  redamon:
-    name: redamon-network
+  pandaexploit:
+    name: pandaexploit-network
     driver: bridge
   pentest-net:
     driver: bridge

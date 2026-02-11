@@ -1,10 +1,10 @@
-# RedAmon - Naabu Port Scanner
+# PandaExploit - Naabu Port Scanner
 
 ## Complete Technical Documentation
 
 > **Module:** `recon/naabu_scan.py`  
 > **Purpose:** Fast, lightweight port scanning using ProjectDiscovery's Naabu  
-> **Author:** RedAmon Security Suite
+> **Author:** PandaExploit Security Suite
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## Overview
 
-The `naabu_scan.py` module integrates ProjectDiscovery's Naabu scanner into RedAmon's reconnaissance pipeline. Naabu is optimized for fast, reliable port scanning at scale.
+The `naabu_scan.py` module integrates ProjectDiscovery's Naabu scanner into PandaExploit's reconnaissance pipeline. Naabu is optimized for fast, reliable port scanning at scale.
 
 **⚠️ Important:** Naabu runs exclusively via Docker. No native installation is supported.
 
@@ -296,7 +296,7 @@ WITHOUT Host Discovery (NAABU_SKIP_HOST_DISCOVERY = True):
 | `True` (default) | Skip ping, assume all hosts UP | Firewalls block ICMP, hosts from DNS |
 | `False` | Ping first, skip "dead" hosts | Large IP ranges, internal networks |
 
-**Why default is `True`:** RedAmon already confirmed hosts exist via DNS resolution. Many firewalls block ICMP ping, causing false negatives.
+**Why default is `True`:** PandaExploit already confirmed hosts exist via DNS resolution. Many firewalls block ICMP ping, causing false negatives.
 
 ---
 
@@ -724,5 +724,5 @@ NAABU_EXCLUDE_CDN = True
 
 ---
 
-*Documentation generated for RedAmon v1.0 - Naabu Port Scanner Module*
+*Documentation generated for PandaExploit v1.0 - Naabu Port Scanner Module*
 

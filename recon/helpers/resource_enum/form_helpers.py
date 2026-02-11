@@ -1,5 +1,5 @@
 """
-RedAmon - Form Parsing Helpers
+PandaExploit - Form Parsing Helpers
 ==============================
 HTML form parsing and extraction utilities for resource enumeration.
 """

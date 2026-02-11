@@ -1,5 +1,5 @@
 """
-RedAmon Agent Prompts Package
+PandaExploit Agent Prompts Package
 
 System prompts for the ReAct agent orchestrator.
 Includes phase-aware reasoning, tool descriptions, and structured output formats.
@@ -23,6 +23,7 @@ from .base import (
     TEXT_TO_CYPHER_PROMPT,
     FINAL_ANSWER_SYSTEM,
     FINAL_ANSWER_PROMPT,
+    STRATEGIC_PLANNING_PROMPT,
 )
 
 # Re-export from classification
@@ -179,6 +180,7 @@ __all__ = [
     "TEXT_TO_CYPHER_PROMPT",
     "FINAL_ANSWER_SYSTEM",
     "FINAL_ANSWER_PROMPT",
+    "STRATEGIC_PLANNING_PROMPT",
     # Classification
     "ATTACK_PATH_CLASSIFICATION_PROMPT",
     # CVE exploit

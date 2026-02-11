@@ -29,19 +29,19 @@ const navItems: NavItem[] = [
     label: 'Vulnerabilities',
     href: '/vulnerabilities',
     icon: <ShieldCheck size={16} />,
-    enabled: false,
+    enabled: true,
   },
   {
     label: 'MITRE ATT&CK',
     href: '/mitre',
     icon: <Target size={16} />,
-    enabled: false,
+    enabled: true,
   },
   {
     label: 'Actions Log',
     href: '/actions',
     icon: <ClipboardList size={16} />,
-    enabled: false,
+    enabled: true,
   },
 ]
 

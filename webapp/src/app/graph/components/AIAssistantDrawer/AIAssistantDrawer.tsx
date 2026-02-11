@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react'
-import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, Shield, Target, Zap, HelpCircle, WifiOff, Wifi, Square, Play } from 'lucide-react'
+import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, Shield, Target, Zap, HelpCircle, WifiOff, Wifi, Square, Play, ChevronDown, Radar, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -27,6 +27,9 @@ import {
 import { AgentTimeline } from './AgentTimeline'
 import { TodoListWidget } from './TodoListWidget'
 import type { ThinkingItem, ToolExecutionItem } from './AgentTimeline'
+import { useProject } from '@/providers/ProjectProvider'
+import type { ReconStatus } from '@/lib/recon-types'
+import type { ExplainPayload } from '../AIPanel/AIPanel'
 
 type Phase = 'informational' | 'exploitation' | 'post_exploitation'
 
@@ -40,6 +43,8 @@ interface Message {
   phase?: Phase
   timestamp: Date
   isGuidance?: boolean
+  /** Phase 2: citation context for "Explain these logs" — enables View in Recon deep link */
+  explainContext?: { logExcerpt: string }
 }
 
 type ChatItem = Message | ThinkingItem | ToolExecutionItem
@@ -52,6 +57,20 @@ interface AIAssistantDrawerProps {
   sessionId: string
   onResetSession?: () => void
   modelName?: string
+  panelMode?: boolean // When true, disables drawer positioning
+  /** Phase 1: recon awareness — show Live Recon run capsule */
+  reconStatus?: ReconStatus
+  reconPhase?: string | null
+  reconPhaseNumber?: number | null
+  /** Phase 1: "Explain this" from Recon Logs — send this to agent and show in chat */
+  explainPayload?: ExplainPayload | null
+  onExplainSent?: () => void
+  /** Phase 2: deep link from citation to Recon tab with highlight */
+  onViewInRecon?: (logExcerpt: string) => void
+  /** Phase 3: run controls — start opens recon modal, stop ends recon */
+  onStartRecon?: () => void
+  onStopRecon?: () => void
+  isReconLoading?: boolean
 }
 
 const PHASE_CONFIG = {
@@ -100,7 +119,22 @@ export function AIAssistantDrawer({
   sessionId,
   onResetSession,
   modelName,
+  panelMode = false,
+  reconStatus = 'idle',
+  reconPhase = null,
+  reconPhaseNumber = null,
+  explainPayload = null,
+  onExplainSent,
+  onViewInRecon,
+  onStartRecon,
+  onStopRecon,
+  isReconLoading = false,
 }: AIAssistantDrawerProps) {
+  const { currentProject, setCurrentProject } = useProject()
+  const [showModelSwitcher, setShowModelSwitcher] = useState(false)
+  const [isChangingModel, setIsChangingModel] = useState(false)
+  const [showModelChangeConfirm, setShowModelChangeConfirm] = useState(false)
+  const [pendingModel, setPendingModel] = useState<string | null>(null)
   const [chatItems, setChatItems] = useState<ChatItem[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -128,6 +162,7 @@ export function AIAssistantDrawer({
   const isProcessingQuestion = useRef(false)
   const awaitingQuestionRef = useRef(false)
   const shouldAutoScroll = useRef(true)
+  const lastExplainPayloadRef = useRef<string | null>(null)
 
   const scrollToBottom = useCallback((force = false) => {
     if (force || shouldAutoScroll.current) {
@@ -181,7 +216,38 @@ export function AIAssistantDrawer({
     awaitingQuestionRef.current = false
     isProcessingQuestion.current = false
     shouldAutoScroll.current = true // Reset to auto-scroll on new session
+    lastExplainPayloadRef.current = null
   }, [sessionId])
+
+  // Close model switcher when clicking outside
+  useEffect(() => {
+    if (!showModelSwitcher) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Element
+      const container = document.querySelector(`.${styles.modelSwitcherContainer}`)
+      if (container && !container.contains(target)) {
+        setShowModelSwitcher(false)
+      }
+    }
+
+    // Use setTimeout to avoid immediate closure when opening
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showModelSwitcher])
+
+  // Close dropdown when model changes
+  useEffect(() => {
+    if (modelName) {
+      setShowModelSwitcher(false)
+    }
+  }, [modelName])
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: ServerMessage) => {
@@ -396,6 +462,25 @@ export function AIAssistantDrawer({
       }
     },
   })
+
+  // Phase 1: "Explain this" from Recon Logs — when user selects logs and clicks Ask AI, we receive explainPayload
+  useEffect(() => {
+    if (!explainPayload?.text?.trim() || !isConnected || !onExplainSent) return
+    if (lastExplainPayloadRef.current === explainPayload.text) return
+    lastExplainPayloadRef.current = explainPayload.text
+    const prompt = `Explain these recon log lines and what they mean (errors, warnings, or findings):\n\n${explainPayload.text.trim()}`
+    const userMessage: Message = {
+      id: `user-explain-${Date.now()}`,
+      role: 'user',
+      content: `Explain these recon logs:\n\n${explainPayload.text.trim().slice(0, 500)}${explainPayload.text.length > 500 ? '…' : ''}`,
+      timestamp: new Date(),
+      explainContext: { logExcerpt: explainPayload.text.trim() },
+    }
+    setChatItems(prev => [...prev, userMessage])
+    setIsLoading(true)
+    sendQuery(prompt)
+    onExplainSent()
+  }, [explainPayload, isConnected, onExplainSent, sendQuery])
 
   const handleSend = useCallback(() => {
     const question = inputValue.trim()
@@ -628,7 +713,7 @@ export function AIAssistantDrawer({
         key={item.id}
         className={`${styles.message} ${
           item.role === 'user' ? styles.messageUser : styles.messageAssistant
-        } ${item.isGuidance ? styles.messageGuidance : ''}`}
+        } ${item.isGuidance ? styles.messageGuidance : ''} ${item.explainContext ? styles.messageWithCitation : ''}`}
       >
         <div className={styles.messageIcon}>
           {item.role === 'user' ? <User size={14} /> : <Bot size={14} />}
@@ -636,6 +721,9 @@ export function AIAssistantDrawer({
         <div className={styles.messageContent}>
           {item.isGuidance && (
             <span className={styles.guidanceBadge}>Guidance</span>
+          )}
+          {item.explainContext && (
+            <span className={styles.citationBadge}>Recon logs</span>
           )}
           <div className={styles.messageText}>
             <ReactMarkdown
@@ -666,6 +754,18 @@ export function AIAssistantDrawer({
             </ReactMarkdown>
           </div>
 
+          {item.explainContext && onViewInRecon && (
+            <button
+              type="button"
+              className={styles.viewInReconButton}
+              onClick={() => onViewInRecon(item.explainContext!.logExcerpt)}
+              title="Jump to Recon tab and highlight this log excerpt"
+            >
+              <ExternalLink size={12} />
+              <span>View in Recon</span>
+            </button>
+          )}
+
           {item.error && (
             <div className={styles.errorBadge}>
               <AlertCircle size={12} />
@@ -679,8 +779,9 @@ export function AIAssistantDrawer({
 
   return (
     <div
-      className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''}`}
+      className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''} ${panelMode ? styles.panelMode : ''}`}
       aria-hidden={!isOpen}
+      data-panel-mode={panelMode ? 'true' : undefined}
     >
       {/* Header */}
       <div className={styles.header}>
@@ -717,6 +818,49 @@ export function AIAssistantDrawer({
         </div>
       </div>
 
+      {/* Phase 1+3: Live Recon run capsule — always show when project has recon; Phase 3 adds Start/Stop controls */}
+      {projectId && (
+        <div className={styles.runCapsule} data-live-recon="true" data-phase={reconPhase ?? ''}>
+          <Radar size={14} className={styles.runCapsuleIcon} />
+          <span className={styles.runCapsuleText}>
+            {reconStatus === 'starting' && 'Starting…'}
+            {reconStatus === 'running' && (
+              reconPhaseNumber != null && reconPhase
+                ? `Phase ${reconPhaseNumber}/7 · ${reconPhase}`
+                : 'Recon running…'
+            )}
+            {reconStatus === 'completed' && 'Completed'}
+            {reconStatus === 'error' && 'Error'}
+            {reconStatus === 'idle' && 'Idle'}
+            {reconStatus === 'stopping' && 'Stopping…'}
+          </span>
+          {onStartRecon && (reconStatus === 'idle' || reconStatus === 'completed' || reconStatus === 'error') && (
+            <button
+              type="button"
+              className={styles.runCapsuleButton}
+              onClick={onStartRecon}
+              disabled={isReconLoading}
+              title="Start reconnaissance"
+            >
+              <Play size={12} />
+              <span>Start</span>
+            </button>
+          )}
+          {onStopRecon && (reconStatus === 'running' || reconStatus === 'starting') && (
+            <button
+              type="button"
+              className={`${styles.runCapsuleButton} ${styles.runCapsuleButtonStop}`}
+              onClick={onStopRecon}
+              disabled={isReconLoading}
+              title="Stop reconnaissance"
+            >
+              <Square size={12} />
+              <span>Stop</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Phase Indicator */}
       <div className={styles.phaseIndicator}>
         <div
@@ -751,8 +895,68 @@ export function AIAssistantDrawer({
           <span className={styles.iterationCount}>Step {iterationCount}</span>
         )}
 
-        {modelName && (
-          <span className={styles.modelBadge}>{modelName}</span>
+        {modelName && projectId && (
+          <div className={styles.modelSwitcherContainer}>
+            <button
+              className={styles.modelSwitcherButton}
+              onClick={() => setShowModelSwitcher(!showModelSwitcher)}
+              disabled={isChangingModel}
+              title="Switch AI model"
+            >
+              <span className={styles.modelBadge}>{modelName}</span>
+              <ChevronDown size={12} className={styles.modelSwitcherIcon} />
+            </button>
+            {showModelSwitcher && (
+              <div className={styles.modelSwitcherDropdown}>
+                <div className={styles.modelSwitcherHeader}>Select AI Model</div>
+                <select
+                  className={styles.modelSwitcherSelect}
+                  value={modelName || ''}
+                  onChange={(e) => {
+                    const newModel = e.target.value
+                    if (newModel && newModel !== modelName) {
+                      setPendingModel(newModel)
+                      setShowModelChangeConfirm(true)
+                      setShowModelSwitcher(false)
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onFocus={(e) => e.stopPropagation()}
+                >
+                  <optgroup label="Anthropic Claude">
+                    <option value="claude-opus-4-6">Claude Opus 4.6 — Most capable model</option>
+                    <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5 — Balanced performance</option>
+                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — Fast and efficient</option>
+                  </optgroup>
+                  <optgroup label="GPT-5.2">
+                    <option value="gpt-5.2">gpt-5.2 — Flagship reasoning model</option>
+                    <option value="gpt-5.2-pro">gpt-5.2-pro — Smarter, more precise (Responses API)</option>
+                  </optgroup>
+                  <optgroup label="GPT-5">
+                    <option value="gpt-5">gpt-5 — Previous reasoning model</option>
+                    <option value="gpt-5-mini">gpt-5-mini — Faster, cost-efficient GPT-5</option>
+                    <option value="gpt-5-nano">gpt-5-nano — Fastest, cheapest GPT-5</option>
+                  </optgroup>
+                  <optgroup label="GPT-4.1">
+                    <option value="gpt-4.1">gpt-4.1 — Smartest non-reasoning model</option>
+                    <option value="gpt-4.1-mini">gpt-4.1-mini — Fast, cost-efficient</option>
+                    <option value="gpt-4.1-nano">gpt-4.1-nano — Fastest, cheapest</option>
+                  </optgroup>
+                  <optgroup label="GPT-4o">
+                    <option value="gpt-4o">gpt-4o — Latest GPT-4 optimized model</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini — Faster, cost-efficient GPT-4o</option>
+                  </optgroup>
+                  <optgroup label="Google Gemini">
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash — Fast and efficient</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro Preview — Most capable model</option>
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Experimental — Latest experimental</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro — Previous generation pro model</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash — Fast previous generation</option>
+                  </optgroup>
+                </select>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -971,6 +1175,100 @@ export function AIAssistantDrawer({
             >
               Submit Answer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Model Change Confirmation Dialog */}
+      {showModelChangeConfirm && pendingModel && (
+        <div className={styles.modalOverlay} onClick={() => setShowModelChangeConfirm(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <AlertCircle size={20} className={styles.modalIcon} />
+              <h3 className={styles.modalTitle}>Switch AI Model?</h3>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.modalText}>
+                Changing the AI model will reset your current conversation session.
+              </p>
+              <p className={styles.modalText}>
+                <strong>Current:</strong> {modelName}<br />
+                <strong>New:</strong> {pendingModel}
+              </p>
+              <p className={styles.modalWarning}>
+                All conversation history, todos, and phase progress will be cleared.
+              </p>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.modalButtonSecondary}
+                onClick={() => {
+                  setShowModelChangeConfirm(false)
+                  setPendingModel(null)
+                }}
+                disabled={isChangingModel}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.modalButtonPrimary}
+                onClick={async () => {
+                  if (!projectId || !pendingModel) {
+                    return
+                  }
+
+                  setIsChangingModel(true)
+                  try {
+                    // Update project settings
+                    const response = await fetch(`/api/projects/${projectId}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ agentOpenaiModel: pendingModel }),
+                    })
+
+                    if (!response.ok) {
+                      const errorData = await response.json().catch(() => ({}))
+                      throw new Error(errorData.error || 'Failed to update model')
+                    }
+
+                    const updatedProject = await response.json()
+
+                    // Update project context
+                    if (currentProject) {
+                      setCurrentProject({
+                        ...currentProject,
+                        agentOpenaiModel: pendingModel,
+                      })
+                    }
+
+                    // Reset session to clear conversation history
+                    onResetSession?.()
+
+                    // Close dialogs
+                    setShowModelChangeConfirm(false)
+                    setPendingModel(null)
+                    setShowModelSwitcher(false)
+                  } catch (error) {
+                    console.error('Failed to change model:', error)
+                    const errorMessage = error instanceof Error ? error.message : 'Failed to change model. Please try again.'
+                    alert(errorMessage)
+                    // Keep dialog open on error so user can retry
+                  } finally {
+                    setIsChangingModel(false)
+                  }
+                }}
+                disabled={isChangingModel}
+              >
+                {isChangingModel ? (
+                  <>
+                    <Loader2 size={16} className={styles.spinner} />
+                    Changing...
+                  </>
+                ) : (
+                  'Switch Model'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

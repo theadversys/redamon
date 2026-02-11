@@ -1,5 +1,5 @@
 """
-RedAmon Brute Force Credential Guess Prompts
+PandaExploit Brute Force Credential Guess Prompts
 
 Prompts for brute force credential guess attack workflows.
 """

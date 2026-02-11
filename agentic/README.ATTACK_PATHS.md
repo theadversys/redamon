@@ -1,8 +1,8 @@
-# RedAmon Attack Paths Architecture
+# PandaExploit Attack Paths Architecture
 
 Comprehensive documentation of all Metasploit attack path categories and the proposed Agent Routing system for intelligent attack chain orchestration.
 
-> **Context**: The current RedAmon agent implementation supports CVE-based exploitation chains. This document defines all possible attack path categories to enable evolution toward a multi-path routing system.
+> **Context**: The current PandaExploit agent implementation supports CVE-based exploitation chains. This document defines all possible attack path categories to enable evolution toward a multi-path routing system.
 
 ---
 
@@ -1247,4 +1247,4 @@ Some attack paths naturally chain into others:
 
 *Document Version: 2.0*
 *Last Updated: 2026-01-31*
-*Author: RedAmon Development Team*
+*Author: PandaExploit Development Team*

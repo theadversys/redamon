@@ -50,7 +50,7 @@ flowchart LR
 
 ```bash
 # 1. Ensure Docker network exists
-docker network create redamon-network
+docker network create pandaexploit-network
 
 # 2. Build and start
 cd recon_orchestrator
@@ -190,7 +190,7 @@ The orchestrator automatically detects recon phases from log output:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RECON_PATH` | `/app/recon` | Path to recon module |
-| `RECON_IMAGE` | `redamon-recon:latest` | Docker image for recon |
+| `RECON_IMAGE` | `pandaexploit-recon:latest` | Docker image for recon |
 
 ### Docker Compose
 
@@ -198,7 +198,7 @@ The orchestrator automatically detects recon phases from log output:
 services:
   recon-orchestrator:
     build: .
-    container_name: redamon-recon-orchestrator
+    container_name: pandaexploit-recon-orchestrator
     ports:
       - "8010:8010"
     volumes:
@@ -210,11 +210,11 @@ services:
       - ../recon/output:/app/recon/output:rw
     environment:
       - RECON_PATH=/app/recon
-      - RECON_IMAGE=redamon-recon:latest
+      - RECON_IMAGE=pandaexploit-recon:latest
 
 networks:
   default:
-    name: redamon-network
+    name: pandaexploit-network
     external: true
 ```
 
@@ -279,17 +279,17 @@ The webapp proxies requests to the orchestrator:
 
 1. Check Docker socket is accessible:
    ```bash
-   docker exec redamon-recon-orchestrator docker ps
+   docker exec pandaexploit-recon-orchestrator docker ps
    ```
 
 2. Verify recon image exists:
    ```bash
-   docker images | grep redamon-recon
+   docker images | grep pandaexploit-recon
    ```
 
 3. Check orchestrator logs:
    ```bash
-   docker logs redamon-recon-orchestrator
+   docker logs pandaexploit-recon-orchestrator
    ```
 
 ### Logs Not Streaming
@@ -301,7 +301,7 @@ The webapp proxies requests to the orchestrator:
 
 2. Check container is running:
    ```bash
-   docker ps | grep redamon-recon
+   docker ps | grep pandaexploit-recon
    ```
 
 ### Connection Refused from Webapp

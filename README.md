@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="assets/logo.png" alt="RedAmon Logo" width="120"/>
+  <img src="assets/logo.png" alt="PandaExploit Logo" width="120"/>
   <br/>
-  <img src="assets/title.svg" alt="RedAmon" width="340"/>
+  <img src="assets/title.svg" alt="PandaExploit" width="340"/>
 </p>
 
 <h3 align="center">Unmask the hidden before the world does.</h3>
@@ -24,7 +24,7 @@
 > **LEGAL DISCLAIMER**: This tool is intended for **authorized security testing**, **educational purposes**, and **research only**. Never use this system to scan, probe, or attack any system you do not own or have explicit written permission to test. Unauthorized access is **illegal** and punishable by law. By using this tool, you accept **full responsibility** for your actions. **[Read Full Disclaimer](DISCLAIMER.md)**
 
 <p align="center">
-  <img src="assets/agent.gif" alt="RedAmon Agent Demo" width="100%"/>
+  <img src="assets/agent.gif" alt="PandaExploit Agent Demo" width="100%"/>
 </p>
 
 ---
@@ -171,7 +171,7 @@ No rebuild needed — just restart.
 
 ## Overview
 
-RedAmon is a modular, containerized penetration testing framework that chains automated reconnaissance, AI-driven exploitation, and graph-powered intelligence into a single, end-to-end offensive security pipeline. Every component runs inside Docker — no tools installed on your host — and communicates through well-defined APIs so each layer can evolve independently.
+PandaExploit is a modular, containerized penetration testing framework that chains automated reconnaissance, AI-driven exploitation, and graph-powered intelligence into a single, end-to-end offensive security pipeline. Every component runs inside Docker — no tools installed on your host — and communicates through well-defined APIs so each layer can evolve independently.
 
 The platform is built around four pillars:
 
@@ -189,7 +189,7 @@ The platform is built around four pillars:
 The recon pipeline is a fully automated, six-phase scanning engine that runs inside a Kali Linux container. Given a single root domain (or a specific subdomain list), it progressively builds a complete picture of the target's external attack surface. Each phase feeds its output into the next, and the final result is both a structured JSON file and a populated Neo4j graph.
 
 <p align="center">
-  <img src="assets/recon.gif" alt="RedAmon Reconnaissance Pipeline" width="100%"/>
+  <img src="assets/recon.gif" alt="PandaExploit Reconnaissance Pipeline" width="100%"/>
 </p>
 
 #### Phase 1 — Domain Discovery
@@ -274,7 +274,7 @@ The agent progresses through three distinct operational phases, each with differ
 When an exploit succeeds, the agent automatically creates an **Exploit node** in the Neo4j graph — recording the attack type, target IP, port, CVE IDs, Metasploit module used, payload, session ID, and any credentials discovered. This node is linked to the targeted IP, the exploited CVE, and the entry port, making every successful compromise a permanent, queryable part of the attack surface graph.
 
 <p align="center">
-  <img src="assets/exploit.gif" alt="RedAmon Exploitation Demo" width="100%"/>
+  <img src="assets/exploit.gif" alt="PandaExploit Exploitation Demo" width="100%"/>
 </p>
 
 **Post-Exploitation Phase** — After a successful exploit, the agent can optionally transition to post-exploitation (if enabled). In statefull mode (Meterpreter), it runs interactive commands — enumeration, lateral movement, data exfiltration. In stateless mode, it re-runs exploits with different command payloads. This phase also requires user approval.
@@ -317,7 +317,7 @@ For long-running Metasploit operations (e.g., brute force with large wordlists),
 
 ### Attack Surface Graph
 
-The Neo4j graph database is the **single source of truth** for every finding in RedAmon. It stores the complete topology of the target's attack surface as an interconnected knowledge graph, enabling both visual exploration in the webapp and intelligent querying by the AI agent.
+The Neo4j graph database is the **single source of truth** for every finding in PandaExploit. It stores the complete topology of the target's attack surface as an interconnected knowledge graph, enabling both visual exploration in the webapp and intelligent querying by the AI agent.
 
 #### Node Types
 
@@ -408,10 +408,10 @@ All queries are automatically scoped to the current user and project via regex-b
 
 ### Project Settings
 
-Every project in RedAmon has **180+ configurable parameters** that control the behavior of each reconnaissance module and the AI agent. These settings are managed through the webapp's project form UI, stored in PostgreSQL via Prisma ORM, and fetched by the recon container and agent at runtime.
+Every project in PandaExploit has **180+ configurable parameters** that control the behavior of each reconnaissance module and the AI agent. These settings are managed through the webapp's project form UI, stored in PostgreSQL via Prisma ORM, and fetched by the recon container and agent at runtime.
 
 <p align="center">
-  <img src="assets/new_project.gif" alt="RedAmon Project Settings" width="100%"/>
+  <img src="assets/new_project.gif" alt="PandaExploit Project Settings" width="100%"/>
 </p>
 
 #### Target Configuration
@@ -1042,7 +1042,7 @@ Greenbone Vulnerability Management (GVM), formerly known as OpenVAS, is an enter
 
 > **Status: Under Development** — Guinea pig environments are provided as reference configurations but are not yet fully integrated into the automated pipeline.
 
-Intentionally vulnerable Docker containers for safe, isolated testing. These environments let you validate the full RedAmon pipeline — from reconnaissance to exploitation — without touching any external system.
+Intentionally vulnerable Docker containers for safe, isolated testing. These environments let you validate the full PandaExploit pipeline — from reconnaissance to exploitation — without touching any external system.
 
 | Environment | Vulnerability | Description |
 |-------------|--------------|-------------|

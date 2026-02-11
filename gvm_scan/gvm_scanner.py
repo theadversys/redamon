@@ -1,5 +1,5 @@
 """
-RedAmon - GVM/OpenVAS Vulnerability Scanner
+PandaExploit - GVM/OpenVAS Vulnerability Scanner
 ============================================
 Connects to GVM via python-gvm to run vulnerability scans.
 Extracts targets from recon JSON data and saves results as JSON.
@@ -63,7 +63,7 @@ class GVMScanner:
     GVM/OpenVAS vulnerability scanner using python-gvm.
     
     Connects to gvmd via Unix socket and executes vulnerability scans
-    against targets extracted from RedAmon recon data.
+    against targets extracted from PandaExploit recon data.
     """
     
     def __init__(
@@ -237,7 +237,7 @@ class GVMScanner:
             hosts=hosts,
             port_list_id=self.port_list_id,
             alive_test=AliveTest.CONSIDER_ALIVE,
-            comment=comment or f"RedAmon auto-generated - {datetime.now().isoformat()}"
+            comment=comment or f"PandaExploit auto-generated - {datetime.now().isoformat()}"
         )
         # Extract ID from XML response (attribute on root element)
         target_id = response.get('id') if hasattr(response, 'get') else None
@@ -276,7 +276,7 @@ class GVMScanner:
             config_id=self.config_id,
             target_id=target_id,
             scanner_id=self.scanner_id,
-            comment=comment or f"RedAmon scan - {datetime.now().isoformat()}"
+            comment=comment or f"PandaExploit scan - {datetime.now().isoformat()}"
         )
         # Extract ID from XML response
         task_id = response.get('id') if hasattr(response, 'get') else None
@@ -694,13 +694,13 @@ class GVMScanner:
         try:
             # Create target
             target_id = self.create_target(
-                name=f"RedAmon_{target_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                name=f"PandaExploit_{target_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 hosts=targets
             )
             
             # Create and start task
             task_id = self.create_task(
-                name=f"RedAmon_Scan_{target_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                name=f"PandaExploit_Scan_{target_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 target_id=target_id
             )
             self.start_task(task_id)
@@ -752,7 +752,7 @@ def extract_targets_from_recon(recon_data: Dict) -> Tuple[Set[str], Set[str]]:
     - Only includes subdomains that have DNS records
     
     Args:
-        recon_data: RedAmon recon JSON data
+        recon_data: PandaExploit recon JSON data
         
     Returns:
         Tuple of (ips_set, hostnames_set)

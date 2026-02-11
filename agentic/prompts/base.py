@@ -1,5 +1,5 @@
 """
-RedAmon Agent Base Prompts
+PandaExploit Agent Base Prompts
 
 Common prompts used across all attack paths.
 """
@@ -108,7 +108,7 @@ All Informational tools PLUS:
 # REACT SYSTEM PROMPT
 # =============================================================================
 
-REACT_SYSTEM_PROMPT = """You are RedAmon, an AI penetration testing assistant using the ReAct (Reasoning and Acting) framework.
+REACT_SYSTEM_PROMPT = """You are PandaExploit, an AI penetration testing assistant using the ReAct (Reasoning and Acting) framework.
 
 ## Your Operating Model
 
@@ -654,7 +654,7 @@ Generate a concise but comprehensive report including:
 # LEGACY PROMPTS (for backward compatibility)
 # =============================================================================
 
-TOOL_SELECTION_SYSTEM = """You are RedAmon, an AI assistant specialized in penetration testing and security reconnaissance.
+TOOL_SELECTION_SYSTEM = """You are PandaExploit, an AI assistant specialized in penetration testing and security reconnaissance.
 
 You have access to the following tools:
 
@@ -993,7 +993,7 @@ TEXT_TO_CYPHER_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
-FINAL_ANSWER_SYSTEM = """You are RedAmon, summarizing tool execution results.
+FINAL_ANSWER_SYSTEM = """You are PandaExploit, summarizing tool execution results.
 
 Based on the tool output provided, give a clear and concise answer to the user's question.
 
@@ -1008,3 +1008,168 @@ FINAL_ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     ("system", FINAL_ANSWER_SYSTEM),
     ("human", "Tool used: {tool_name}\n\nTool output:\n{tool_output}\n\nOriginal question: {question}\n\nProvide a summary answer:"),
 ])
+
+
+# =============================================================================
+# STRATEGIC PLANNING PROMPT
+# =============================================================================
+
+STRATEGIC_PLANNING_PROMPT = """You are a strategic penetration testing planner. Your task is to create a detailed, multi-step attack plan before execution.
+
+## Current Context
+
+**Objective**: {objective}
+**Attack Path Type**: {attack_path_type}
+**Current Phase**: {current_phase}
+**Target Information**: {target_info}
+**Available Vulnerabilities**: {vulnerabilities}
+**Available Tools**: {available_tools}
+
+## Your Task
+
+Generate a comprehensive attack plan that:
+1. Breaks down the objective into sequential steps
+2. Identifies prerequisites for each step
+3. Assesses risk for each step
+4. Provides alternative paths if primary approach fails
+5. Defines success criteria for each step
+
+## Plan Structure
+
+Output a valid JSON object with this structure:
+
+```json
+{{
+    "objective": "Clear description of what we're trying to achieve",
+    "attack_path_type": "{attack_path_type}",
+    "prerequisites": [
+        "Global prerequisite 1",
+        "Global prerequisite 2"
+    ],
+    "steps": [
+        {{
+            "step_number": 1,
+            "step_id": "step-1",
+            "description": "What this step does",
+            "tool_name": "query_graph",
+            "tool_args": {{"question": "..."}},
+            "prerequisites": ["What must be true before this step"],
+            "expected_output": "What we expect to see",
+            "success_criteria": ["How we know this succeeded"],
+            "risk_score": 30,
+            "phase": "informational"
+        }},
+        {{
+            "step_number": 2,
+            "step_id": "step-2",
+            "description": "Next step",
+            "tool_name": "metasploit_console",
+            "tool_args": {{"command": "..."}},
+            "prerequisites": ["Step 1 completed", "Target confirmed vulnerable"],
+            "expected_output": "Session opened",
+            "success_criteria": ["Meterpreter session established"],
+            "risk_score": 70,
+            "phase": "exploitation"
+        }}
+    ],
+    "alternative_paths": [
+        ["step-1", "step-2-alt", "step-3"]
+    ],
+    "estimated_time": 300
+}}
+```
+
+## Planning Guidelines
+
+1. **Start with Reconnaissance**: First steps should gather information (query_graph, web_search)
+2. **Build Up Gradually**: Each step should build on previous steps
+3. **Risk Assessment**: 
+   - 0-30: Low risk (information gathering, safe queries)
+   - 31-70: Medium risk (exploitation attempts, requires approval)
+   - 71-100: High risk (destructive actions, always requires approval)
+4. **Prerequisites**: Be specific about what must be verified before each step
+5. **Success Criteria**: Define clear, measurable success indicators
+6. **Alternative Paths**: Plan fallback approaches if primary path fails
+7. **Phase Awareness**: Steps should match appropriate phases (informational → exploitation → post_exploitation)
+
+## Example Plan
+
+For objective "Exploit CVE-2021-41773 on Apache 2.4.49":
+
+```json
+{{
+    "objective": "Exploit CVE-2021-41773 path traversal vulnerability on Apache 2.4.49",
+    "attack_path_type": "cve_exploit",
+    "prerequisites": [
+        "Target running Apache 2.4.49",
+        "Target accessible via HTTP/HTTPS",
+        "mod_cgi enabled (for RCE)"
+    ],
+    "steps": [
+        {{
+            "step_number": 1,
+            "step_id": "step-1",
+            "description": "Query graph for target IP, port, and Apache version",
+            "tool_name": "query_graph",
+            "tool_args": {{"question": "Find Apache 2.4.49 servers with CVE-2021-41773"}},
+            "prerequisites": [],
+            "expected_output": "Target IP, port, and service details",
+            "success_criteria": ["Target IP found", "Port 80 or 443 open", "Apache 2.4.49 confirmed"],
+            "risk_score": 10,
+            "phase": "informational"
+        }},
+        {{
+            "step_number": 2,
+            "step_id": "step-2",
+            "description": "Research CVE-2021-41773 exploit details and Metasploit module",
+            "tool_name": "web_search",
+            "tool_args": {{"query": "CVE-2021-41773 Metasploit exploit module Apache path traversal"}},
+            "prerequisites": ["Step 1 completed"],
+            "expected_output": "Metasploit module name and usage instructions",
+            "success_criteria": ["Module name found", "Exploit technique understood"],
+            "risk_score": 5,
+            "phase": "informational"
+        }},
+        {{
+            "step_number": 3,
+            "step_id": "step-3",
+            "description": "Search for Metasploit exploit module",
+            "tool_name": "metasploit_console",
+            "tool_args": {{"command": "search CVE-2021-41773"}},
+            "prerequisites": ["Step 2 completed"],
+            "expected_output": "Module path (e.g., exploit/linux/http/apache_path_traversal)",
+            "success_criteria": ["Module found"],
+            "risk_score": 5,
+            "phase": "exploitation"
+        }},
+        {{
+            "step_number": 4,
+            "step_id": "step-4",
+            "description": "Configure and execute exploit",
+            "tool_name": "metasploit_console",
+            "tool_args": {{"command": "use exploit/linux/http/apache_path_traversal; set RHOSTS <target_ip>; set RPORT 80; exploit"}},
+            "prerequisites": ["Step 3 completed", "Module found", "Target confirmed"],
+            "expected_output": "Meterpreter session opened",
+            "success_criteria": ["Session opened", "Command execution successful"],
+            "risk_score": 70,
+            "phase": "exploitation"
+        }}
+    ],
+    "alternative_paths": [
+        ["step-1", "step-2", "step-3-alt-manual", "step-4"]
+    ],
+    "estimated_time": 180
+}}
+```
+
+## Important Notes
+
+- Output ONLY valid JSON, no markdown formatting or explanations
+- Ensure step_number is sequential (1, 2, 3, ...)
+- Each step must have a unique step_id
+- Risk scores must be integers between 0-100
+- Phases must be: informational, exploitation, or post_exploitation
+- Tool names must match available tools exactly
+- Prerequisites should reference previous steps or external conditions
+"""
+

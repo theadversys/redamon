@@ -30,8 +30,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration
-RECON_PATH = os.getenv("RECON_PATH", "/home/samuele/Progetti didattici/RedAmon/recon")
-RECON_IMAGE = os.getenv("RECON_IMAGE", "redamon-recon:latest")
+# RECON_PATH can be either host path (for Docker SDK) or container path (for mounting)
+# If it's a host path, we'll use it directly. If it's relative or container path, use /app/recon
+RECON_PATH_ENV = os.getenv("RECON_PATH", "/app/recon")
+# For Docker SDK build, use the path as-is if it's absolute and exists, otherwise use /app/recon
+RECON_PATH = RECON_PATH_ENV if os.path.isabs(RECON_PATH_ENV) and os.path.exists(RECON_PATH_ENV) else "/app/recon"
+RECON_IMAGE = os.getenv("RECON_IMAGE", "pandaexploit-recon:latest")
 VERSION = "1.0.0"
 
 # Global container manager
@@ -50,7 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="RedAmon Recon Orchestrator",
+    title="PandaExploit Recon Orchestrator",
     description="Container orchestration service for recon processes",
     version=VERSION,
     lifespan=lifespan,

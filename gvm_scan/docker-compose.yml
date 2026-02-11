@@ -1,5 +1,5 @@
 # =============================================================================
-# RedAmon - GVM/OpenVAS Minimal Setup (API Only, No Web GUI)
+# PandaExploit - GVM/OpenVAS Minimal Setup (API Only, No Web GUI)
 # =============================================================================
 # This setup provides the minimal services needed for Python API-based
 # vulnerability scanning. No web interface (GSA) is included.
@@ -20,7 +20,7 @@ services:
   
   vulnerability-tests:
     image: registry.community.greenbone.net/community/vulnerability-tests
-    container_name: redamon-gvm-vt
+    container_name: pandaexploit-gvm-vt
     environment:
       FEED_RELEASE: "24.10"
     volumes:
@@ -28,25 +28,25 @@ services:
 
   notus-data:
     image: registry.community.greenbone.net/community/notus-data
-    container_name: redamon-gvm-notus-data
+    container_name: pandaexploit-gvm-notus-data
     volumes:
       - notus_data:/mnt
 
   scap-data:
     image: registry.community.greenbone.net/community/scap-data
-    container_name: redamon-gvm-scap-data
+    container_name: pandaexploit-gvm-scap-data
     volumes:
       - scap_data:/mnt
 
   cert-bund-data:
     image: registry.community.greenbone.net/community/cert-bund-data
-    container_name: redamon-gvm-cert-data
+    container_name: pandaexploit-gvm-cert-data
     volumes:
       - cert_data:/mnt
 
   dfn-cert-data:
     image: registry.community.greenbone.net/community/dfn-cert-data
-    container_name: redamon-gvm-dfn-cert
+    container_name: pandaexploit-gvm-dfn-cert
     volumes:
       - cert_data:/mnt
     depends_on:
@@ -54,7 +54,7 @@ services:
 
   data-objects:
     image: registry.community.greenbone.net/community/data-objects
-    container_name: redamon-gvm-data-objects
+    container_name: pandaexploit-gvm-data-objects
     environment:
       FEED_RELEASE: "24.10"
     volumes:
@@ -62,7 +62,7 @@ services:
 
   report-formats:
     image: registry.community.greenbone.net/community/report-formats
-    container_name: redamon-gvm-report-formats
+    container_name: pandaexploit-gvm-report-formats
     environment:
       FEED_RELEASE: "24.10"
     volumes:
@@ -72,7 +72,7 @@ services:
 
   gpg-data:
     image: registry.community.greenbone.net/community/gpg-data
-    container_name: redamon-gvm-gpg-data
+    container_name: pandaexploit-gvm-gpg-data
     volumes:
       - gpg_data:/mnt
 
@@ -82,14 +82,14 @@ services:
 
   redis-server:
     image: registry.community.greenbone.net/community/redis-server
-    container_name: redamon-gvm-redis
+    container_name: pandaexploit-gvm-redis
     restart: on-failure
     volumes:
       - redis_socket:/run/redis/
 
   pg-gvm:
     image: registry.community.greenbone.net/community/pg-gvm:stable
-    container_name: redamon-gvm-postgres
+    container_name: pandaexploit-gvm-postgres
     restart: on-failure
     volumes:
       - psql_data:/var/lib/postgresql
@@ -97,7 +97,7 @@ services:
 
   gvmd:
     image: registry.community.greenbone.net/community/gvmd:stable
-    container_name: redamon-gvm-gvmd
+    container_name: pandaexploit-gvm-gvmd
     restart: on-failure
     volumes:
       - gvmd_data:/var/lib/gvm
@@ -130,7 +130,7 @@ services:
   # would break socket communication with other containers.
   ospd-openvas:
     image: registry.community.greenbone.net/community/ospd-openvas:stable
-    container_name: redamon-gvm-ospd
+    container_name: pandaexploit-gvm-ospd
     restart: on-failure
     cap_add:
       - NET_ADMIN
@@ -153,7 +153,7 @@ services:
         condition: service_completed_successfully
 
   # ===========================================================================
-  # PYTHON SCANNER (RedAmon integration)
+  # PYTHON SCANNER (PandaExploit integration)
   # Mount the gvmd socket and recon output for vulnerability scanning
   # ===========================================================================
 
@@ -161,7 +161,7 @@ services:
     build:
       context: ..
       dockerfile: gvm_scan/Dockerfile
-    container_name: redamon-vuln-scanner
+    container_name: pandaexploit-vuln-scanner
     volumes:
       - gvmd_socket:/run/gvmd:ro
       - ../recon/output:/app/recon/output:ro
@@ -176,26 +176,26 @@ services:
 
 volumes:
   vt_data:
-    name: redamon_vt_data
+    name: pandaexploit_vt_data
   notus_data:
-    name: redamon_notus_data
+    name: pandaexploit_notus_data
   scap_data:
-    name: redamon_scap_data
+    name: pandaexploit_scap_data
   cert_data:
-    name: redamon_cert_data
+    name: pandaexploit_cert_data
   data_objects:
-    name: redamon_data_objects
+    name: pandaexploit_data_objects
   gpg_data:
-    name: redamon_gpg_data
+    name: pandaexploit_gpg_data
   redis_socket:
-    name: redamon_redis_socket
+    name: pandaexploit_redis_socket
   psql_data:
-    name: redamon_psql_data
+    name: pandaexploit_psql_data
   psql_socket:
-    name: redamon_psql_socket
+    name: pandaexploit_psql_socket
   gvmd_data:
-    name: redamon_gvmd_data
+    name: pandaexploit_gvmd_data
   gvmd_socket:
-    name: redamon_gvmd_socket
+    name: pandaexploit_gvmd_socket
   ospd_socket:
-    name: redamon_ospd_socket
+    name: pandaexploit_ospd_socket

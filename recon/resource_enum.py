@@ -1,5 +1,5 @@
 """
-RedAmon - Resource Enumeration Module
+PandaExploit - Resource Enumeration Module
 =====================================
 Comprehensive endpoint discovery and classification.
 Discovers all endpoints (GET, POST, APIs) and organizes them by base URL.
@@ -82,7 +82,7 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
         Updated recon_data with resource_enum results
     """
     print("\n" + "=" * 70)
-    print("         RedAmon - Resource Enumeration")
+    print("         PandaExploit - Resource Enumeration")
     print("         (Katana + GAU + Kiterunner Parallel Discovery)")
     print("=" * 70)
 

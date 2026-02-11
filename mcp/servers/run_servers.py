@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MCP Server Runner - Launches all MCP servers for RedAmon Agentic AI
+MCP Server Runner - Launches all MCP servers for PandaExploit Agentic AI
 
 This script starts all MCP servers (naabu, nuclei, curl, metasploit) either
 in stdio mode (for direct integration) or SSE mode (for network access).
@@ -174,7 +174,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="RedAmon MCP Server Runner"
+        description="PandaExploit MCP Server Runner"
     )
     parser.add_argument(
         "--stdio",

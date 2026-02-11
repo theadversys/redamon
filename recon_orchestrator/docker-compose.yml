@@ -1,10 +1,10 @@
-# RedAmon Recon Orchestrator Docker Compose (standalone)
+# PandaExploit Recon Orchestrator Docker Compose (standalone)
 # For full stack, use the root docker-compose.yml instead.
 
 services:
   recon-orchestrator:
     build: .
-    container_name: redamon-recon-orchestrator
+    container_name: pandaexploit-recon-orchestrator
     ports:
       - "8010:8010"
     volumes:
@@ -19,8 +19,8 @@ services:
       - ${HOST_RECON_PATH:-../recon}/output:/app/recon/output:rw
     environment:
       # RECON_PATH: Host path for Docker SDK volume mounts when spawning recon containers
-      - RECON_PATH=${HOST_RECON_PATH:-/home/samuele/Progetti didattici/RedAmon/recon}
-      - RECON_IMAGE=redamon-recon:latest
+      - RECON_PATH=${HOST_RECON_PATH:-/home/samuele/Progetti didattici/PandaExploit/recon}
+      - RECON_IMAGE=pandaexploit-recon:latest
       # Forwarded to spawned recon containers (host network, so localhost)
       - NVD_API_KEY=${NVD_API_KEY:-}
       - NEO4J_URI=bolt://localhost:7687
@@ -36,5 +36,5 @@ services:
 
 networks:
   default:
-    name: redamon-network
+    name: pandaexploit-network
     external: true

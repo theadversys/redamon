@@ -1,4 +1,4 @@
-# RedAmon Web Application
+# PandaExploit Web Application
 
 Production-ready Next.js 16 web application with Neo4j integration, PostgreSQL project storage, and integrated recon control.
 
@@ -99,15 +99,15 @@ The development server uses Turbopack for fast refresh - changes to your code ar
 
 ```bash
 # Build the production image
-docker build -t redamon-webapp:latest .
+docker build -t pandaexploit-webapp:latest .
 
 # Run production container locally
 docker run -p 3000:3000 \
   --network graph_db_default \
-  -e NEO4J_URI=bolt://redamon-neo4j:7687 \
+  -e NEO4J_URI=bolt://pandaexploit-neo4j:7687 \
   -e NEO4J_USER=neo4j \
   -e NEO4J_PASSWORD=your_password \
-  redamon-webapp:latest
+  pandaexploit-webapp:latest
 ```
 
 ### Production with Docker Compose
@@ -163,12 +163,12 @@ aws ecr get-login-password --region us-east-1 | \
   YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
 # Tag image
-docker tag redamon-webapp:latest \
-  YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/redamon-webapp:latest
+docker tag pandaexploit-webapp:latest \
+  YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pandaexploit-webapp:latest
 
 # Push image
 docker push \
-  YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/redamon-webapp:latest
+  YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pandaexploit-webapp:latest
 ```
 
 ### 2. ECS Fargate Deployment
@@ -177,7 +177,7 @@ Create a task definition (`task-definition.json`):
 
 ```json
 {
-  "family": "redamon-webapp",
+  "family": "pandaexploit-webapp",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
@@ -186,7 +186,7 @@ Create a task definition (`task-definition.json`):
   "containerDefinitions": [
     {
       "name": "webapp",
-      "image": "YOUR_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/redamon-webapp:latest",
+      "image": "YOUR_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/pandaexploit-webapp:latest",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -213,7 +213,7 @@ Create a task definition (`task-definition.json`):
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/redamon-webapp",
+          "awslogs-group": "/ecs/pandaexploit-webapp",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
@@ -231,8 +231,8 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 # Create service with ALB
 aws ecs create-service \
   --cluster your-cluster \
-  --service-name redamon-webapp \
-  --task-definition redamon-webapp \
+  --service-name pandaexploit-webapp \
+  --task-definition pandaexploit-webapp \
   --desired-count 2 \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}" \
@@ -246,7 +246,7 @@ aws ecs create-service \
 aws application-autoscaling register-scalable-target \
   --service-namespace ecs \
   --scalable-dimension ecs:service:DesiredCount \
-  --resource-id service/your-cluster/redamon-webapp \
+  --resource-id service/your-cluster/pandaexploit-webapp \
   --min-capacity 2 \
   --max-capacity 100
 
@@ -254,7 +254,7 @@ aws application-autoscaling register-scalable-target \
 aws application-autoscaling put-scaling-policy \
   --service-namespace ecs \
   --scalable-dimension ecs:service:DesiredCount \
-  --resource-id service/your-cluster/redamon-webapp \
+  --resource-id service/your-cluster/pandaexploit-webapp \
   --policy-name cpu-tracking \
   --policy-type TargetTrackingScaling \
   --target-tracking-scaling-policy-configuration '{
@@ -408,7 +408,7 @@ Downloads the recon output JSON file for the project.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` (dev) / `bolt://redamon-neo4j:7687` (Docker) |
+| `NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` (dev) / `bolt://pandaexploit-neo4j:7687` (Docker) |
 | `NEO4J_USER` | Neo4j username | `neo4j` |
 | `NEO4J_PASSWORD` | Neo4j password | (set in .env.local) |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://redamon:redamon_secret@localhost:5432/redamon` |

@@ -25,6 +25,26 @@
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0s;
 }
 
+/* Panel mode: disable drawer positioning */
+.drawer.panelMode,
+.drawer.panelMode.drawerOpen,
+[data-panel-mode="true"] .drawer,
+[data-panel-mode="true"] .drawer.drawerOpen {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  visibility: visible !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: auto !important;
+  box-shadow: none !important;
+  border-left: none !important;
+  transition: none !important;
+}
+
 /* =============================================================================
    HEADER
    ============================================================================= */
@@ -52,7 +72,7 @@
   width: 32px;
   height: 32px;
   background: transparent;
-  border: 1px solid #d32f2f; /* RedAmon primary crimson */
+  border: 1px solid #d32f2f; /* PandaExploit primary crimson */
   border-radius: var(--radius-lg);
   color: #d32f2f;
 }
@@ -63,8 +83,33 @@
   gap: var(--space-0-5);
 }
 
-.modelBadge {
+.modelSwitcherContainer {
   margin-left: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.modelSwitcherButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.modelSwitcherButton:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.modelSwitcherButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.modelBadge {
   font-size: 10px;
   font-weight: var(--font-medium);
   color: var(--text-tertiary);
@@ -73,6 +118,76 @@
   border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.1);
   line-height: 1;
+}
+
+.modelSwitcherIcon {
+  color: var(--text-tertiary);
+  transition: transform 0.2s;
+}
+
+.modelSwitcherButton:hover .modelSwitcherIcon {
+  transform: translateY(1px);
+}
+
+.modelSwitcherDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 280px;
+  max-width: 320px;
+  overflow: hidden;
+  animation: slideDown 150ms ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modelSwitcherHeader {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modelSwitcherSelect {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: none;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  outline: none;
+}
+
+.modelSwitcherSelect:focus {
+  background: var(--bg-secondary);
+}
+
+.modelSwitcherSelect optgroup {
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  padding: var(--space-1) 0;
+}
+
+.modelSwitcherSelect option {
+  padding: var(--space-1) var(--space-2);
+  color: var(--text-primary);
 }
 
 .title {
@@ -554,6 +669,111 @@
   margin-bottom: 4px;
 }
 
+/* Phase 2: citation / explain-context */
+.citationBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  margin-left: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--status-success, #10b981);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.messageWithCitation {
+  border-left: 2px solid rgba(16, 185, 129, 0.4);
+}
+
+.viewInReconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.viewInReconButton:hover {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: var(--accent-primary);
+}
+
+/* =============================================================================
+   LIVE RECON RUN CAPSULE (Phase 1)
+   ============================================================================= */
+
+.runCapsule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-4);
+  background: rgba(16, 185, 129, 0.08);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  flex-shrink: 0;
+}
+
+.runCapsuleIcon {
+  color: var(--status-success, #10b981);
+  flex-shrink: 0;
+}
+
+.runCapsuleText {
+  flex: 1;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+/* Phase 3: Start/Stop buttons */
+.runCapsuleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--status-success, #10b981);
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.runCapsuleButton:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: var(--status-success);
+}
+
+.runCapsuleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.runCapsuleButtonStop {
+  color: var(--status-error, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.runCapsuleButtonStop:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--status-error);
+}
+
 /* =============================================================================
    PHASE INDICATOR
    ============================================================================= */
@@ -924,5 +1144,150 @@
 
 .answerButtonSubmit:hover:not(:disabled) {
   filter: brightness(1.1);
+}
+
+/* =============================================================================
+   MODEL CHANGE CONFIRMATION MODAL
+   ============================================================================= */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 150ms ease-out;
+  backdrop-filter: blur(2px);
+}
+
+.modalContent {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  max-width: 480px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 200ms ease-out;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modalIcon {
+  color: var(--status-warning);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modalBody {
+  padding: var(--space-4);
+}
+
+.modalText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3) 0;
+  line-height: 1.6;
+}
+
+.modalText strong {
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.modalWarning {
+  font-size: var(--text-sm);
+  color: var(--status-warning);
+  margin: var(--space-3) 0 0 0;
+  padding: var(--space-2);
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid var(--status-warning);
+  border-radius: var(--radius-sm);
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-default);
+  justify-content: flex-end;
+}
+
+.modalButtonSecondary,
+.modalButtonPrimary {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-all);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+}
+
+.modalButtonSecondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+}
+
+.modalButtonSecondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.modalButtonPrimary {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.modalButtonPrimary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.modalButtonSecondary:disabled,
+.modalButtonPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 

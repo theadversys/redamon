@@ -60,13 +60,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Default scan modules if not provided or empty
+    const defaultScanModules = ['domain_discovery', 'port_scan', 'http_probe', 'resource_enum', 'vuln_scan']
+    const scanModules = optionalParams.scanModules && optionalParams.scanModules.length > 0 
+      ? optionalParams.scanModules 
+      : defaultScanModules
+
+    // Filter out undefined values and fields not in schema to prevent Prisma errors
+    const validOptionalParams = Object.fromEntries(
+      Object.entries(optionalParams).filter(([_, value]) => value !== undefined)
+    )
+    
     // Create project with required fields and any optional params
     const project = await prisma.project.create({
       data: {
         userId,
         name,
         targetDomain,
-        ...optionalParams
+        ...validOptionalParams,
+        scanModules: scanModules
       }
     })
 

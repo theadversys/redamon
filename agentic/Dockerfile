@@ -1,4 +1,4 @@
-# RedAmon Agent Dockerfile
+# PandaExploit Agent Dockerfile
 # Python-based LangGraph agent with MCP and Neo4j integration
 
 FROM python:3.11-slim

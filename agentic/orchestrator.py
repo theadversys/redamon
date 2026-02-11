@@ -1,5 +1,5 @@
 """
-RedAmon Agent Orchestrator
+PandaExploit Agent Orchestrator
 
 ReAct-style agent orchestrator with iterative Thought-Tool-Output pattern.
 Supports phase tracking, LLM-managed todo lists, and checkpoint-based approval.
@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
@@ -55,6 +56,7 @@ from prompts import (
     PHASE_TRANSITION_MESSAGE,
     USER_QUESTION_MESSAGE,
     FINAL_REPORT_PROMPT,
+    STRATEGIC_PLANNING_PROMPT,
     get_phase_tools,
 )
 from orchestrator_helpers import (
@@ -70,6 +72,10 @@ from orchestrator_helpers import (
     get_config_values,
     get_identifiers,
     is_session_config_complete,
+    parse_plan_response,
+    validate_plan,
+    format_plan_for_prompt,
+    assess_risk,
 )
 
 checkpointer = MemorySaver()
@@ -95,6 +101,7 @@ class AgentOrchestrator:
         """Initialize the orchestrator with configuration."""
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
         self.neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
         self.neo4j_user = os.getenv("NEO4J_USER", "neo4j")
         self.neo4j_password = os.getenv("NEO4J_PASSWORD")
@@ -104,6 +111,7 @@ class AgentOrchestrator:
         self.tool_executor: Optional[PhaseAwareToolExecutor] = None
         self.neo4j_manager: Optional[Neo4jToolManager] = None
         self.graph = None
+        self.memory_store = None  # VectorMemoryStore instance
 
         self._initialized = False
         self._streaming_callback = None  # Set during invoke_with_streaming
@@ -126,7 +134,7 @@ class AgentOrchestrator:
     def _apply_project_settings(self, project_id: str) -> None:
         """Load project settings from webapp API and reconfigure LLM if model changed."""
         settings = load_project_settings(project_id)
-        new_model = settings.get('OPENAI_MODEL', 'gpt-5.2')
+        new_model = settings.get('OPENAI_MODEL', 'gpt-4o')
 
         if new_model != self.model_name:
             logger.info(f"Model changed: {self.model_name} -> {new_model}")
@@ -138,7 +146,7 @@ class AgentOrchestrator:
                 logger.info("Updated Neo4j tool LLM")
 
     def _setup_llm(self) -> None:
-        """Initialize the LLM based on model name (OpenAI or Anthropic)."""
+        """Initialize the LLM based on model name (OpenAI, Anthropic, or Google Gemini)."""
         logger.info(f"Setting up LLM: {self.model_name}")
 
         if self.model_name.startswith("claude-"):
@@ -152,18 +160,75 @@ class AgentOrchestrator:
                 temperature=0,
                 max_tokens=4096,
             )
+        elif self.model_name.startswith("gemini-"):
+            if not self.google_api_key:
+                raise ValueError(
+                    f"GOOGLE_API_KEY environment variable is required for model '{self.model_name}'"
+                )
+            # Handle SSL certificate issues (corporate proxies, self-signed certs)
+            verify_ssl = os.getenv('GOOGLE_VERIFY_SSL', 'false').lower() == 'true'
+            
+            if verify_ssl:
+                # Default: use standard client with SSL verification
+                self.llm = ChatGoogleGenerativeAI(
+                    model=self.model_name,
+                    google_api_key=self.google_api_key,
+                    temperature=0,
+                )
+            else:
+                # Disable SSL verification for environments with certificate issues
+                import httpx
+                import warnings
+                warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+                
+                # Create both sync and async clients with SSL verification disabled
+                http_client = httpx.Client(verify=False, timeout=30.0)
+                async_http_client = httpx.AsyncClient(verify=False, timeout=30.0)
+                
+                self.llm = ChatGoogleGenerativeAI(
+                    model=self.model_name,
+                    google_api_key=self.google_api_key,
+                    temperature=0,
+                    http_client=http_client,
+                    http_async_client=async_http_client,
+                )
+                logger.warning("SSL verification disabled for Google Gemini API (GOOGLE_VERIFY_SSL=false)")
         else:
             if not self.openai_api_key:
                 raise ValueError(
                     f"OPENAI_API_KEY environment variable is required for model '{self.model_name}'"
                 )
-            self.llm = ChatOpenAI(
-                model=self.model_name,
-                api_key=self.openai_api_key,
-                temperature=0,
-            )
+            # Handle SSL certificate issues (corporate proxies, self-signed certs)
+            verify_ssl = os.getenv('OPENAI_VERIFY_SSL', 'false').lower() == 'true'
+            
+            if verify_ssl:
+                # Default: use standard client with SSL verification
+                self.llm = ChatOpenAI(
+                    model=self.model_name,
+                    api_key=self.openai_api_key,
+                    temperature=0,
+                )
+            else:
+                # Disable SSL verification for environments with certificate issues
+                import httpx
+                import warnings
+                warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+                
+                # Create both sync and async clients with SSL verification disabled
+                http_client = httpx.Client(verify=False, timeout=30.0)
+                async_http_client = httpx.AsyncClient(verify=False, timeout=30.0)
+                
+                self.llm = ChatOpenAI(
+                    model=self.model_name,
+                    api_key=self.openai_api_key,
+                    temperature=0,
+                    http_client=http_client,
+                    http_async_client=async_http_client,
+                )
+                logger.warning("SSL verification disabled for OpenAI API (OPENAI_VERIFY_SSL=false)")
 
-        logger.info(f"LLM provider: {'Anthropic' if self.model_name.startswith('claude-') else 'OpenAI'}")
+        provider = 'Anthropic' if self.model_name.startswith('claude-') else ('Google' if self.model_name.startswith('gemini-') else 'OpenAI')
+        logger.info(f"LLM provider: {provider}")
 
     async def _setup_tools(self) -> None:
         """Set up all tools (MCP and Neo4j)."""
@@ -189,6 +254,92 @@ class AgentOrchestrator:
         self.tool_executor.register_mcp_tools(mcp_tools)
 
         logger.info(f"Tools initialized: {len(self.tool_executor.get_all_tools())} available")
+        
+        # Initialize parallel executor
+        from orchestrator_helpers.parallel_execution import ParallelExecutor
+        max_concurrency = get_setting('MAX_PARALLEL_TASKS', 5)
+        self.parallel_executor = ParallelExecutor(self.tool_executor, max_concurrency=max_concurrency)
+        logger.info(f"Parallel executor initialized with max_concurrency={max_concurrency}")
+        
+        # Initialize memory store (will be configured with user_id/project_id later)
+        try:
+            from memory import VectorMemoryStore
+            self.memory_store = VectorMemoryStore()
+            logger.info("Memory store initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize memory store: {e}")
+            self.memory_store = None
+        
+        # Initialize template library
+        try:
+            from orchestrator_helpers.templates import TemplateLibrary
+            template_storage = os.getenv("TEMPLATE_STORAGE_PATH", "./templates")
+            self.template_library = TemplateLibrary(storage_path=template_storage)
+            logger.info(f"Template library initialized with {len(self.template_library.templates)} templates")
+        except Exception as e:
+            logger.warning(f"Failed to initialize template library: {e}")
+            self.template_library = None
+        
+        # Initialize exploit chain components
+        try:
+            from exploit_chain import ExploitChainGraphBuilder, ExploitChainPathFinder, ExploitChainExecutor
+            self.exploit_chain_builder = ExploitChainGraphBuilder(neo4j_manager=self.neo4j_manager)
+            self.exploit_chain_path_finder = ExploitChainPathFinder()
+            self.exploit_chain_executor = ExploitChainExecutor(tool_executor=self.tool_executor)
+            logger.info("Exploit chain components initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize exploit chain components: {e}")
+            self.exploit_chain_builder = None
+            self.exploit_chain_path_finder = None
+            self.exploit_chain_executor = None
+        
+        # Initialize threat intelligence components
+        try:
+            from threat_intel import ThreatIntelFeeds, ThreatIntelProcessor, ThreatIntelUpdater
+            self.threat_intel_feeds = ThreatIntelFeeds()
+            self.threat_intel_processor = ThreatIntelProcessor()
+            self.threat_intel_updater = ThreatIntelUpdater(neo4j_manager=self.neo4j_manager)
+            logger.info("Threat intelligence components initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize threat intelligence components: {e}")
+            self.threat_intel_feeds = None
+            self.threat_intel_processor = None
+            self.threat_intel_updater = None
+        
+        # Initialize exploit generation components
+        try:
+            from exploit_gen import ExploitGenerator, ExploitValidator, ExploitTester
+            # Note: LLM will be set later when project settings are loaded
+            self.exploit_generator = ExploitGenerator(llm=None)  # Will be set in _apply_project_settings
+            self.exploit_validator = ExploitValidator()
+            self.exploit_tester = ExploitTester()
+            logger.info("Exploit generation components initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize exploit generation components: {e}")
+            self.exploit_generator = None
+            self.exploit_validator = None
+            self.exploit_tester = None
+        
+        # Initialize multi-agent coordination (optional, disabled by default)
+        self.multi_agent_enabled = get_setting('MULTI_AGENT_ENABLED', False)
+        if self.multi_agent_enabled:
+            try:
+                from multi_agent import AgentCoordinator, ReconAgent, ExploitAgent, PostExploitAgent, SharedStateManager
+                shared_state = SharedStateManager()  # In-memory for now
+                self.agent_coordinator = AgentCoordinator(shared_state=shared_state)
+                
+                # Register specialized agents
+                self.agent_coordinator.register_agent("recon", ReconAgent(tool_executor=self.tool_executor))
+                self.agent_coordinator.register_agent("exploit", ExploitAgent(tool_executor=self.tool_executor))
+                self.agent_coordinator.register_agent("post_exploit", PostExploitAgent(tool_executor=self.tool_executor))
+                
+                logger.info("Multi-agent coordination enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize multi-agent coordination: {e}")
+                self.agent_coordinator = None
+        else:
+            self.agent_coordinator = None
+            logger.info("Multi-agent coordination disabled")
 
     def _build_graph(self) -> None:
         """Build the ReAct LangGraph with phase tracking."""
@@ -198,6 +349,7 @@ class AgentOrchestrator:
 
         # Add nodes
         builder.add_node("initialize", self._initialize_node)
+        builder.add_node("plan_strategy", self._plan_strategy_node)
         builder.add_node("think", self._think_node)
         builder.add_node("execute_tool", self._execute_tool_node)
         builder.add_node("await_approval", self._await_approval_node)
@@ -209,16 +361,20 @@ class AgentOrchestrator:
         # Entry point
         builder.add_edge(START, "initialize")
 
-        # Route after initialize - process approval, process answer, or continue to think
+        # Route after initialize - process approval, process answer, plan, or continue to think
         builder.add_conditional_edges(
             "initialize",
             self._route_after_initialize,
             {
                 "process_approval": "process_approval",
                 "process_answer": "process_answer",
+                "plan_strategy": "plan_strategy",
                 "think": "think",
             }
         )
+
+        # Route after planning - always go to think
+        builder.add_edge("plan_strategy", "think")
 
         # Main routing from think node
         builder.add_conditional_edges(
@@ -307,7 +463,13 @@ class AgentOrchestrator:
         latest_message = ""
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):
-                latest_message = msg.content
+                # Ensure content is a string (handle case where it might be a list)
+                content = msg.content
+                if isinstance(content, list):
+                    content = '\n'.join(str(item) for item in content)
+                elif not isinstance(content, str):
+                    content = str(content)
+                latest_message = content
                 break
 
         # Get current objective list
@@ -402,6 +564,11 @@ class AgentOrchestrator:
                     "awaiting_user_approval": False,
                     "phase_transition_pending": None,
                     "original_objective": state.get("original_objective", latest_message),  # Backward compat
+                    "attack_plan": None,  # Clear plan for new objective - will be generated in plan_strategy node
+                    "execution_trace_summaries": [],  # Clear summaries for new objective
+                    "important_events": [],  # Clear important events for new objective
+                    "parallel_tasks": [],  # Clear parallel tasks for new objective
+                    "retrieved_memories": [],  # Clear retrieved memories for new objective
                 }
 
         # Otherwise, continue with current objective
@@ -427,7 +594,186 @@ class AgentOrchestrator:
             "session_id": session_id,
             "awaiting_user_approval": False,
             "phase_transition_pending": None,
+            "attack_plan": state.get("attack_plan"),  # Preserve existing plan if any
+            "execution_trace_summaries": state.get("execution_trace_summaries", []),  # Preserve summaries
+            "important_events": state.get("important_events", []),  # Preserve important events
+            "parallel_tasks": state.get("parallel_tasks", []),  # Preserve parallel tasks
+            "retrieved_memories": state.get("retrieved_memories", []),  # Preserve retrieved memories
         }
+
+    async def _plan_strategy_node(self, state: AgentState, config = None) -> dict:
+        """
+        Strategic planning node - generates multi-step attack plan before execution.
+        
+        Only generates a new plan if:
+        1. No plan exists yet, OR
+        2. Current plan has failed steps and needs adaptation
+        """
+        user_id, project_id, session_id = get_identifiers(state, config)
+        
+        logger.info(f"[{user_id}/{project_id}/{session_id}] Planning strategy...")
+        
+        # Check if we already have a valid plan
+        existing_plan = state.get("attack_plan")
+        if existing_plan:
+            # Check if plan needs adaptation
+            from orchestrator_helpers.planning import should_adapt_plan
+            if not should_adapt_plan(existing_plan):
+                logger.info(f"[{user_id}/{project_id}/{session_id}] Using existing plan")
+                return {}  # No updates needed, continue with existing plan
+        
+        # Get current objective
+        objectives = state.get("conversation_objectives", [])
+        current_idx = state.get("current_objective_index", 0)
+        
+        if current_idx < len(objectives):
+            current_objective = objectives[current_idx].get("content", "No objective specified")
+        else:
+            current_objective = state.get("original_objective", "No objective specified")
+        
+        # Get context for planning
+        attack_path_type = state.get("attack_path_type", "cve_exploit")
+        current_phase = state.get("current_phase", "informational")
+        target_info = state.get("target_info", {})
+        
+        # Check for matching templates before planning
+        matched_template = None
+        if self.template_library:
+            try:
+                target_service = target_info.get("services", [None])[0] if target_info.get("services") else None
+                cve_id = target_info.get("vulnerabilities", [None])[0] if target_info.get("vulnerabilities") else None
+                
+                matching_templates = self.template_library.find_matching_templates(
+                    target_service=target_service,
+                    cve_id=cve_id,
+                    min_confidence=0.8
+                )
+                
+                if matching_templates:
+                    matched_template = matching_templates[0]  # Use best match
+                    logger.info(f"[{user_id}/{project_id}/{session_id}] Found matching template: {matched_template.template_id} - {matched_template.name}")
+            except Exception as e:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to match templates: {e}")
+        
+        # Retrieve similar memories from past exploits
+        retrieved_memories = []
+        if self.memory_store:
+            try:
+                # Query memory for similar past exploits
+                memory_query = f"{current_objective} {attack_path_type}"
+                if target_info.get("vulnerabilities"):
+                    memory_query += f" {' '.join(target_info['vulnerabilities'][:3])}"
+                
+                retrieved_memories = await self.memory_store.retrieve_similar_memories(
+                    query=memory_query,
+                    limit=5,
+                    user_id=user_id,
+                    project_id=project_id
+                )
+                
+                if retrieved_memories:
+                    logger.info(f"[{user_id}/{project_id}/{session_id}] Retrieved {len(retrieved_memories)} similar memories")
+            except Exception as e:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to retrieve memories: {e}")
+        
+        # Query graph for vulnerabilities if not already in target_info
+        vulnerabilities_summary = "No vulnerabilities found yet"
+        if target_info.get("vulnerabilities"):
+            vulnerabilities_summary = ", ".join(target_info["vulnerabilities"][:10])
+        elif self.neo4j_manager:
+            try:
+                # Quick query for vulnerabilities
+                vuln_query = "What critical or high severity vulnerabilities exist for this project?"
+                vuln_result = await self.neo4j_manager.get_tool().ainvoke(vuln_query)
+                if vuln_result and "No results" not in str(vuln_result):
+                    vulnerabilities_summary = str(vuln_result)[:500]
+            except Exception as e:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to query vulnerabilities for planning: {e}")
+        
+        # Get available tools for current phase
+        available_tools = get_phase_tools(
+            current_phase,
+            get_setting('ACTIVATE_POST_EXPL_PHASE', True),
+            get_setting('POST_EXPL_PHASE_TYPE', 'statefull'),
+            attack_path_type
+        )
+        
+        # Build exploit chain if we have vulnerabilities and chain builder
+        exploit_chain = None
+        if self.exploit_chain_builder and target_info.get("vulnerabilities"):
+            try:
+                chain_graph = await self.exploit_chain_builder.build_graph_from_target(target_info)
+                optimal_path = self.exploit_chain_path_finder.find_optimal_path(chain_graph)
+                
+                # Convert path to chain format
+                exploit_chain = [
+                    {
+                        "step_id": node_id,
+                        "cve_id": chain_graph.nodes[node_id].cve_id,
+                        "service": chain_graph.nodes[node_id].service,
+                        "success_probability": chain_graph.nodes[node_id].success_probability,
+                        "risk_score": chain_graph.nodes[node_id].risk_score
+                    }
+                    for node_id in optimal_path
+                ]
+                
+                logger.info(f"[{user_id}/{project_id}/{session_id}] Built exploit chain with {len(exploit_chain)} steps")
+            except Exception as e:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to build exploit chain: {e}")
+        
+        # Build planning prompt
+        planning_prompt = STRATEGIC_PLANNING_PROMPT.format(
+            objective=current_objective,
+            attack_path_type=attack_path_type,
+            current_phase=current_phase,
+            target_info=json_dumps_safe(target_info, indent=2),
+            vulnerabilities=vulnerabilities_summary,
+            available_tools=available_tools,
+        )
+        
+        # Generate plan using LLM
+        messages = [
+            SystemMessage(content=planning_prompt),
+            HumanMessage(content="Generate a strategic attack plan. Output ONLY valid JSON, no markdown or explanations.")
+        ]
+        
+        try:
+            response = await self.llm.ainvoke(messages)
+            response_text = response.content.strip()
+            
+            logger.info(f"[{user_id}/{project_id}/{session_id}] Planning response received ({len(response_text)} chars)")
+            
+            # Parse plan response
+            plan_data = parse_plan_response(response_text)
+            
+            if not plan_data:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to parse plan, continuing without plan")
+                return {"attack_plan": None}
+            
+            # Validate plan
+            is_valid, error_msg = validate_plan(plan_data)
+            if not is_valid:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Plan validation failed: {error_msg}")
+                return {"attack_plan": None}
+            
+            # Add metadata
+            from datetime import datetime
+            plan_data["plan_id"] = f"plan-{session_id}-{int(datetime.now().timestamp())}"
+            plan_data["created_at"] = datetime.now().isoformat()
+            
+            logger.info(f"[{user_id}/{project_id}/{session_id}] Plan generated: {len(plan_data.get('steps', []))} steps, risk={plan_data.get('total_risk_score', 0)}")
+            
+            return {
+                "attack_plan": plan_data,
+                "retrieved_memories": retrieved_memories,
+                "matched_template": matched_template.model_dump() if matched_template else None,
+                "exploit_chain": exploit_chain
+            }
+            
+        except Exception as e:
+            logger.error(f"[{user_id}/{project_id}/{session_id}] Error generating plan: {e}")
+            # Continue without plan if planning fails
+            return {"attack_plan": None}
 
     async def _think_node(self, state: AgentState, config = None) -> dict:
         """
@@ -447,6 +793,44 @@ class AgentOrchestrator:
 
         logger.info(f"[{user_id}/{project_id}/{session_id}] Think node - iteration {iteration}, phase: {phase}")
 
+        # Check if we need to compress execution trace
+        execution_trace = state.get("execution_trace", [])
+        trace_limit = get_setting('EXECUTION_TRACE_MEMORY_STEPS', 100)
+        
+        # Compress trace if it exceeds limit
+        if len(execution_trace) > trace_limit:
+            try:
+                from orchestrator_helpers.context_management import (
+                    compress_execution_steps,
+                    mark_important_events
+                )
+                
+                logger.info(f"[{user_id}/{project_id}/{session_id}] Compressing execution trace ({len(execution_trace)} steps)")
+                
+                # Compress steps (keep last 20 in full detail)
+                compressed_steps, summaries = compress_execution_steps(
+                    execution_trace,
+                    keep_last_n=20,
+                    min_importance_threshold=0.5
+                )
+                
+                # Mark important events
+                important_events = mark_important_events(compressed_steps)
+                
+                # Update state with compressed trace and summaries
+                state_updates = {
+                    "execution_trace": compressed_steps,
+                    "execution_trace_summaries": summaries,
+                    "important_events": important_events
+                }
+                
+                # Merge updates into state for this iteration
+                state = {**state, **state_updates}
+                
+                logger.info(f"[{user_id}/{project_id}/{session_id}] Trace compressed: {len(compressed_steps)} steps, {len(summaries)} summaries, {len(important_events)} important events")
+            except Exception as e:
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to compress trace: {e}")
+
         # Set context for tools
         set_tenant_context(user_id, project_id)
         set_phase_context(phase)
@@ -462,11 +846,15 @@ class AgentOrchestrator:
             current_objective = state.get("original_objective", "No objective specified")
 
         # Build the prompt with current state
+        # Use compressed trace if available
         execution_trace_formatted = format_execution_trace(
             state.get("execution_trace", []),
             objectives=state.get("conversation_objectives", []),
             objective_history=state.get("objective_history", []),
-            current_objective_index=state.get("current_objective_index", 0)
+            current_objective_index=state.get("current_objective_index", 0),
+            summaries=state.get("execution_trace_summaries"),
+            important_events=state.get("important_events"),
+            use_compression=True
         )
         todo_list_formatted = format_todo_list(state.get("todo_list", []))
         target_info_formatted = json_dumps_safe(state.get("target_info", {}), indent=2)
@@ -533,6 +921,22 @@ class AgentOrchestrator:
             system_prompt += guidance_section
             logger.info(f"[{user_id}/{project_id}/{session_id}] Injected {len(guidance_messages)} guidance messages into prompt")
 
+        # Inject attack plan if available
+        attack_plan = state.get("attack_plan")
+        if attack_plan:
+            plan_formatted = format_plan_for_prompt(attack_plan)
+            plan_section = (
+                "\n\n## STRATEGIC ATTACK PLAN (FOLLOW THIS PLAN)\n\n"
+                "You have a pre-generated attack plan. Follow it step-by-step. "
+                "Mark steps as complete as you execute them. If a step fails, "
+                "consider alternative paths from the plan.\n\n"
+                f"{plan_formatted}\n\n"
+                "**IMPORTANT**: Reference the plan in your reasoning. When executing a step, "
+                "mention which plan step you're working on. Update the plan status as you progress.\n"
+            )
+            system_prompt += plan_section
+            logger.info(f"[{user_id}/{project_id}/{session_id}] Injected attack plan into prompt")
+
         # Log the full prompt for debugging
         logger.info(f"\n{'#'*80}")
         logger.info(f"# THINK NODE PROMPT - Iteration {iteration} - Phase: {phase}")
@@ -571,7 +975,37 @@ class AgentOrchestrator:
                 ))
 
             response = await self.llm.ainvoke(messages)
-            response_text = response.content.strip()
+            # Ensure content is a string (handle case where it might be a list or dict)
+            content = response.content
+            if isinstance(content, str):
+                response_text = content.strip()
+            elif isinstance(content, list):
+                # Handle list of content blocks (MCP format)
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict):
+                        if 'text' in item:
+                            text_parts.append(item['text'])
+                        elif 'content' in item:
+                            text_parts.append(str(item['content']))
+                        else:
+                            text_parts.append(str(item))
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+                    else:
+                        text_parts.append(str(item))
+                response_text = '\n'.join(text_parts).strip()
+            elif isinstance(content, dict):
+                # Handle dict format (like {'type': 'text', 'text': '...'})
+                if 'text' in content:
+                    response_text = str(content['text']).strip()
+                elif 'content' in content:
+                    response_text = str(content['content']).strip()
+                else:
+                    # Fallback: try to extract JSON from string representation
+                    response_text = str(content).strip()
+            else:
+                response_text = str(content).strip()
 
             # Log the raw LLM response
             logger.info(f"\n{'='*60}")
@@ -648,6 +1082,30 @@ class AgentOrchestrator:
 
         logger.info(f"{'='*60}\n")
 
+        # Assess risk if using a tool
+        risk_assessment = None
+        if decision.action == "use_tool" and decision.tool_name:
+            autonomous_mode = get_setting('AUTONOMOUS_MODE', False)
+            risk_threshold = get_setting('RISK_THRESHOLD', 30)
+            
+            risk_assessment = assess_risk(
+                action_type="use_tool",
+                tool_name=decision.tool_name,
+                tool_args=decision.tool_args or {},
+                target_info=state.get("target_info", {}),
+                phase=phase,
+                autonomous_mode=autonomous_mode,
+                risk_threshold=risk_threshold
+            )
+            
+            # Log risk assessment
+            logger.info(f"[{user_id}/{project_id}/{session_id}] Risk assessment for {decision.tool_name}: score={risk_assessment.risk_score}, requires_approval={risk_assessment.requires_approval}")
+            
+            # If risk assessment requires approval and we're not in autonomous mode, block action
+            if risk_assessment.requires_approval and not autonomous_mode:
+                # For now, allow but log warning - approval flow handled elsewhere
+                logger.warning(f"[{user_id}/{project_id}/{session_id}] High-risk action detected but continuing (approval handled by phase transition)")
+        
         # Create execution step
         step = ExecutionStep(
             iteration=iteration,
@@ -657,6 +1115,13 @@ class AgentOrchestrator:
             tool_name=decision.tool_name if decision.action == "use_tool" else None,
             tool_args=decision.tool_args if decision.action == "use_tool" else None,
         )
+        
+        # Add risk assessment to step if available
+        if risk_assessment:
+            step_dict = step.model_dump()
+            step_dict["risk_score"] = risk_assessment.risk_score
+            step_dict["risk_level"] = risk_assessment.risk_level
+            step = ExecutionStep(**step_dict)
 
         # Convert todo list updates to dicts for state storage
         todo_list = [item.model_dump() for item in decision.updated_todo_list] if decision.updated_todo_list else state.get("todo_list", [])
@@ -730,6 +1195,58 @@ class AgentOrchestrator:
                         logger.info(f"[{user_id}/{project_id}/{session_id}] Exploit success detected - node created")
                     except Exception as e:
                         logger.error(f"[{user_id}/{project_id}/{session_id}] Failed to create Exploit node: {e}")
+                    
+                    # Store successful exploit in memory
+                    if self.memory_store:
+                        try:
+                            from memory import ExploitMemory
+                            import uuid
+                            
+                            exploit_memory = ExploitMemory(
+                                memory_id=str(uuid.uuid4()),
+                                user_id=user_id,
+                                project_id=project_id,
+                                cve_id=details.get("cve_ids", [None])[0] if details.get("cve_ids") else None,
+                                target_service=merged_target.services[0] if merged_target.services else None,
+                                target_ip=details.get("target_ip", merged_target.primary_target),
+                                target_port=details.get("target_port"),
+                                metasploit_module=details.get("metasploit_module"),
+                                payload=details.get("payload"),
+                                exploit_args=details.get("exploit_args", {}),
+                                session_opened=True,
+                                session_type=details.get("session_type"),
+                                prerequisites=details.get("prerequisites", []),
+                                execution_steps=[s.get("step_id", "") for s in state.get("execution_trace", [])[-10:]]
+                            )
+                            exploit_memory.embedding_text = exploit_memory.to_embedding_text()
+                            
+                            await self.memory_store.store_exploit_success(exploit_memory)
+                            logger.info(f"[{user_id}/{project_id}/{session_id}] Stored exploit success in memory")
+                            
+                            # Extract and store template if template library available
+                            if self.template_library:
+                                try:
+                                    template = self.template_library.extract_template_from_exploit(
+                                        exploit_details={
+                                            "cve_id": exploit_memory.cve_id,
+                                            "target_service": exploit_memory.target_service,
+                                            "metasploit_module": exploit_memory.metasploit_module,
+                                            "payload": exploit_memory.payload,
+                                            "exploit_args": exploit_memory.exploit_args,
+                                            "prerequisites": exploit_memory.prerequisites,
+                                            "execution_steps": exploit_memory.execution_steps,
+                                            "success_criteria": ["Session opened"],
+                                            "user_id": user_id,
+                                            "project_id": project_id
+                                        },
+                                        template_name=f"{exploit_memory.cve_id or 'Exploit'} - {exploit_memory.target_service or 'Unknown'}"
+                                    )
+                                    self.template_library.add_template(template)
+                                    logger.info(f"[{user_id}/{project_id}/{session_id}] Extracted template: {template.template_id}")
+                                except Exception as e:
+                                    logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to extract template: {e}")
+                        except Exception as e:
+                            logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to store exploit success in memory: {e}")
 
                 # Append completed step to execution trace
                 execution_trace = state.get("execution_trace", []) + [pending_step]
@@ -737,6 +1254,18 @@ class AgentOrchestrator:
                 updates["target_info"] = merged_target.model_dump()
                 updates["_completed_step"] = pending_step  # For streaming emission
                 updates["messages"] = [AIMessage(content=f"**Step {pending_step.get('iteration')}** [{phase}]\n\n{analysis.interpretation}")]
+                
+                # Mark plan step as complete if we have a plan and this tool matches a plan step
+                attack_plan = state.get("attack_plan")
+                if attack_plan and pending_step.get("tool_name"):
+                    from orchestrator_helpers.planning import mark_step_complete, get_next_pending_step
+                    # Try to match current tool execution to a plan step
+                    next_step = get_next_pending_step(attack_plan)
+                    if next_step and next_step.get("tool_name") == pending_step.get("tool_name"):
+                        # Mark this step as complete
+                        updated_plan = mark_step_complete(attack_plan, next_step.get("step_id"))
+                        updates["attack_plan"] = updated_plan
+                        logger.info(f"[{user_id}/{project_id}/{session_id}] Marked plan step {next_step.get('step_id')} as complete")
 
             else:
                 # LLM didn't return analysis — use raw output as fallback
@@ -747,6 +1276,21 @@ class AgentOrchestrator:
                 execution_trace = state.get("execution_trace", []) + [pending_step]
                 updates["execution_trace"] = execution_trace
                 updates["_completed_step"] = pending_step
+                
+                # Mark plan step as complete/failed based on success
+                attack_plan = state.get("attack_plan")
+                if attack_plan and pending_step.get("tool_name"):
+                    from orchestrator_helpers.planning import mark_step_complete, mark_step_failed, get_next_pending_step
+                    next_step = get_next_pending_step(attack_plan)
+                    if next_step and next_step.get("tool_name") == pending_step.get("tool_name"):
+                        if pending_step.get("success"):
+                            updated_plan = mark_step_complete(attack_plan, next_step.get("step_id"))
+                            updates["attack_plan"] = updated_plan
+                            logger.info(f"[{user_id}/{project_id}/{session_id}] Marked plan step {next_step.get('step_id')} as complete")
+                        else:
+                            updated_plan = mark_step_failed(attack_plan, next_step.get("step_id"), pending_step.get("error_message"))
+                            updates["attack_plan"] = updated_plan
+                            logger.info(f"[{user_id}/{project_id}/{session_id}] Marked plan step {next_step.get('step_id')} as failed")
 
         # Handle different actions
         if decision.action == "complete":
@@ -810,11 +1354,32 @@ class AgentOrchestrator:
                 # Don't set action explicitly - let routing continue
                 return updates
 
-            # Check if approval is required (for exploitation/post-exploitation upgrades)
-            needs_approval = (
-                (to_phase == "exploitation" and get_setting('REQUIRE_APPROVAL_FOR_EXPLOITATION', True)) or
-                (to_phase == "post_exploitation" and get_setting('REQUIRE_APPROVAL_FOR_POST_EXPLOITATION', True))
+            # Assess risk for phase transition
+            autonomous_mode = get_setting('AUTONOMOUS_MODE', False)
+            risk_threshold = get_setting('RISK_THRESHOLD', 30)
+            
+            # Assess risk of phase transition
+            risk_assessment = assess_risk(
+                action_type="transition_phase",
+                tool_name="phase_transition",
+                tool_args={"from_phase": phase, "to_phase": to_phase},
+                target_info=state.get("target_info", {}),
+                phase=to_phase,
+                autonomous_mode=autonomous_mode,
+                risk_threshold=risk_threshold
             )
+            
+            # Check if approval is required (risk-based or setting-based)
+            needs_approval = risk_assessment.requires_approval
+            
+            # Override with explicit settings if configured
+            if not autonomous_mode:
+                needs_approval = (
+                    (to_phase == "exploitation" and get_setting('REQUIRE_APPROVAL_FOR_EXPLOITATION', True)) or
+                    (to_phase == "post_exploitation" and get_setting('REQUIRE_APPROVAL_FOR_POST_EXPLOITATION', True))
+                )
+            
+            logger.info(f"[{user_id}/{project_id}/{session_id}] Risk assessment for phase transition: score={risk_assessment.risk_score}, requires_approval={needs_approval}")
 
             if needs_approval:
                 updates["phase_transition_pending"] = PhaseTransitionRequest(
@@ -1199,9 +1764,40 @@ class AgentOrchestrator:
         )
 
         response = await self.llm.ainvoke([HumanMessage(content=report_prompt)])
+        
+        # Ensure content is a string (handle case where it might be a list or dict)
+        content = response.content
+        if isinstance(content, str):
+            pass  # Already a string
+        elif isinstance(content, list):
+            # Handle list of content blocks (MCP format)
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict):
+                    if 'text' in item:
+                        text_parts.append(item['text'])
+                    elif 'content' in item:
+                        text_parts.append(str(item['content']))
+                    else:
+                        text_parts.append(str(item))
+                elif isinstance(item, str):
+                    text_parts.append(item)
+                else:
+                    text_parts.append(str(item))
+            content = '\n'.join(text_parts)
+        elif isinstance(content, dict):
+            # Handle dict format (like {'type': 'text', 'text': '...'})
+            if 'text' in content:
+                content = str(content['text'])
+            elif 'content' in content:
+                content = str(content['content'])
+            else:
+                content = str(content)
+        else:
+            content = str(content)
 
         return {
-            "messages": [AIMessage(content=response.content)],
+            "messages": [AIMessage(content=content)],
             "task_complete": True,
             "completion_reason": state.get("completion_reason") or "Task completed successfully",
         }
@@ -1211,7 +1807,7 @@ class AgentOrchestrator:
     # =========================================================================
 
     def _route_after_initialize(self, state: AgentState) -> str:
-        """Route after initialization - process approval, process answer, or think."""
+        """Route after initialization - process approval, process answer, plan, or think."""
         # If we have an approval response pending, go to process_approval
         if state.get("user_approval_response") and state.get("phase_transition_pending"):
             logger.info("Routing to process_approval - approval response pending")
@@ -1221,6 +1817,24 @@ class AgentOrchestrator:
         if state.get("user_question_answer") and state.get("pending_question"):
             logger.info("Routing to process_answer - question answer pending")
             return "process_answer"
+
+        # Check if we need to generate a plan (new objective without plan, or plan needs adaptation)
+        attack_plan = state.get("attack_plan")
+        task_complete = state.get("task_complete", False)
+        
+        # Generate plan if:
+        # 1. No plan exists AND task is not complete (new objective)
+        # 2. Plan exists but needs adaptation (has failed steps and alternatives)
+        if not task_complete:
+            if not attack_plan:
+                logger.info("Routing to plan_strategy - no plan exists for new objective")
+                return "plan_strategy"
+            else:
+                # Check if plan needs adaptation
+                from orchestrator_helpers.planning import should_adapt_plan
+                if should_adapt_plan(attack_plan):
+                    logger.info("Routing to plan_strategy - plan needs adaptation")
+                    return "plan_strategy"
 
         return "think"
 
@@ -1418,7 +2032,13 @@ class AgentOrchestrator:
         messages = state.get("messages", [])
         for msg in reversed(messages):
             if isinstance(msg, AIMessage):
-                final_answer = msg.content
+                # Ensure content is a string (handle case where it might be a list)
+                content = msg.content
+                if isinstance(content, list):
+                    content = '\n'.join(str(item) for item in content)
+                elif not isinstance(content, str):
+                    content = str(content)
+                final_answer = content
                 break
 
         # Get tool info from current step if available
@@ -1426,6 +2046,11 @@ class AgentOrchestrator:
         if step:
             tool_used = step.get("tool_name")
             tool_output = step.get("tool_output")
+            # Ensure tool_output is a string (handle case where it might be a list)
+            if isinstance(tool_output, list):
+                tool_output = '\n'.join(str(item) for item in tool_output)
+            elif tool_output is not None and not isinstance(tool_output, str):
+                tool_output = str(tool_output)
 
         return InvokeResponse(
             answer=final_answer,
@@ -1775,9 +2400,16 @@ class AgentOrchestrator:
 
                 # Emit tool output chunk (raw tool output)
                 if step.get("tool_output") and not step.get("_emitted_output"):
+                    # Ensure tool_output is a string (handle case where it might be a list from MCP tools)
+                    tool_output = step["tool_output"]
+                    if isinstance(tool_output, list):
+                        # Convert list to string (e.g., MCP content blocks)
+                        tool_output = '\n'.join(str(item) for item in tool_output)
+                    elif not isinstance(tool_output, str):
+                        tool_output = str(tool_output)
                     await callback.on_tool_output_chunk(
                         step.get("tool_name", "unknown"),
-                        step["tool_output"],
+                        tool_output,
                         is_final=True
                     )
                     step["_emitted_output"] = True

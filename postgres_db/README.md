@@ -1,6 +1,6 @@
 # PostgreSQL Database
 
-PostgreSQL database for storing RedAmon project configurations and user data. Uses Prisma ORM for schema management and query building.
+PostgreSQL database for storing PandaExploit project configurations and user data. Uses Prisma ORM for schema management and query building.
 
 ## Overview
 
@@ -19,7 +19,7 @@ cd postgres_db
 docker-compose up -d
 
 # 2. Verify connection
-docker exec redamon-postgres pg_isready -U redamon -d redamon
+docker exec pandaexploit-postgres pg_isready -U redamon -d redamon
 
 # 3. Initialize schema (from webapp)
 cd ../webapp
@@ -130,7 +130,7 @@ For the complete schema, see [webapp/prisma/schema.prisma](../webapp/prisma/sche
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: redamon-postgres
+    container_name: pandaexploit-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-redamon}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-redamon_secret}
@@ -216,27 +216,27 @@ This allows each project to have its own configuration without modifying `params
 
 ```bash
 # Create backup
-docker exec redamon-postgres pg_dump -U redamon redamon > backup.sql
+docker exec pandaexploit-postgres pg_dump -U redamon redamon > backup.sql
 
 # Create compressed backup
-docker exec redamon-postgres pg_dump -U redamon redamon | gzip > backup.sql.gz
+docker exec pandaexploit-postgres pg_dump -U redamon redamon | gzip > backup.sql.gz
 ```
 
 ### Restore
 
 ```bash
 # Restore from backup
-docker exec -i redamon-postgres psql -U redamon redamon < backup.sql
+docker exec -i pandaexploit-postgres psql -U redamon redamon < backup.sql
 
 # Restore from compressed backup
-gunzip -c backup.sql.gz | docker exec -i redamon-postgres psql -U redamon redamon
+gunzip -c backup.sql.gz | docker exec -i pandaexploit-postgres psql -U redamon redamon
 ```
 
 ## Useful Commands
 
 ```bash
 # Connect to PostgreSQL shell
-docker exec -it redamon-postgres psql -U redamon -d redamon
+docker exec -it pandaexploit-postgres psql -U redamon -d redamon
 
 # List tables
 \dt
@@ -262,7 +262,7 @@ SELECT pg_size_pretty(pg_database_size('redamon'));
 
 2. Verify health check:
    ```bash
-   docker exec redamon-postgres pg_isready -U redamon -d redamon
+   docker exec pandaexploit-postgres pg_isready -U redamon -d redamon
    ```
 
 ### Schema Out of Sync

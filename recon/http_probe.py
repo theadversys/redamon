@@ -1,5 +1,5 @@
 """
-RedAmon - HTTP Probing Module + Banner Grabbing
+PandaExploit - HTTP Probing Module + Banner Grabbing
 
 Multi-purpose HTTP toolkit for probing and technology detection.
 Uses Docker for consistent environment and no installation required.

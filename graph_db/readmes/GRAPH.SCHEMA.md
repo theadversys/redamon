@@ -1,4 +1,4 @@
-# RedAmon Neo4j Graph Schema
+# PandaExploit Neo4j Graph Schema
 
 ## Overview
 

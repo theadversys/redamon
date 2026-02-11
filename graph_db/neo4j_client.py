@@ -1,5 +1,5 @@
 """
-Neo4j Graph Database Client for RedAmon Reconnaissance Data
+Neo4j Graph Database Client for PandaExploit Reconnaissance Data
 
 This client initializes the graph database with reconnaissance data
 after the domain_discovery module completes.
@@ -1426,6 +1426,7 @@ class Neo4jClient:
                             "id": vuln_id,
                             "user_id": user_id,
                             "project_id": project_id,
+                            "source": "nuclei",  # CRITICAL: Set source for filtering
                             "template_id": template_id,
                             "template_path": finding.get("template_path"),
                             "template_url": raw.get("template-url"),

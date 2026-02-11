@@ -1,5 +1,5 @@
 """
-RedAmon Agent State Management
+PandaExploit Agent State Management
 
 LangGraph state and Pydantic models for the ReAct agent orchestrator.
 Supports iterative Thought-Tool-Output pattern with phase tracking.
@@ -340,8 +340,23 @@ class AgentState(TypedDict):
     # Attack path routing
     attack_path_type: str  # AttackPathType: "cve_exploit" or "brute_force_credential_guess"
 
+    # Strategic planning
+    attack_plan: Optional[dict]  # Multi-step attack plan with prerequisites, alternatives, risk assessment
+    matched_template: Optional[dict]  # Exploit template matched to current target
+    exploit_chain: Optional[List[dict]]  # Optimized exploit chain with prerequisites
+
     # Execution trace (Thought-Tool-Output history)
     execution_trace: List[dict]  # List of ExecutionStep.model_dump()
+    
+    # Adaptive context management
+    execution_trace_summaries: List[str]  # Summaries of compressed old steps
+    important_events: List[dict]  # Critical events that should always be in context
+    
+    # Parallel execution
+    parallel_tasks: List[dict]  # Tasks that can be executed in parallel
+    
+    # Persistent learning memory
+    retrieved_memories: List[dict]  # Memories retrieved from vector store for current objective
 
     # LLM-managed todo list
     todo_list: List[dict]  # List of TodoItem.model_dump()
@@ -518,13 +533,17 @@ def format_execution_trace(
     objectives: List[dict] = None,
     objective_history: List[dict] = None,
     current_objective_index: int = 0,
-    last_n: int = None
+    last_n: int = None,
+    summaries: List[str] = None,
+    important_events: List[dict] = None,
+    use_compression: bool = True
 ) -> str:
     """
-    Format execution trace with objective grouping.
+    Format execution trace with objective grouping and optional compression.
 
     Groups steps by objective for better context across multi-objective sessions.
     Uses EXECUTION_TRACE_MEMORY_STEPS from params to control how many steps to show.
+    If compression is enabled and summaries/important_events are provided, uses compressed format.
 
     IMPORTANT: This function provides context to the LLM for subsequent decisions.
     Tool outputs must be included so the agent can reference previous results
@@ -536,9 +555,22 @@ def format_execution_trace(
         objective_history: List of completed objective outcomes
         current_objective_index: Index of current objective
         last_n: Override for number of steps (None = use EXECUTION_TRACE_MEMORY_STEPS)
+        summaries: Summaries of compressed steps (if compression was used)
+        important_events: Important events to highlight (if compression was used)
+        use_compression: Whether to use compressed format if summaries/events available
     """
     if not trace:
         return "No steps executed yet."
+
+    # Use compression if enabled and we have summaries/events
+    if use_compression and (summaries or important_events):
+        try:
+            from orchestrator_helpers.context_management import format_compressed_trace
+            # Use compressed format
+            return format_compressed_trace(trace, summaries or [], important_events or [])
+        except ImportError:
+            logger.warning("Context management not available, falling back to standard format")
+            # Fall through to standard format
 
     # Use configured limit or override
     limit = last_n if last_n is not None else get_setting('EXECUTION_TRACE_MEMORY_STEPS', 100)

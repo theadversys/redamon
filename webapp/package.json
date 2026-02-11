@@ -1,7 +1,7 @@
 {
-  "name": "redamon-webapp",
+  "name": "pandaexploit-webapp",
   "version": "1.0.0",
-  "description": "RedAmon Web Application - Security Reconnaissance Dashboard",
+  "description": "PandaExploit Web Application - Security Reconnaissance Dashboard",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -24,6 +24,7 @@
     "react-force-graph-2d": "^1.26.0",
     "react-force-graph-3d": "^1.25.0",
     "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^2.1.7",
     "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.1",
     "three": "^0.170.0",

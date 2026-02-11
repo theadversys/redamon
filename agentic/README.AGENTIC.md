@@ -1,8 +1,8 @@
-# RedAmon Agentic System
+# PandaExploit Agentic System
 
 ## Overview
 
-The **RedAmon Agentic System** is an AI-powered penetration testing orchestrator built on **LangGraph**. It implements the **ReAct (Reasoning and Acting)** pattern to autonomously conduct security assessments while maintaining human oversight through phase-based approval workflows.
+The **PandaExploit Agentic System** is an AI-powered penetration testing orchestrator built on **LangGraph**. It implements the **ReAct (Reasoning and Acting)** pattern to autonomously conduct security assessments while maintaining human oversight through phase-based approval workflows.
 
 ---
 
@@ -1438,7 +1438,7 @@ ws.onmessage = (event) => {
 
 ## Summary
 
-The RedAmon Agentic System provides:
+The PandaExploit Agentic System provides:
 
 1. **Autonomous Reasoning** - LangGraph-based ReAct pattern for intelligent decision making
 2. **Phase-Based Security** - Controlled progression through informational → exploitation → post-exploitation

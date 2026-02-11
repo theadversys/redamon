@@ -1,5 +1,5 @@
 """
-RedAmon - MITRE CWE/CAPEC Enrichment Module
+PandaExploit - MITRE CWE/CAPEC Enrichment Module
 ===========================================
 Enriches CVE data with CWE weaknesses and CAPEC attack patterns.
 
@@ -1075,7 +1075,7 @@ def run_mitre_enrichment(recon_data: Dict = None, output_file: Path = None, sett
     auto_update = settings.get('MITRE_AUTO_UPDATE_DB', DEFAULT_MITRE_SETTINGS['MITRE_AUTO_UPDATE_DB'])
 
     print("\n" + "=" * 60)
-    print("         RedAmon - MITRE CWE/CAPEC Enrichment")
+    print("         PandaExploit - MITRE CWE/CAPEC Enrichment")
     print("=" * 60)
     print(f"    Include CWE: {include_cwe}")
     print(f"    Include CAPEC: {include_capec}")
@@ -1162,7 +1162,7 @@ def enrich_gvm_file(gvm_file: Path, settings: Optional[Dict] = None) -> Dict:
         return None
 
     print("\n" + "=" * 60)
-    print("         RedAmon - MITRE CWE/CAPEC Enrichment (GVM)")
+    print("         PandaExploit - MITRE CWE/CAPEC Enrichment (GVM)")
     print("=" * 60)
     print(f"    File: {gvm_file}")
     print(f"    Auto Update DB: {auto_update}")

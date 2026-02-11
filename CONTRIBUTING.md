@@ -1,6 +1,6 @@
-# Contributing to RedAmon
+# Contributing to PandaExploit
 
-Thank you for your interest in contributing to RedAmon! This document provides guidelines and instructions to help you get started.
+Thank you for your interest in contributing to PandaExploit! This document provides guidelines and instructions to help you get started.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ Harassment, trolling, or abusive behavior of any kind will not be tolerated.
 
 ## Legal and Ethical Responsibilities
 
-RedAmon is a security assessment framework. **All contributors must adhere to ethical and legal standards.**
+PandaExploit is a security assessment framework. **All contributors must adhere to ethical and legal standards.**
 
 Before contributing, read the [DISCLAIMER.md](DISCLAIMER.md) in full. Key points:
 
@@ -78,8 +78,8 @@ An AI API key is required to run the agent component:
 1. **Fork and clone** the repository:
 
    ```bash
-   git clone https://github.com/<your-username>/RedAmon.git
-   cd RedAmon
+   git clone https://github.com/<your-username>/PandaExploit.git
+   cd PandaExploit
    ```
 
 2. **Create your environment file** from the example:
@@ -131,10 +131,10 @@ docker compose restart recon-orchestrator
 
 ## Project Architecture
 
-RedAmon is a modular, multi-service architecture. Each component lives in its own directory with its own Dockerfile:
+PandaExploit is a modular, multi-service architecture. Each component lives in its own directory with its own Dockerfile:
 
 ```
-RedAmon/
+PandaExploit/
 ├── recon/                # OSINT & scanning pipeline (Kali-based)
 ├── recon_orchestrator/   # Container lifecycle manager (FastAPI)
 ├── agentic/              # AI agent orchestrator (LangGraph + FastAPI)
@@ -461,19 +461,19 @@ When opening an issue, include:
 
 ## Security Vulnerabilities
 
-If you discover a security vulnerability in RedAmon itself (not in target systems being scanned), **do not open a public issue**. Instead:
+If you discover a security vulnerability in PandaExploit itself (not in target systems being scanned), **do not open a public issue**. Instead:
 
 1. Contact the maintainer directly (see [Maintainer](#maintainer) below) with details of the vulnerability
 2. Include steps to reproduce
 3. Allow reasonable time for a fix before any public disclosure
 
-We follow responsible disclosure practices and appreciate your help keeping RedAmon secure.
+We follow responsible disclosure practices and appreciate your help keeping PandaExploit secure.
 
 ---
 
 ## Maintainer
 
-**Samuele Giampieri** — creator and lead maintainer of RedAmon.
+**Samuele Giampieri** — creator and lead maintainer of PandaExploit.
 
 - [LinkedIn](https://www.linkedin.com/in/samuele-giampieri-b1b67597/)
 - [Devergo Labs](https://www.devergolabs.com/)
@@ -485,4 +485,4 @@ We follow responsible disclosure practices and appreciate your help keeping RedA
 
 If you have questions about contributing, feel free to open a discussion or issue on GitHub, or reach out to the maintainer. We're happy to help you get started.
 
-Thank you for helping make RedAmon better!
+Thank you for helping make PandaExploit better!

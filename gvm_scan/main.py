@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RedAmon - Vulnerability Scanner Main Entry Point
+PandaExploit - Vulnerability Scanner Main Entry Point
 =================================================
 Orchestrates GVM/OpenVAS vulnerability scanning using recon data.
 
@@ -124,7 +124,7 @@ def run_vulnerability_scan(
         Complete vulnerability scan results
     """
     print("\n" + "=" * 70)
-    print("           RedAmon - GVM Vulnerability Scanner")
+    print("           PandaExploit - GVM Vulnerability Scanner")
     print("=" * 70)
     print(f"  Target Domain: {domain}")
     print(f"  Scan Strategy: {scan_targets}")

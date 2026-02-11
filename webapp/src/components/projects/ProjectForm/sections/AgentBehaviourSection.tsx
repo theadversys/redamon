@@ -65,8 +65,19 @@ export function AgentBehaviourSection({ data, updateField }: AgentBehaviourSecti
                     <option value="gpt-4.1-mini">gpt-4.1-mini — Fast, cost-efficient</option>
                     <option value="gpt-4.1-nano">gpt-4.1-nano — Fastest, cheapest</option>
                   </optgroup>
+                  <optgroup label="GPT-4o">
+                    <option value="gpt-4o">gpt-4o — Latest GPT-4 optimized model</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini — Faster, cost-efficient GPT-4o</option>
+                  </optgroup>
+                  <optgroup label="Google Gemini">
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash — Fast and efficient</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro Preview — Most capable model</option>
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Experimental — Latest experimental</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro — Previous generation pro model</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash — Fast previous generation</option>
+                  </optgroup>
                 </select>
-                <span className={styles.fieldHint}>Model used by the agent. Anthropic models require ANTHROPIC_API_KEY in the agent .env file.</span>
+                <span className={styles.fieldHint}>Model used by the agent. Anthropic models require ANTHROPIC_API_KEY, Gemini models require GOOGLE_API_KEY in the agent .env file.</span>
               </div>
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>Post-Exploitation Type</label>

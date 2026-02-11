@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings Source of Truth** — migrated all recon and agent settings from hardcoded `params.py` to PostgreSQL via Prisma ORM, fetched at runtime via webapp API
 - **Recon Pipeline Improvements** — multi-level improvements across all recon modules for reliability and accuracy
 - **Orchestrator Model Selection** — fixed model selection logic in the agent orchestrator
-- **Frontend Usability** — unified RedAmon primary crimson color (#d32f2f), styled message containers with ghost icons and gradient backgrounds, improved markdown heading and list spacing
+- **Frontend Usability** — unified PandaExploit primary crimson color (#d32f2f), styled message containers with ghost icons and gradient backgrounds, improved markdown heading and list spacing
 - **Environment Configuration** — added root `.env.example` with all required keys; forwarded NVD_API_KEY and Neo4j credentials from recon-orchestrator to spawned containers
 - **Webapp Header** — replaced Crosshair icon with custom logo.png image, bumped logo text size
 
