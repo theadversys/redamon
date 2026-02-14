@@ -15,6 +15,7 @@ from enum import Enum
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ValidationError
 from orchestrator_helpers import create_config
+from orchestrator_helpers.config import _normalize_operating_mode
 
 
 def serialize_for_json(obj):
@@ -75,6 +76,7 @@ class InitMessage(BaseModel):
     user_id: str
     project_id: str
     session_id: str
+    operating_mode: Optional[str] = None  # "guided" | "offensive" - overrides project setting for this session
 
 
 class QueryMessage(BaseModel):
@@ -110,6 +112,7 @@ class WebSocketConnection:
         self.user_id: Optional[str] = None
         self.project_id: Optional[str] = None
         self.session_id: Optional[str] = None
+        self.operating_mode: Optional[str] = None  # Per-session override: "guided" | "offensive"
         self.authenticated = False
         self.connected_at = datetime.utcnow()
         self.last_ping = datetime.utcnow()
@@ -170,14 +173,17 @@ class WebSocketManager:
         connection: WebSocketConnection,
         user_id: str,
         project_id: str,
-        session_id: str
+        session_id: str,
+        operating_mode: Optional[str] = None
     ):
         """Authenticate and register connection"""
         async with self.lock:
             connection.user_id = user_id
             connection.project_id = project_id
             connection.session_id = session_id
+            connection.operating_mode = _normalize_operating_mode(operating_mode) if operating_mode else None
             connection.authenticated = True
+            logger.info(f"Session {session_id} init: operating_mode={connection.operating_mode or '(use project settings)'}")
 
             session_key = connection.get_key()
 
@@ -356,7 +362,8 @@ class WebSocketHandler:
                 connection,
                 init_msg.user_id,
                 init_msg.project_id,
-                init_msg.session_id
+                init_msg.session_id,
+                init_msg.operating_mode
             )
 
             # Send connected confirmation
@@ -397,7 +404,7 @@ class WebSocketHandler:
 
             # Run orchestrator as background task so receive loop stays free
             task = asyncio.create_task(
-                self._run_orchestrator_query(connection, query_msg.question, callback)
+                self._run_orchestrator_query(connection, query_msg.question, callback, connection.operating_mode)
             )
             connection._active_task = task
 
@@ -408,7 +415,7 @@ class WebSocketHandler:
                 "recoverable": True
             })
 
-    async def _run_orchestrator_query(self, connection: WebSocketConnection, question: str, callback):
+    async def _run_orchestrator_query(self, connection: WebSocketConnection, question: str, callback, operating_mode_override: Optional[str] = None):
         """Background coroutine that runs the orchestrator invocation."""
         try:
             result = await self.orchestrator.invoke_with_streaming(
@@ -418,6 +425,7 @@ class WebSocketHandler:
                 session_id=connection.session_id,
                 streaming_callback=callback,
                 guidance_queue=connection.guidance_queue,
+                operating_mode_override=operating_mode_override,
             )
             logger.info(f"Query completed for session {connection.session_id}")
         except asyncio.CancelledError:
@@ -474,6 +482,7 @@ class WebSocketHandler:
                 modification=approval_msg.modification,
                 streaming_callback=callback,
                 guidance_queue=connection.guidance_queue,
+                operating_mode_override=connection.operating_mode,
             )
             logger.info(f"Approval processed for session {connection.session_id}")
         except asyncio.CancelledError:
@@ -529,6 +538,7 @@ class WebSocketHandler:
                 answer=answer,
                 streaming_callback=callback,
                 guidance_queue=connection.guidance_queue,
+                operating_mode_override=connection.operating_mode,
             )
             logger.info(f"Answer processed for session {connection.session_id}")
         except asyncio.CancelledError:
@@ -643,6 +653,7 @@ class WebSocketHandler:
                 session_id=connection.session_id,
                 streaming_callback=callback,
                 guidance_queue=connection.guidance_queue,
+                operating_mode_override=connection.operating_mode,
             )
             logger.info(f"Resumed execution completed for session {connection.session_id}")
         except asyncio.CancelledError:

@@ -10,8 +10,11 @@ export interface ProjectSummary {
   subdomainList?: string[]
   description?: string
   agentOpenaiModel?: string
+  agentOperatingMode?: 'guided' | 'offensive'
   createdAt: string
   updatedAt: string
+  scanModules?: string[]
+  githubTargetOrg?: string
 }
 
 interface ProjectContextValue {
@@ -61,8 +64,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               subdomainList: project.subdomainList,
               description: project.description,
               agentOpenaiModel: project.agentOpenaiModel,
+              agentOperatingMode: project.agentOperatingMode || 'guided',
               createdAt: project.createdAt,
-              updatedAt: project.updatedAt
+              updatedAt: project.updatedAt,
+              scanModules: project.scanModules,
+              githubTargetOrg: project.githubTargetOrg,
             })
             localStorage.setItem(STORAGE_KEY_PROJECT, project.id)
           } else {
@@ -75,7 +81,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false)
     }
-  }, [searchParams])
+  }, [searchParams, pathname])
 
   const setCurrentProject = useCallback((project: ProjectSummary | null) => {
     setCurrentProjectState(project)

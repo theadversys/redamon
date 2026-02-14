@@ -12,6 +12,8 @@ Usage:
     client.close()
 """
 
+import hashlib
+import json
 import os
 import re
 from pathlib import Path
@@ -19,6 +21,21 @@ from datetime import datetime
 from urllib.parse import urlparse
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
+
+# Maximum characters for raw_output in Evidence nodes (sanitization)
+MAX_RAW_OUTPUT = 2000
+
+
+def sanitize_raw_output(raw: str | None) -> str:
+    """Sanitize and truncate raw output before storing in Neo4j Evidence nodes."""
+    if raw is None:
+        return ""
+    text = str(raw)
+    # TODO: Basic redaction: Authorization headers, cookies, common secret patterns.
+    # For now, at least truncate to avoid huge payloads.
+    if len(text) > MAX_RAW_OUTPUT:
+        return text[:MAX_RAW_OUTPUT] + "\n...[truncated]..."
+    return text
 
 # Load environment variables from local .env file
 load_dotenv(Path(__file__).parent / ".env")
@@ -74,6 +91,8 @@ class Neo4jClient:
             "CREATE CONSTRAINT capec_unique IF NOT EXISTS FOR (cap:Capec) REQUIRE cap.capec_id IS UNIQUE",
             "CREATE CONSTRAINT vulnerability_unique IF NOT EXISTS FOR (v:Vulnerability) REQUIRE v.id IS UNIQUE",
             "CREATE CONSTRAINT exploit_unique IF NOT EXISTS FOR (e:Exploit) REQUIRE e.id IS UNIQUE",
+            "CREATE CONSTRAINT evidence_unique IF NOT EXISTS FOR (e:Evidence) REQUIRE e.id IS UNIQUE",
+            "CREATE CONSTRAINT github_secret_unique IF NOT EXISTS FOR (g:GitHubSecret) REQUIRE g.id IS UNIQUE",
         ]
 
         # Tenant composite indexes
@@ -90,6 +109,8 @@ class Neo4jClient:
             "CREATE INDEX idx_parameter_tenant IF NOT EXISTS FOR (p:Parameter) ON (p.user_id, p.project_id)",
             "CREATE INDEX idx_vulnerability_tenant IF NOT EXISTS FOR (v:Vulnerability) ON (v.user_id, v.project_id)",
             "CREATE INDEX idx_exploit_tenant IF NOT EXISTS FOR (e:Exploit) ON (e.user_id, e.project_id)",
+            "CREATE INDEX idx_evidence_tenant IF NOT EXISTS FOR (e:Evidence) ON (e.user_id, e.project_id)",
+            "CREATE INDEX idx_github_secret_tenant IF NOT EXISTS FOR (g:GitHubSecret) ON (g.user_id, g.project_id, g.repository)",
         ]
 
         # Additional indexes
@@ -283,7 +304,13 @@ class Neo4jClient:
             subdomain_dns = dns_data.get("subdomains", {})
             domain_dns = dns_data.get("domain", {})  # DNS data for root domain
 
-            for subdomain in subdomains:
+            # When full discovery finds no subdomains, include root domain if it has DNS data
+            # (e.g. localhost resolves to 127.0.0.1 but crt.sh/HackerTarget find nothing)
+            hosts_to_process = list(subdomains)
+            if not hosts_to_process and domain_dns.get("has_records"):
+                hosts_to_process = [root_domain]
+
+            for subdomain in hosts_to_process:
                 try:
                     # Get DNS info: use domain_dns if subdomain equals root_domain, else use subdomain_dns
                     if subdomain == root_domain:
@@ -1493,6 +1520,47 @@ class Neo4jClient:
                         )
                         stats["vulnerabilities_created"] += 1
 
+                        # Create Evidence node for traceability (Evidence Chain)
+                        severity_val = finding.get("severity")
+                        tool_name = "nuclei"
+                        id_input = f"{vuln_id}{template_id}{matched_at}{tool_name}"
+                        evidence_id = f"evidence-{hashlib.sha256(id_input.encode()).hexdigest()[:24]}"
+                        summary = f"{template_id} at {matched_at}"[:200]
+                        raw_src = finding.get("curl_command") or finding.get("request") or ""
+                        raw_output_sanitized = sanitize_raw_output(raw_src)
+                        session.run(
+                            """
+                            MATCH (v:Vulnerability {id: $vuln_id})
+                            MERGE (e:Evidence {id: $evidence_id})
+                            ON CREATE SET
+                                e.project_id = $project_id,
+                                e.user_id = $user_id,
+                                e.event_id = null,
+                                e.phase = "Vulnerability Scanning",
+                                e.tool = $tool_name,
+                                e.source_type = "vulnerability_finding",
+                                e.kind = "scan",
+                                e.template_id = $template_id,
+                                e.severity = $severity_val,
+                                e.fuzzing_parameter = $fuzzing_param,
+                                e.summary = $summary,
+                                e.raw_output = $raw_output,
+                                e.metadata = null,
+                                e.action_log_id = null,
+                                e.created_at = datetime()
+                            WITH v, e
+                            MERGE (v)-[:HAS_EVIDENCE]->(e)
+                            """,
+                            vuln_id=vuln_id, evidence_id=evidence_id,
+                            project_id=project_id, user_id=user_id,
+                            tool_name=tool_name,
+                            template_id=template_id or None,
+                            severity_val=severity_val or None,
+                            fuzzing_param=fuzzing_param or None,
+                            summary=summary, raw_output=raw_output_sanitized,
+                        )
+                        stats["relationships_created"] += 1
+
                         # Note: We don't create BaseURL -[:HAS_VULNERABILITY]-> Vulnerability
                         # because the vulnerability is connected via:
                         # BaseURL -> Endpoint <- Vulnerability (FOUND_AT)
@@ -1826,6 +1894,42 @@ class Neo4jClient:
                         security_checks_created += 1
                         stats["vulnerabilities_created"] += 1
 
+                        # Create Evidence node for traceability
+                        id_input = f"{vuln_id}security_check{url}{check_type}"
+                        evidence_id = f"evidence-{hashlib.sha256(id_input.encode()).hexdigest()[:24]}"
+                        summary = f"{check_names.get(check_type, check_type)}: {url}"[:200]
+                        raw_src = evidence or finding or url
+                        raw_output_sanitized = sanitize_raw_output(raw_src)
+                        session.run(
+                            """
+                            MATCH (v:Vulnerability {id: $vuln_id})
+                            MERGE (e:Evidence {id: $evidence_id})
+                            ON CREATE SET
+                                e.project_id = $project_id,
+                                e.user_id = $user_id,
+                                e.event_id = null,
+                                e.phase = "Vulnerability Scanning",
+                                e.tool = "security_check",
+                                e.source_type = "vulnerability_finding",
+                                e.kind = "scan",
+                                e.template_id = null,
+                                e.severity = $severity,
+                                e.fuzzing_parameter = null,
+                                e.summary = $summary,
+                                e.raw_output = $raw_output,
+                                e.metadata = null,
+                                e.action_log_id = null,
+                                e.created_at = datetime()
+                            WITH v, e
+                            MERGE (v)-[:HAS_EVIDENCE]->(e)
+                            """,
+                            vuln_id=vuln_id, evidence_id=evidence_id,
+                            project_id=project_id, user_id=user_id,
+                            severity=severity or None,
+                            summary=summary, raw_output=raw_output_sanitized,
+                        )
+                        stats["relationships_created"] += 1
+
                         # Create relationship: IP -[:HAS_VULNERABILITY]-> Vulnerability
                         # These are IP-level findings (direct IP access), so IP relationship is correct
                         if ip_address:
@@ -1945,6 +2049,42 @@ class Neo4jClient:
                     )
                     security_checks_created += 1
                     stats["vulnerabilities_created"] += 1
+
+                    # Create Evidence node for traceability
+                    id_input = f"{vuln_id}security_check{url}{finding_type}"
+                    evidence_id = f"evidence-{hashlib.sha256(id_input.encode()).hexdigest()[:24]}"
+                    summary = f"{name}: {url}"[:200]
+                    raw_src = evidence or description or url
+                    raw_output_sanitized = sanitize_raw_output(raw_src)
+                    session.run(
+                        """
+                        MATCH (v:Vulnerability {id: $vuln_id})
+                        MERGE (e:Evidence {id: $evidence_id})
+                        ON CREATE SET
+                            e.project_id = $project_id,
+                            e.user_id = $user_id,
+                            e.event_id = null,
+                            e.phase = "Vulnerability Scanning",
+                            e.tool = "security_check",
+                            e.source_type = "vulnerability_finding",
+                            e.kind = "scan",
+                            e.template_id = null,
+                            e.severity = $severity,
+                            e.fuzzing_parameter = null,
+                            e.summary = $summary,
+                            e.raw_output = $raw_output,
+                            e.metadata = null,
+                            e.action_log_id = null,
+                            e.created_at = datetime()
+                        WITH v, e
+                        MERGE (v)-[:HAS_EVIDENCE]->(e)
+                        """,
+                        vuln_id=vuln_id, evidence_id=evidence_id,
+                        project_id=project_id, user_id=user_id,
+                        severity=severity or None,
+                        summary=summary, raw_output=raw_output_sanitized,
+                    )
+                    stats["relationships_created"] += 1
 
                     # Create relationships based on finding type
                     # Priority: IP (for IP-based URLs) > BaseURL (for hostname URLs) > Subdomain/Domain > IP
@@ -2586,6 +2726,43 @@ class Neo4jClient:
                         )
                         stats["vulnerabilities_created"] += 1
 
+                        # Create Evidence node for traceability
+                        id_input = f"{vuln_id}gvm{oid}{target_ip}"
+                        evidence_id = f"evidence-{hashlib.sha256(id_input.encode()).hexdigest()[:24]}"
+                        summary = f"{nvt.get('name', '')} at {target_ip}"[:200]
+                        raw_src = vuln.get("description") or vuln.get("threat", "")
+                        raw_output_sanitized = sanitize_raw_output(raw_src)
+                        session.run(
+                            """
+                            MATCH (v:Vulnerability {id: $vuln_id})
+                            MERGE (e:Evidence {id: $evidence_id})
+                            ON CREATE SET
+                                e.project_id = $project_id,
+                                e.user_id = $user_id,
+                                e.event_id = null,
+                                e.phase = "GVM Scan",
+                                e.tool = "gvm",
+                                e.source_type = "vulnerability_finding",
+                                e.kind = "scan",
+                                e.template_id = $oid,
+                                e.severity = $severity_class,
+                                e.fuzzing_parameter = null,
+                                e.summary = $summary,
+                                e.raw_output = $raw_output,
+                                e.metadata = null,
+                                e.action_log_id = null,
+                                e.created_at = datetime()
+                            WITH v, e
+                            MERGE (v)-[:HAS_EVIDENCE]->(e)
+                            """,
+                            vuln_id=vuln_id, evidence_id=evidence_id,
+                            project_id=project_id, user_id=user_id,
+                            oid=oid or None,
+                            severity_class=severity_class or None,
+                            summary=summary, raw_output=raw_output_sanitized,
+                        )
+                        stats["relationships_created"] += 1
+
                         # Link to IP node
                         if target_ip:
                             result = session.run(
@@ -2684,6 +2861,134 @@ class Neo4jClient:
 
             if stats["errors"]:
                 print(f"[!] {len(stats['errors'])} errors occurred")
+
+        return stats
+
+    def update_graph_from_github(
+        self, project_id: str, user_id: str, github_json_path: str
+    ) -> dict:
+        """
+        Update the Neo4j graph with GitHub secret scan findings.
+
+        Creates GitHubSecret nodes and links them to the project via tenant
+        properties. Supports both legacy (target) and project-scoped (target_org,
+        project_id, user_id) JSON formats.
+
+        Args:
+            project_id: Project identifier for multi-tenant isolation
+            user_id: User identifier for multi-tenant isolation
+            github_json_path: Path to github_secrets_{project_id}.json
+
+        Returns:
+            Dictionary with statistics (secrets_created, etc.)
+        """
+        stats = {"secrets_created": 0, "secrets_updated": 0, "errors": []}
+
+        json_path = Path(github_json_path)
+        if not json_path.exists():
+            stats["errors"].append(f"File not found: {github_json_path}")
+            return stats
+
+        try:
+            with open(json_path, "r") as f:
+                data = json.load(f)
+        except Exception as e:
+            stats["errors"].append(f"Failed to load JSON: {e}")
+            return stats
+
+        findings = data.get("findings", [])
+        if not findings:
+            return stats
+
+        # Use project_id/user_id from JSON if available (new format)
+        eff_project_id = data.get("project_id") or project_id
+        eff_user_id = data.get("user_id") or user_id
+
+        with self.driver.session() as session:
+            self._init_schema(session)
+
+            # Remove existing GitHubSecret nodes for this project (fresh import)
+            session.run(
+                """
+                MATCH (g:GitHubSecret)
+                WHERE g.project_id = $project_id AND g.user_id = $user_id
+                DETACH DELETE g
+                """,
+                project_id=eff_project_id,
+                user_id=eff_user_id,
+            )
+
+            for finding in findings:
+                try:
+                    repo = finding.get("repository", "")
+                    path = finding.get("path", "")
+                    finding_type = finding.get("type", "SECRET")
+                    secret_type = finding.get("secret_type", "Unknown")
+                    details = finding.get("details") or {}
+
+                    # Extract secret value / sample
+                    secret_value = details.get("sample") or details.get("value") or ""
+
+                    # For AI_LLM_USAGE: provider, line, pattern, severity from finding
+                    provider = finding.get("provider") or ""
+                    line = finding.get("line") or 0
+                    pattern = finding.get("pattern") or ""
+
+                    # Map finding_type to severity (AI_LLM_USAGE has its own)
+                    severity_map = {
+                        "SECRET": "high",
+                        "HIGH_ENTROPY": "medium",
+                        "SENSITIVE_FILE": "low",
+                    }
+                    severity = finding.get("severity") if finding_type == "AI_LLM_USAGE" else severity_map.get(finding_type, "info")
+
+                    # Provider fallback for non-AI_LLM findings
+                    if not provider and secret_type:
+                        provider = secret_type.split()[0].lower()
+
+                    # Deterministic ID for MERGE
+                    id_input = f"{eff_project_id}|{repo}|{path}|{finding_type}|{line}|{provider}|{secret_value}"
+                    node_id = "ghsec_" + hashlib.sha256(id_input.encode()).hexdigest()[:32]
+
+                    scan_ts = finding.get("timestamp", data.get("scan_start_time", ""))
+
+                    session.run(
+                        """
+                        MERGE (g:GitHubSecret {id: $id})
+                        SET g.user_id = $user_id,
+                            g.project_id = $project_id,
+                            g.repository = $repository,
+                            g.path = $path,
+                            g.line = $line,
+                            g.secret_type = $secret_type,
+                            g.finding_type = $finding_type,
+                            g.provider = $provider,
+                            g.severity = $severity,
+                            g.secret_value = $secret_value,
+                            g.pattern = $pattern,
+                            g.commit_sha = $commit_sha,
+                            g.source = $source,
+                            g.scan_timestamp = $scan_timestamp
+                        """,
+                        id=node_id,
+                        user_id=eff_user_id,
+                        project_id=eff_project_id,
+                        repository=repo,
+                        path=path,
+                        line=line,
+                        secret_type=secret_type,
+                        finding_type=finding_type,
+                        provider=provider or "unknown",
+                        severity=severity,
+                        secret_value=secret_value[:500] if secret_value else "",
+                        pattern=pattern[:500] if pattern else "",
+                        commit_sha="",
+                        source="github",
+                        scan_timestamp=scan_ts,
+                    )
+                    stats["secrets_created"] += 1
+                except Exception as e:
+                    stats["errors"].append(str(e))
 
         return stats
 

@@ -21,6 +21,31 @@
   color: var(--drawer-section-info);
 }
 
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.viewEvidenceButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-default);
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.viewEvidenceButton:hover {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
 .deleteButton {
   background: none;
   border: 1px solid var(--border-subtle);

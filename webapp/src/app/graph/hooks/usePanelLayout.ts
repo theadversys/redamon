@@ -13,21 +13,29 @@ const RESPONSIVE_BREAKPOINT = 768 // px
 
 export type ViewMode = 'split' | 'tab'
 
+/** Single = split/tab (current). All = three-pane (Graph | Chat | Recon visible) */
+export type LayoutMode = 'single' | 'all'
+
 interface PanelLayoutState {
   userViewMode: ViewMode
   effectiveViewMode: ViewMode
+  layoutMode: LayoutMode
+  effectiveLayoutMode: LayoutMode
   panelSizes: [number, number] // percentages [graph, ai]
   savedSplitSizes: [number, number] | null // preserved when switching to tab
 }
 
 interface StoredLayout {
   viewMode: ViewMode
+  layoutMode: LayoutMode
   panelSizes: [number, number]
 }
 
 const DEFAULT_LAYOUT: PanelLayoutState = {
   userViewMode: 'split',
   effectiveViewMode: 'split',
+  layoutMode: 'single',
+  effectiveLayoutMode: 'single',
   panelSizes: [65, 35], // Graph 65%, AI 35%
   savedSplitSizes: null,
 }
@@ -48,6 +56,9 @@ function validateStoredLayout(data: unknown): StoredLayout | null {
   // Check viewMode
   if (obj.viewMode !== 'split' && obj.viewMode !== 'tab') return null
   
+  // Check layoutMode (optional - default to single)
+  const layoutMode = obj.layoutMode === 'all' ? 'all' : 'single'
+  
   // Check panelSizes
   if (!Array.isArray(obj.panelSizes) || obj.panelSizes.length !== 2) return null
   const sizes = obj.panelSizes as [unknown, unknown]
@@ -64,6 +75,7 @@ function validateStoredLayout(data: unknown): StoredLayout | null {
   
   return {
     viewMode: obj.viewMode as ViewMode,
+    layoutMode,
     panelSizes: [graphSize, aiSize],
   }
 }
@@ -112,9 +124,12 @@ export function usePanelLayout() {
     if (typeof window !== 'undefined') {
       const stored = loadLayout()
       if (stored) {
+        const layoutMode = stored.layoutMode ?? 'single'
         return {
           userViewMode: stored.viewMode,
           effectiveViewMode: stored.viewMode,
+          layoutMode,
+          effectiveLayoutMode: layoutMode,
           panelSizes: stored.panelSizes,
           savedSplitSizes: null,
         }
@@ -130,9 +145,12 @@ export function usePanelLayout() {
     if (state.userViewMode === DEFAULT_LAYOUT.userViewMode && state.effectiveViewMode === DEFAULT_LAYOUT.effectiveViewMode) {
       const stored = loadLayout()
       if (stored) {
+        const layoutMode = stored.layoutMode ?? 'single'
         setState({
           userViewMode: stored.viewMode,
           effectiveViewMode: stored.viewMode,
+          layoutMode,
+          effectiveLayoutMode: layoutMode,
           panelSizes: stored.panelSizes,
           savedSplitSizes: null,
         })
@@ -140,31 +158,22 @@ export function usePanelLayout() {
     }
   }, [])
   
-  // Handle responsive behavior (effectiveViewMode)
+  // Handle responsive behavior (effectiveViewMode only; layout mode is always user choice)
   useEffect(() => {
     const updateEffectiveMode = () => {
+      const containerWidth = containerRef.current?.clientWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1024)
+      const isNarrow = containerWidth < RESPONSIVE_BREAKPOINT
+
       if (!containerRef.current) {
-        // If container not ready yet, default to split for desktop
-        // This ensures we don't start in tab mode incorrectly
-        if (typeof window !== 'undefined' && window.innerWidth >= RESPONSIVE_BREAKPOINT) {
-          setState(prev => {
-            if (prev.effectiveViewMode === 'tab' && prev.userViewMode === 'split') {
-              return { ...prev, effectiveViewMode: 'split' }
-            }
-            return prev
-          })
-        }
         return
       }
-      
-      const containerWidth = containerRef.current.clientWidth || window.innerWidth
-      const isNarrow = containerWidth < RESPONSIVE_BREAKPOINT
-      
+
       setState(prev => {
         const effectiveViewMode = isNarrow ? 'tab' : prev.userViewMode
         return {
           ...prev,
           effectiveViewMode,
+          effectiveLayoutMode: prev.layoutMode,
         }
       })
     }
@@ -220,12 +229,32 @@ export function usePanelLayout() {
         newState.savedSplitSizes = null
       }
       
-      // Persist userViewMode and panelSizes
+      // Persist
       saveDebounced.current({
         viewMode: newState.userViewMode,
+        layoutMode: newState.layoutMode,
         panelSizes: newState.panelSizes,
       })
       
+      return newState
+    })
+  }, [])
+
+  // Set layout mode (Single vs All three-pane)
+  const setLayoutMode = useCallback((mode: LayoutMode) => {
+    setState(prev => {
+      const newState = {
+        ...prev,
+        layoutMode: mode,
+        effectiveLayoutMode: mode,
+      }
+
+      saveDebounced.current({
+        viewMode: newState.userViewMode,
+        layoutMode: newState.layoutMode,
+        panelSizes: newState.panelSizes,
+      })
+
       return newState
     })
   }, [])
@@ -240,9 +269,9 @@ export function usePanelLayout() {
         panelSizes: sizes,
       }
       
-      // Persist panel sizes
       saveDebounced.current({
         viewMode: newState.userViewMode,
+        layoutMode: newState.layoutMode,
         panelSizes: newState.panelSizes,
       })
       
@@ -263,9 +292,12 @@ export function usePanelLayout() {
   return {
     userViewMode: state.userViewMode,
     effectiveViewMode: state.effectiveViewMode,
+    layoutMode: state.layoutMode,
+    effectiveLayoutMode: state.effectiveLayoutMode,
     panelSizes: state.panelSizes,
     containerRef,
     setUserViewMode,
+    setLayoutMode,
     setPanelSizes,
     hideAI,
     showAI,

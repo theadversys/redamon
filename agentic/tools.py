@@ -502,6 +502,192 @@ class WebSearchToolManager:
 
 
 # =============================================================================
+# GITHUB FINDINGS TOOL MANAGER
+# =============================================================================
+
+# Lazy import to avoid circular deps
+def _github_api_client():
+    from github_api_client import get_github_findings as api_findings, get_github_stats as api_stats
+    return api_findings, api_stats
+
+
+class GitHubToolManager:
+    """Manages GitHub secret/usage findings tools via webapp API."""
+
+    def __init__(self, webapp_url: str = None):
+        self.webapp_url = (webapp_url or os.environ.get('WEBAPP_API_URL', '')).rstrip('/')
+
+    def get_tools(self) -> List:
+        """
+        Return get_github_findings and get_github_stats tools.
+
+        Returns:
+            List of (get_github_findings, get_github_stats) or empty if webapp URL not set.
+        """
+        if not self.webapp_url:
+            logger.warning(
+                "WEBAPP_API_URL not set - GitHub tools will not be available. "
+                "Set WEBAPP_API_URL to enable get_github_findings and get_github_stats."
+            )
+            return []
+
+        base_url = self.webapp_url
+
+        @tool
+        async def get_github_findings(
+            findingType: str = "",
+            secretType: str = "",
+            provider: str = "",
+            severity: str = "",
+            repo: str = "",
+            path: str = "",
+            findingId: str = "",
+            since: str = "",
+            limit: int = 200,
+            offset: int = 0,
+        ) -> str:
+            """
+            Get GitHub secret scan findings for the current project.
+
+            IMPORTANT: Never print raw secret values. Summarize counts and link to the Secrets page instead.
+            Use this tool to retrieve secrets, AI/LLM keys, high-entropy candidates,
+            and AI usage patterns discovered in GitHub repositories.
+
+            Call get_github_stats first for a summary, then use this to fetch details.
+            All parameters are optional - omit to get all findings.
+
+            Args:
+                findingType: SECRET, HIGH_ENTROPY, SENSITIVE_FILE, AI_LLM_USAGE
+                secretType: e.g. OpenAI API Key, AWS Access Key ID
+                provider: openai, anthropic, huggingface, cohere, groq, etc.
+                severity: critical, high, medium, low, info
+                repo: substring match on repository
+                path: substring match on file path
+                findingId: exact finding id
+                since: filter by scanTimestamp (ISO date)
+                limit: max 2000, default 200
+                offset: pagination offset
+
+            Returns:
+                Summary of findings (never raw secret values). Link to /secrets for details.
+            """
+            project_id = current_project_id.get()
+            user_id = current_user_id.get()
+            if not project_id:
+                return "No project is selected. Please select a project to view GitHub findings."
+            if not user_id and os.environ.get("AGENT_SERVICE_TOKEN"):
+                return "No project is selected. Please select a project to view GitHub findings."
+
+            api_findings, _ = _github_api_client()
+            data, err = await api_findings(
+                base_url,
+                project_id,
+                user_id or "",
+                finding_type=findingType,
+                secret_type=secretType,
+                provider=provider,
+                severity=severity,
+                repo=repo,
+                path=path,
+                id_=findingId,
+                since=since,
+                limit=min(limit, 2000),
+                offset=offset,
+            )
+            if err:
+                return f"Error: {err}"
+
+            findings = data.get("findings", [])
+            page_info = data.get("pageInfo", {})
+
+            if not findings:
+                return (
+                    "No GitHub findings for this project matching your filters. "
+                    "Try get_github_stats to check if any scan has run, or suggest running a GitHub scan."
+                )
+
+            total = page_info.get("totalApprox", len(findings))
+            has_more = page_info.get("hasMore", False)
+
+            lines = [f"Found {len(findings)} GitHub findings (total ~{total})"]
+            if has_more:
+                lines.append("(More results available - use filters or pagination)")
+            lines.append("")
+            for i, f in enumerate(findings[:30], 1):
+                repo_path = f.get("repository", "") or "?"
+                path_line = f.get("path", "") or "?"
+                if f.get("line"):
+                    path_line = f"{path_line}:{f['line']}"
+                lines.append(
+                    f"[{i}] {f.get('severity', '?')} | {f.get('findingType', '?')} | "
+                    f"{f.get('secretType', '?')} | {repo_path} | {path_line}"
+                )
+            if len(findings) > 30:
+                lines.append(f"... and {len(findings) - 30} more in this page")
+            lines.append("")
+            lines.append(f"View full details at /secrets?project={project_id}")
+            return "\n".join(lines)
+
+        @tool
+        async def get_github_stats() -> str:
+            """
+            Get GitHub secret scan summary statistics for the current project.
+
+            IMPORTANT: Never print raw secret values. Summarize counts and link to the Secrets page.
+            Use this tool first when the user asks about GitHub secrets, leaked keys, or AI/LLM usage.
+
+            Returns:
+                Summary with total findings, by severity, by type, AI/LLM counts, last scan.
+            """
+            project_id = current_project_id.get()
+            user_id = current_user_id.get()
+            if not project_id:
+                return "No project is selected. Please select a project to view GitHub findings."
+            if not user_id and os.environ.get("AGENT_SERVICE_TOKEN"):
+                return "No project is selected. Please select a project to view GitHub findings."
+
+            _, api_stats = _github_api_client()
+            data, err = await api_stats(base_url, project_id, user_id or "")
+            if err:
+                return f"Error: {err}"
+
+            total = data.get("totalFindings", 0)
+            by_sev = data.get("bySeverity", {})
+            by_type = data.get("byFindingType", {})
+            ai_secrets = data.get("aiLlmSecretsCount", 0)
+            ai_usage = data.get("aiLlmUsageCount", 0)
+            ai_repos = data.get("reposWithAiUsage", 0)
+            last_scan = data.get("lastScan", "Never")
+
+            lines = [
+                f"GitHub Secret Scan Summary (project: {project_id})",
+                f"Total findings: {total}",
+                f"Last scan: {last_scan}",
+                "",
+                "By severity:",
+                f"  - Critical: {by_sev.get('critical', 0)}",
+                f"  - High: {by_sev.get('high', 0)}",
+                f"  - Medium: {by_sev.get('medium', 0)}",
+                f"  - Low: {by_sev.get('low', 0)}",
+                f"  - Info: {by_sev.get('info', 0)}",
+                "",
+                "By finding type:",
+            ]
+            for k, v in (by_type or {}).items():
+                lines.append(f"  - {k}: {v}")
+            lines.extend([
+                "",
+                f"AI/LLM secrets: {ai_secrets}",
+                f"AI/LLM usage (no keys): {ai_usage} in {ai_repos} repos",
+                "",
+                f"View details at /secrets?project={project_id}",
+            ])
+            return "\n".join(lines)
+
+        return [get_github_findings, get_github_stats]
+
+
+# =============================================================================
 # PHASE-AWARE TOOL EXECUTOR
 # =============================================================================
 
@@ -516,6 +702,7 @@ class PhaseAwareToolExecutor:
         mcp_manager: MCPToolsManager,
         graph_tool: Optional[callable],
         web_search_tool: Optional[callable] = None,
+        github_tools: Optional[List] = None,
     ):
         self.mcp_manager = mcp_manager
         self.graph_tool = graph_tool
@@ -529,6 +716,13 @@ class PhaseAwareToolExecutor:
         # Register web search tool
         if web_search_tool:
             self._all_tools["web_search"] = web_search_tool
+
+        # Register GitHub tools (informational phase only)
+        if github_tools:
+            for t in github_tools:
+                name = getattr(t, 'name', None) if t else None
+                if name:
+                    self._all_tools[name] = t
 
     def register_mcp_tools(self, tools: List) -> None:
         """Register MCP tools after they're loaded."""
@@ -626,6 +820,10 @@ class PhaseAwareToolExecutor:
                 # Web search tool expects 'query' argument
                 query = tool_args.get("query", "")
                 output = await tool.ainvoke(query)
+            elif tool_name == "get_github_findings":
+                output = await tool.ainvoke(tool_args)
+            elif tool_name == "get_github_stats":
+                output = await tool.ainvoke({})
             else:
                 # MCP tools - invoke with the appropriate argument
                 output = await tool.ainvoke(tool_args)

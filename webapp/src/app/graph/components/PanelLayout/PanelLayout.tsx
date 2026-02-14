@@ -16,23 +16,13 @@ import styles from './PanelLayout.module.css'
 // Import react-resizable-panels (should be bundled by Next.js)
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 
-// Log immediately when module loads
-console.log('[PanelLayout] 📦 MODULE LOADED - react-resizable-panels imported:', {
-  PanelGroup: typeof PanelGroup,
-  Panel: typeof Panel,
-  PanelResizeHandle: typeof PanelResizeHandle
-})
-
-// Debug: Log when PanelLayout module loads (this runs immediately when module is imported)
-if (typeof window !== 'undefined') {
-  console.log('[PanelLayout] 📦 MODULE LOADED - This confirms the file is being bundled and imported')
-}
-
 interface PanelLayoutProps {
   graphContent: (dimensions: { width: number; height: number }) => ReactNode
   aiContent: ReactNode
   activeTab?: 'graph' | 'ai' // For tab mode
   onTabChange?: (tab: 'graph' | 'ai') => void
+  /** When 'all', use three-pane layout (Graph | Chat+Recon stacked) */
+  effectiveLayoutMode?: 'single' | 'all'
 }
 
 export function PanelLayout({
@@ -40,11 +30,8 @@ export function PanelLayout({
   aiContent,
   activeTab = 'graph',
   onTabChange,
+  effectiveLayoutMode = 'single',
 }: PanelLayoutProps) {
-  // Log immediately when function is called (before any hooks)
-  console.log('[PanelLayout] 🚀🚀🚀 FUNCTION CALLED - Component is rendering!')
-  console.log('[PanelLayout] Build version: panel-layout-v1-2026-02-10')
-  
   const {
     effectiveViewMode,
     panelSizes,
@@ -55,25 +42,52 @@ export function PanelLayout({
   const graphPanelRef = useRef<HTMLDivElement>(null)
   const graphDimensions = useGraphPanelDimensions(graphPanelRef)
   
-  // Debug logging - guaranteed mount-time log (runs on every render)
-  useEffect(() => {
-    console.log('[PanelLayout] ✅✅✅ COMPONENT MOUNTED - Client hydration successful!')
-    console.log('[PanelLayout] effectiveViewMode:', effectiveViewMode, 'panelSizes:', panelSizes)
-    console.log('[PanelLayout] PanelGroup available:', typeof PanelGroup !== 'undefined')
-    console.log('[PanelLayout] viewMode will be:', effectiveViewMode || 'split')
-  }, [effectiveViewMode, panelSizes])
-  
   const handlePanelResize = (sizes: number[]) => {
     if (sizes.length === 2) {
       setPanelSizes([sizes[0], sizes[1]])
     }
   }
   
+  // Three-pane mode: Graph | Chat+Recon (resizable horizontally and vertically)
+  if (effectiveLayoutMode === 'all') {
+    return (
+      <div ref={containerRef} className={styles.container} data-testid="panel-layout-all">
+        <PanelGroup
+          direction="horizontal"
+          className={styles.threePaneGroup}
+        >
+          {/* Graph Pane - resizable width */}
+          <Panel
+            defaultSize={65}
+            minSize={30}
+            maxSize={85}
+            className={styles.panel}
+          >
+            <div ref={graphPanelRef} className={styles.threePaneGraph}>
+              {graphContent(graphDimensions)}
+            </div>
+          </Panel>
+          {/* Vertical drag handle: Graph ↔ Right column */}
+          <PanelResizeHandle className={styles.resizeHandle} />
+          {/* Right column: AI + Recon (AIPanel handles inner vertical resize) */}
+          <Panel
+            defaultSize={35}
+            minSize={15}
+            maxSize={70}
+            className={styles.panel}
+          >
+            <div className={styles.threePaneRight}>
+              {aiContent}
+            </div>
+          </Panel>
+        </PanelGroup>
+      </div>
+    )
+  }
+
   // Split mode: show both panels side-by-side
-  // Always default to split mode if effectiveViewMode is not set
   const viewMode = effectiveViewMode || 'split'
   
-  // Force split mode for now to debug - always show split
   try {
     if (viewMode === 'split') {
       return (

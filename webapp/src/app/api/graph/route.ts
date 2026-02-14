@@ -394,7 +394,22 @@ function getNodeName(node: Neo4jNode): string {
       const cves = props.cve_ids as string[] || []
       return `EXPLOITED\n${cves[0] || ''}\n${targetIp}`
     }
-    return `EXPLOITED\n${props.username || ''}@${targetIp}`
+    if (attackType === 'brute_force_credential_guess' || attackType === 'brute_force') {
+      return `EXPLOITED\n${props.username || ''}@${targetIp}`
+    }
+    const attackLabels: Record<string, string> = {
+      social_engineering: 'SOC',
+      dos: 'DoS',
+      fuzzing: 'FUZZ',
+      wireless: 'WIFI',
+      client_side_exploit: 'CLI',
+      local_privilege_escalation: 'PRIV',
+      web_app_exploit: 'WEB',
+      credential_capture: 'CAPT',
+      llm_exploit: 'LLM',
+    }
+    const shortLabel = attackLabels[attackType] || attackType || 'EXPL'
+    return `EXPLOITED\n${shortLabel}\n${targetIp}`
   }
 
   // Special handling for Vulnerability nodes - show name and severity

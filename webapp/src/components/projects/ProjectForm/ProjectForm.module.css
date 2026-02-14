@@ -196,6 +196,95 @@
   letter-spacing: var(--tracking-wide);
 }
 
+/* GitHub config hint when scan enabled but not configured */
+.githubConfigHint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-default);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  flex-wrap: wrap;
+}
+
+.githubConfigHint span {
+  flex: 1;
+  min-width: 200px;
+}
+
+.githubConfigButton {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.githubConfigButton:hover {
+  background: var(--accent-primary);
+  color: white;
+}
+
+/* GitHub config banner */
+.githubConfigBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-default);
+  margin: 0 var(--space-4) var(--space-4);
+}
+
+.githubConfigBannerIcon {
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
+.githubConfigBannerContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.githubConfigBannerTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.githubConfigBannerMessage {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.githubConfigBannerButton {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.githubConfigBannerButton:hover {
+  background: var(--accent-primary);
+  color: white;
+}
+
 /* Conflict warning banner */
 .conflictBanner {
   display: flex;
@@ -308,4 +397,127 @@
   height: 16px;
   accent-color: var(--accent-secondary);
   cursor: pointer;
+}
+
+/* GitHub repo selection */
+.repoSelectionSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-default);
+  border: 1px solid var(--border-default);
+}
+
+.repoSelectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.repoSearchInput {
+  flex: 1;
+  min-width: 180px;
+}
+
+.repoSelectionActions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.repoSelectButton {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.repoSelectButton:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.repoList {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  padding: var(--space-1);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.repoListItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+}
+
+.repoListItem:hover {
+  background: var(--bg-hover);
+}
+
+.repoCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.repoName {
+  flex: 1;
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.repoPrivateBadge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.manualInputToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.manualInputToggle:hover {
+  color: var(--text-primary);
+}
+
+.manualInputChevronOpen {
+  transform: rotate(90deg);
+}
+
+.manualInputContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-left: var(--space-4);
 }

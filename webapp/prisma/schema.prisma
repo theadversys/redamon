@@ -47,11 +47,19 @@ model Project {
   // ========== GITHUB SECRET HUNT ==========
   githubAccessToken           String   @default("") @map("github_access_token")
   githubTargetOrg             String   @default("") @map("github_target_org")
+  githubRepoAllowlist         String[] @default([]) @map("github_repo_allowlist")
+  githubIncludeForks          Boolean  @default(false) @map("github_include_forks")
   githubScanMembers           Boolean  @default(false) @map("github_scan_members")
   githubScanGists             Boolean  @default(true) @map("github_scan_gists")
   githubScanCommits           Boolean  @default(true) @map("github_scan_commits")
   githubMaxCommits            Int      @default(100) @map("github_max_commits")
   githubOutputJson            Boolean  @default(true) @map("github_output_json")
+  githubScanSecrets           Boolean  @default(true) @map("github_scan_secrets")
+  githubScanHighEntropy       Boolean  @default(true) @map("github_scan_high_entropy")
+  githubScanAiLlmKeys         Boolean  @default(true) @map("github_scan_ai_llm_keys")
+  githubScanAiLlmUsage        Boolean  @default(true) @map("github_scan_ai_llm_usage")
+  githubMaxFilesPerRepo       Int      @default(10000) @map("github_max_files_per_repo")
+  githubMaxFileSizeBytes      Int      @default(1048576) @map("github_max_file_size_bytes")
 
   // ========== NAABU PORT SCANNER ==========
   naabuDockerImage            String   @default("projectdiscovery/naabu:latest") @map("naabu_docker_image")
@@ -268,6 +276,7 @@ model Project {
   agentRiskThreshold                     Int      @default(30) @map("agent_risk_threshold")
   agentMaxParallelTasks                  Int      @default(5) @map("agent_max_parallel_tasks")
   agentMultiAgentEnabled                 Boolean  @default(false) @map("agent_multi_agent_enabled")
+  agentOperatingMode                     String   @default("guided") @map("agent_operating_mode")
 
   @@map("projects")
 }

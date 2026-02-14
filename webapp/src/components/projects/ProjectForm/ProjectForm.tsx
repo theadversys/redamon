@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, X, Loader2, AlertTriangle } from 'lucide-react'
+import { Save, X, Loader2, AlertTriangle, Github } from 'lucide-react'
 import type { Project } from '@prisma/client'
 import styles from './ProjectForm.module.css'
 
@@ -227,6 +227,27 @@ export function ProjectForm({
         </div>
       </div>
 
+      {/* GitHub config warning when module enabled but not configured */}
+      {formData.scanModules.includes('github') &&
+        (!formData.githubAccessToken?.trim() || !formData.githubTargetOrg?.trim()) && (
+        <div className={styles.githubConfigBanner}>
+          <Github size={20} className={styles.githubConfigBannerIcon} />
+          <div className={styles.githubConfigBannerContent}>
+            <div className={styles.githubConfigBannerTitle}>GitHub scan enabled but not configured</div>
+            <div className={styles.githubConfigBannerMessage}>
+              Add a GitHub Access Token and Target Organization in the Integrations tab to scan for exposed secrets and AI keys.
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.githubConfigBannerButton}
+            onClick={() => setActiveTab('integrations')}
+          >
+            Configure GitHub →
+          </button>
+        </div>
+      )}
+
       {/* Domain conflict warning banner */}
       {conflict?.hasConflict && (
         <div className={styles.conflictBanner}>
@@ -270,7 +291,11 @@ export function ProjectForm({
             {activeTab === 'target' && (
           <>
             <TargetSection data={formData} updateField={updateField} />
-            <ScanModulesSection data={formData} updateField={updateField} />
+            <ScanModulesSection
+              data={formData}
+              updateField={updateField}
+              onNavigateToIntegrations={() => setActiveTab('integrations')}
+            />
           </>
         )}
 
@@ -306,7 +331,11 @@ export function ProjectForm({
         )}
 
         {activeTab === 'integrations' && (
-          <GithubSection data={formData} updateField={updateField} />
+          <GithubSection
+            data={formData}
+            updateField={updateField}
+            projectId={initialData?.id}
+          />
         )}
 
         {activeTab === 'agent' && (

@@ -8,8 +8,9 @@ Intentionally vulnerable Apache servers for security testing and exploitation pr
 
 ## Available Versions
 
-| Folder | Version | CVEs | Description |
-|--------|---------|------|-------------|
+| Folder | Version | Vulns | Description |
+|--------|---------|-------|-------------|
+| `panda_vuln_app` | Flask 2.3 | SQLi, XSS, RCE, SSRF, Path Traversal | **Recommended for agent testing** — 12+ vulns, Katana-crawlable |
 | `apache_2.4.49` | Apache 2.4.49 | CVE-2021-41773, CVE-2021-42013 | Path traversal + RCE |
 | `apache_2.4.25` | Apache 2.4.25 | CVE-2017-3167, CVE-2017-3169 | Auth bypass + DoS |
 

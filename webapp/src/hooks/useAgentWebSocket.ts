@@ -26,6 +26,7 @@ interface UseAgentWebSocketConfig {
   userId: string
   projectId: string
   sessionId: string
+  operatingMode?: 'guided' | 'offensive'
   enabled?: boolean
   onMessage?: (message: ServerMessage) => void
   onError?: (error: Error) => void
@@ -58,6 +59,7 @@ export function useAgentWebSocket({
   userId,
   projectId,
   sessionId,
+  operatingMode,
   enabled = true,
   onMessage,
   onError,
@@ -102,10 +104,11 @@ export function useAgentWebSocket({
       user_id: userId,
       project_id: projectId,
       session_id: sessionId,
+      ...(operatingMode && { operating_mode: operatingMode }),
     }
 
     sendMessage(MessageType.INIT, initPayload)
-  }, [userId, projectId, sessionId, sendMessage])
+  }, [userId, projectId, sessionId, operatingMode, sendMessage])
 
   // Public API: Send query
   const sendQuery = useCallback((question: string) => {
@@ -329,7 +332,7 @@ export function useAgentWebSocket({
         wsRef.current.close()
       }
     }
-  }, [enabled, userId, projectId, sessionId]) // Reconnect if session changes
+  }, [enabled, userId, projectId, sessionId, operatingMode]) // Reconnect if session or operating mode changes
 
   return {
     status,

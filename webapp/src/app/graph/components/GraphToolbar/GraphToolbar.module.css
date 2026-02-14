@@ -1,6 +1,7 @@
 .toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-3);
   padding: var(--space-1) var(--space-3);
   background: var(--bg-tertiary);
@@ -227,6 +228,50 @@
   color: var(--text-on-accent);
 }
 
+/* Layout Mode Switcher (Single vs All) */
+.layoutSwitcher {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.layoutButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.layoutButton:last-child {
+  border-right: none;
+}
+
+.layoutButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.layoutButtonActive {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.layoutButtonActive:hover {
+  background: var(--accent-primary-hover);
+  color: var(--text-on-accent);
+}
+
 /* Tab Mode Switcher Buttons */
 .tabButton {
   display: flex;
@@ -273,9 +318,9 @@
   gap: var(--space-1-5);
   padding: var(--space-1) var(--space-2-5);
   background: transparent;
-  border: 1px solid var(--status-success);
+  border: 1px solid var(--color-yellow-500);
   border-radius: var(--radius-md);
-  color: var(--status-success);
+  color: var(--color-yellow-500);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   cursor: pointer;
@@ -283,8 +328,8 @@
 }
 
 .reconButton:hover:not(:disabled) {
-  background: var(--status-success);
-  color: white;
+  background: var(--color-yellow-500);
+  color: var(--text-inverse);
 }
 
 .reconButton:disabled {
@@ -292,8 +337,8 @@
 }
 
 .reconButtonActive {
-  background: var(--status-success);
-  color: white;
+  background: var(--color-yellow-500);
+  color: var(--text-inverse);
 }
 
 .logsButton {

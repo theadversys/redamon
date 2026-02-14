@@ -1,0 +1,9 @@
+services:
+  panda-vuln-app:
+    build: .
+    container_name: pandaexploit-vuln-app
+    ports:
+      - "5002:5000"
+    restart: unless-stopped
+    # Run as root for path traversal to /etc/passwd (intentional for testing)
+    # No security hardening - intended for pentest practice only

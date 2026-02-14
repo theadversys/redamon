@@ -475,6 +475,47 @@ FOR (v:Vulnerability) ON (v.category);
 
 ---
 
+### 10.1 Evidence (Evidence Chain)
+Traceability records linking vulnerabilities to recon phase, tool output, and artifacts.
+Created during graph update from vuln_scan (nuclei, security_check) and gvm_scan.
+
+```cypher
+(:Evidence {
+    id: "evidence-<hash>",                  // Unique hash-based ID (deduplication)
+    project_id: string,
+    user_id: string,
+    event_id: string | null,               // Reserved for v2 log correlation
+    phase: string,                         // e.g. "Vulnerability Scanning", "GVM Scan"
+    tool: string,                          // "nuclei", "security_check", "gvm"
+    source_type: string,                   // "vulnerability_finding"
+    kind: string,                          // "scan" | "exploit" | "log" | "note" (v1: "scan")
+    template_id: string | null,
+    severity: string | null,
+    fuzzing_parameter: string | null,
+    summary: string,                       // Short human-readable summary
+    raw_output: string,                    // Sanitized + truncated (max 2000 chars)
+    metadata: string | null,               // JSON for extra fields
+    action_log_id: string | null,          // Optional link to ActionLog (future)
+    created_at: datetime
+})
+```
+
+**Relationship:**
+```cypher
+(Vulnerability)-[:HAS_EVIDENCE]->(Evidence)
+```
+
+**Constraints:**
+```cypher
+CREATE CONSTRAINT evidence_unique IF NOT EXISTS
+FOR (e:Evidence) REQUIRE e.id IS UNIQUE;
+
+CREATE INDEX idx_evidence_tenant IF NOT EXISTS
+FOR (e:Evidence) ON (e.user_id, e.project_id);
+```
+
+---
+
 ### 11. CVE
 Known CVEs from technology-based lookup.
 
@@ -764,6 +805,9 @@ RETURN s.name, ip.address, v.name, v.severity
 
 // Vulnerability found at endpoint (the path where the vulnerability was discovered)
 (Vulnerability)-[:FOUND_AT]->(Endpoint)
+
+// Vulnerability has evidence (traceability: phase, tool, raw output)
+(Vulnerability)-[:HAS_EVIDENCE]->(Evidence)
 
 // Vulnerability associated with CVE (if matched)
 (Vulnerability)-[:ASSOCIATED_CVE]->(CVE)
@@ -1295,10 +1339,45 @@ These are pre-computed for convenience in the JSON but the graph stores the sour
 
 ---
 
+### GitHubSecret (Phase 1)
+GitHub secret scan findings. Created by `update_graph_from_github` from `github_secrets_{project_id}.json`.
+
+```cypher
+(:GitHubSecret {
+  id: string,                // Deterministic: ghsec_ + hash(project_id + repository + path + type + secret_value)
+  user_id: string,
+  project_id: string,
+  repository: string,         // "org/repo"
+  path: string,
+  line: integer,
+  secret_type: string,        // "OpenAI API Key", "AWS Access Key ID", etc.
+  finding_type: string,       // "SECRET" | "HIGH_ENTROPY" | "SENSITIVE_FILE" | "AI_LLM_USAGE"
+  provider: string,
+  severity: string,           // critical | high | medium | low | info
+  secret_value: string,
+  pattern: string,
+  commit_sha: string,
+  source: string,             // "github"
+  scan_timestamp: string
+})
+```
+
+**Constraints:**
+```cypher
+CREATE CONSTRAINT github_secret_unique IF NOT EXISTS
+FOR (g:GitHubSecret) REQUIRE g.id IS UNIQUE;
+
+CREATE INDEX idx_github_secret_tenant IF NOT EXISTS
+FOR (g:GitHubSecret) ON (g.user_id, g.project_id, g.repository);
+```
+
+**Relationships:** GitHubSecret nodes are isolated by user_id/project_id; queried directly by tenant.
+
+---
+
 ## 🔮 Future Extensions (Not Implemented Yet)
 - GVMScan, GVMVulnerability, DetectedProduct, Traceroute, OSFingerprint nodes (GVM integration - designed but not yet created by code; GVM vulns currently stored as Vulnerability nodes with source="gvm")
 - `AttackChain` nodes linking vulnerabilities into exploitable paths
 - `Credential` nodes for discovered credentials
-- `GitHubSecret` nodes for leaked secrets
 - `Screenshot` nodes linking to stored images
 - `ScanSession` nodes for tracking multiple scan runs

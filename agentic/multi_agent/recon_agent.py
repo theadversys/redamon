@@ -37,23 +37,26 @@ class ReconAgent:
             return {"success": False, "error": f"Unknown task type: {task_type}"}
     
     async def _port_scan(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute port scan."""
+        """Execute port scan via execute_naabu."""
         if not self.tool_executor:
             return {"success": False, "error": "Tool executor not available"}
-        
-        target = task.get("target")
-        # Execute port scan using tool executor
-        # Simplified for now
-        return {"success": True, "result": f"Port scan completed for {target}"}
-    
+        target = task.get("target", "")
+        args = task.get("args", f"-host {target}")
+        result = await self.tool_executor.execute("execute_naabu", {"args": args}, "informational")
+        return {"success": result.get("success", False), "result": result.get("output", result.get("error", ""))}
+
     async def _graph_query(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute graph query."""
-        query = task.get("query")
-        # Execute graph query
-        return {"success": True, "result": f"Graph query executed: {query}"}
-    
+        """Execute graph query via query_graph."""
+        if not self.tool_executor:
+            return {"success": False, "error": "Tool executor not available"}
+        query = task.get("query", "")
+        result = await self.tool_executor.execute("query_graph", {"question": query}, "informational")
+        return {"success": result.get("success", False), "result": result.get("output", result.get("error", ""))}
+
     async def _web_search(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute web search."""
-        query = task.get("query")
-        # Execute web search
-        return {"success": True, "result": f"Web search executed: {query}"}
+        """Execute web search via web_search."""
+        if not self.tool_executor:
+            return {"success": False, "error": "Tool executor not available"}
+        query = task.get("query", "")
+        result = await self.tool_executor.execute("web_search", {"query": query}, "informational")
+        return {"success": result.get("success", False), "result": result.get("output", result.get("error", ""))}

@@ -466,15 +466,44 @@ def build_targets_from_naabu(recon_data: dict) -> List[str]:
     return list(set(urls))
 
 
-def build_targets_from_dns(recon_data: dict) -> List[str]:
+def _parse_custom_ports(ports_str: str) -> List[int]:
+    """Parse NAABU_CUSTOM_PORTS string (e.g. '5000-5010' or '80,443,5000') into list of port numbers."""
+    if not ports_str or not ports_str.strip():
+        return []
+    ports = []
+    for part in ports_str.replace(" ", "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            try:
+                lo, hi = part.split("-", 1)
+                lo, hi = int(lo.strip()), int(hi.strip())
+                ports.extend(range(lo, hi + 1))
+            except (ValueError, TypeError):
+                pass
+        else:
+            try:
+                ports.append(int(part))
+            except (ValueError, TypeError):
+                pass
+    return sorted(set(p for p in ports if 1 <= p <= 65535))
+
+
+def build_targets_from_dns(recon_data: dict, settings: dict = None) -> List[str]:
     """
     Fallback: Build URLs from DNS data when naabu results are not available.
 
+    For localhost/127.0.0.1 targets, also adds URLs for NAABU_CUSTOM_PORTS if set
+    (e.g. PromptMe on 5000-5010).
+
     Returns:
-        List of URLs using default ports (80, 443)
+        List of URLs using default ports (80, 443) and optionally custom ports for localhost
     """
     urls = []
     dns_data = recon_data.get("dns", {})
+    settings = settings or {}
+    custom_ports = _parse_custom_ports(settings.get("NAABU_CUSTOM_PORTS", "") or "")
 
     # Add root domain
     domain = recon_data.get("domain", "")
@@ -483,6 +512,12 @@ def build_targets_from_dns(recon_data: dict) -> List[str]:
         if domain_dns.get("ips", {}).get("ipv4") or domain_dns.get("ips", {}).get("ipv6"):
             urls.append(f"http://{domain}")
             urls.append(f"https://{domain}")
+            # For localhost, add custom ports (e.g. PromptMe on 5000)
+            if custom_ports and domain.lower() in ("localhost", "127.0.0.1"):
+                for port in custom_ports:
+                    urls.append(f"http://{domain}:{port}")
+                    urls.append(f"https://{domain}:{port}")
+                print(f"    [*] Added {len(custom_ports)} custom ports for localhost (from NAABU_CUSTOM_PORTS)")
 
     # Add subdomains
     subdomains_dns = dns_data.get("subdomains", {})
@@ -490,8 +525,12 @@ def build_targets_from_dns(recon_data: dict) -> List[str]:
         if sub_data.get("has_records", False):
             urls.append(f"http://{subdomain}")
             urls.append(f"https://{subdomain}")
+            if custom_ports and subdomain.lower() in ("localhost", "127.0.0.1"):
+                for port in custom_ports:
+                    urls.append(f"http://{subdomain}:{port}")
+                    urls.append(f"https://{subdomain}:{port}")
 
-    return urls
+    return list(set(urls))
 
 
 # =============================================================================
@@ -1386,21 +1425,24 @@ def run_http_probe(recon_data: dict, output_file: Path = None, settings: dict = 
     # Build target URLs
     print("\n[*] Building target URLs...")
 
-    # Prefer naabu results, fallback to DNS
+    # Prefer naabu results, fallback to DNS (with custom ports for localhost)
     if recon_data.get("port_scan"):
         urls = build_targets_from_naabu(recon_data)
         print(f"    [*] Built {len(urls)} URLs from Naabu port scan results")
     else:
-        urls = build_targets_from_dns(recon_data)
+        urls = build_targets_from_dns(recon_data, settings)
         print(f"    [*] Built {len(urls)} URLs from DNS data (no Naabu results)")
 
     if not urls:
         print("[!] No URLs to probe")
         return recon_data
 
-    # Create temp directory for scan files
-    # Use /tmp/redamon to avoid spaces in paths (snap Docker issue)
-    scan_temp_dir = Path("/tmp/redamon/.httpx_temp")
+    # Create temp directory for scan files - use output dir so Docker sibling containers
+    # can access via host volume mount (HOST_RECON_OUTPUT_PATH)
+    if output_file:
+        scan_temp_dir = Path(output_file).parent / ".httpx_temp"
+    else:
+        scan_temp_dir = Path("/tmp/redamon/.httpx_temp")
     scan_temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:

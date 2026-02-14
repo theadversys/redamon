@@ -42,6 +42,22 @@ from .brute_force_credential_guess_prompts import (
     BRUTE_FORCE_CREDENTIAL_GUESS_WORDLIST_GUIDANCE,
 )
 
+# Re-export from web app exploit prompts
+from .web_app_exploit_prompts import WEB_APP_EXPLOIT_TOOLS
+
+# Re-export from credential capture prompts
+from .credential_capture_prompts import CREDENTIAL_CAPTURE_TOOLS
+
+# Re-export from remaining attack path prompts
+from .remaining_attack_paths import (
+    SOCIAL_ENGINEERING_TOOLS,
+    DOS_TOOLS,
+    FUZZING_TOOLS,
+    WIRELESS_TOOLS,
+    CLIENT_SIDE_EXPLOIT_TOOLS,
+    LOCAL_PRIVILEGE_ESCALATION_TOOLS,
+)
+
 # Re-export from post-exploitation prompts
 from .post_exploitation import (
     POST_EXPLOITATION_TOOLS_STATEFULL,
@@ -58,12 +74,16 @@ PAYLOAD_GUIDANCE_STATELESS = CVE_PAYLOAD_GUIDANCE_STATELESS
 from utils import get_session_config_prompt
 from project_settings import get_setting
 
+# Offensive mode
+from .offensive import OFFENSIVE_MODE_OVERLAY, LLM_EXPLOIT_TOOLS_GUIDANCE
+
 
 def get_phase_tools(
     phase: str,
     activate_post_expl: bool = True,
     post_expl_type: str = "stateless",
-    attack_path_type: str = "cve_exploit"
+    attack_path_type: str = "cve_exploit",
+    operating_mode: str = "guided"
 ) -> str:
     """Get tool descriptions for the current phase with attack path-specific guidance.
 
@@ -80,6 +100,13 @@ def get_phase_tools(
     parts = []
     is_statefull = post_expl_type == "statefull"
 
+    # Offensive mode: prepend overlay for autonomous, flag-hunting behavior
+    if operating_mode == "offensive":
+        parts.append(OFFENSIVE_MODE_OVERLAY)
+    # LLM exploit path: add guidance for prompt injection, curl usage (in offensive or when classified)
+    if attack_path_type == "llm_exploit":
+        parts.append(LLM_EXPLOIT_TOOLS_GUIDANCE)
+
     # Add phase-specific custom system prompt if configured
     informational_prompt = get_setting('INFORMATIONAL_SYSTEM_PROMPT', '')
     expl_prompt = get_setting('EXPL_SYSTEM_PROMPT', '')
@@ -94,13 +121,13 @@ def get_phase_tools(
 
     # Determine allowed tools for current phase
     if phase == "informational":
-        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu"
+        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu"
     elif phase == "exploitation":
         allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, metasploit_console"
     elif phase == "post_exploitation":
         allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, metasploit_console"
     else:
-        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu"
+        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu"
 
     # Add tool availability matrix (concise, no redundancy)
     parts.append(TOOL_AVAILABILITY.format(phase=phase, allowed_tools=allowed_tools))
@@ -123,7 +150,23 @@ def get_phase_tools(
 
     elif phase == "exploitation":
         # SELECT WORKFLOW BASED ON ATTACK PATH TYPE
-        if attack_path_type == "brute_force_credential_guess":
+        if attack_path_type == "web_app_exploit":
+            parts.append(WEB_APP_EXPLOIT_TOOLS)
+        elif attack_path_type == "credential_capture":
+            parts.append(CREDENTIAL_CAPTURE_TOOLS)
+        elif attack_path_type == "social_engineering":
+            parts.append(SOCIAL_ENGINEERING_TOOLS)
+        elif attack_path_type == "dos":
+            parts.append(DOS_TOOLS)
+        elif attack_path_type == "fuzzing":
+            parts.append(FUZZING_TOOLS)
+        elif attack_path_type == "wireless":
+            parts.append(WIRELESS_TOOLS)
+        elif attack_path_type == "client_side_exploit":
+            parts.append(CLIENT_SIDE_EXPLOIT_TOOLS)
+        elif attack_path_type == "local_privilege_escalation":
+            parts.append(LOCAL_PRIVILEGE_ESCALATION_TOOLS)
+        elif attack_path_type == "brute_force_credential_guess":
             # Format with max attempts from params
             parts.append(BRUTE_FORCE_CREDENTIAL_GUESS_TOOLS.format(
                 brute_force_max_attempts=get_setting('BRUTE_FORCE_MAX_WORDLIST_ATTEMPTS', 3)
@@ -152,6 +195,8 @@ def get_phase_tools(
             if attack_path_type == "brute_force_credential_guess":
                 # Shell session from SSH brute force
                 parts.append(POST_EXPLOITATION_TOOLS_SHELL)
+            elif attack_path_type == "local_privilege_escalation":
+                parts.append(LOCAL_PRIVILEGE_ESCALATION_TOOLS)
             else:
                 # Meterpreter session from CVE exploit
                 parts.append(POST_EXPLOITATION_TOOLS_STATEFULL)

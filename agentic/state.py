@@ -35,6 +35,15 @@ QuestionFormat = Literal["text", "single_choice", "multi_choice"]
 AttackPathType = Literal[
     "cve_exploit",                  # CVE-based exploitation (default)
     "brute_force_credential_guess", # Brute force / credential attacks
+    "llm_exploit",                  # LLM-specific attacks (prompt injection, prompt leakage, etc.)
+    "web_app_exploit",              # Web app attacks (SQLi, XSS, LFI via execute_curl)
+    "credential_capture",           # MITM, fake servers for credential harvesting
+    "social_engineering",           # Phishing, web delivery, malicious documents
+    "dos",                          # Denial of service
+    "fuzzing",                      # Fuzzing / vulnerability discovery
+    "wireless",                     # Wireless, ARP spoofing, network attacks
+    "client_side_exploit",          # Browser, document-based client exploits
+    "local_privilege_escalation",   # Local privesc (requires existing session)
 ]
 
 
@@ -190,7 +199,7 @@ class ObjectiveOutcome(BaseModel):
 # LLM RESPONSE MODELS (for structured parsing)
 # =============================================================================
 
-ActionType = Literal["use_tool", "transition_phase", "complete", "ask_user"]
+ActionType = Literal["use_tool", "use_tools_parallel", "transition_phase", "complete", "ask_user"]
 
 
 class PhaseTransitionDecision(BaseModel):
@@ -227,6 +236,7 @@ class ExtractedTargetInfo(BaseModel):
     vulnerabilities: List[str] = Field(default_factory=list)
     credentials: List[dict] = Field(default_factory=list)
     sessions: List[int] = Field(default_factory=list)
+    flags: List[str] = Field(default_factory=list)  # CTF-style flags extracted from output
 
 
 class OutputAnalysisInline(BaseModel):
@@ -253,6 +263,9 @@ class LLMDecision(BaseModel):
     # Tool execution fields (when action="use_tool")
     tool_name: Optional[str] = Field(default=None, description="Name of tool to execute")
     tool_args: Optional[dict] = Field(default=None, description="Arguments for the tool")
+
+    # Parallel tool execution (when action="use_tools_parallel")
+    parallel_tools: Optional[List[dict]] = Field(default=None, description="List of {tool_name, tool_args} for parallel execution")
 
     # Phase transition fields (when action="transition_phase")
     phase_transition: Optional[PhaseTransitionDecision] = Field(default=None)
@@ -370,6 +383,9 @@ class AgentState(TypedDict):
     # Target intelligence accumulated from queries
     target_info: dict  # TargetInfo.model_dump()
 
+    # CTF flags found (structured extraction from tool outputs)
+    flags_found: List[str]
+
     # Session context
     user_id: str
     project_id: str
@@ -482,6 +498,7 @@ def create_initial_state(
         "objective_history": [],
         "original_objective": objective,  # Kept for backward compatibility
         "target_info": TargetInfo().model_dump(),
+        "flags_found": [],
         "user_id": user_id,
         "project_id": project_id,
         "session_id": session_id,

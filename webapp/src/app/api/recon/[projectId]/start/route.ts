@@ -16,7 +16,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Verify project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, userId: true, name: true, targetDomain: true }
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        targetDomain: true,
+        githubTargetOrg: true,
+      },
     })
 
     if (!project) {
@@ -26,12 +32,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    if (!project.targetDomain) {
+    const hasTargetDomain = (project.targetDomain ?? '').trim().length > 0
+    const hasGithubTarget = (project.githubTargetOrg ?? '').trim().length > 0
+    if (!hasTargetDomain && !hasGithubTarget) {
       return NextResponse.json(
-        { error: 'Project has no target domain configured' },
+        {
+          error:
+            'Project needs a target domain or GitHub organization configured',
+        },
         { status: 400 }
       )
     }
+
+    const description = hasTargetDomain
+      ? `Started reconnaissance scan for ${project.targetDomain}`
+      : `Started GitHub secret scan for ${project.githubTargetOrg}`
+    const metadata: Record<string, unknown> = {
+      projectName: project.name,
+    }
+    if (hasTargetDomain) metadata.targetDomain = project.targetDomain
+    if (hasGithubTarget) metadata.githubTargetOrg = project.githubTargetOrg
 
     // Create ActionLog entry for recon start
     try {
@@ -40,12 +60,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         userId: project.userId,
         type: 'recon',
         action: 'Start Reconnaissance',
-        description: `Started reconnaissance scan for ${project.targetDomain}`,
+        description,
         status: 'running',
-        metadata: {
-          targetDomain: project.targetDomain,
-          projectName: project.name,
-        },
+        metadata,
       })
     } catch (error) {
       console.error('Failed to create ActionLog:', error)
@@ -78,7 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           description: `Failed to start reconnaissance: ${errorData.detail || 'Unknown error'}`,
           status: 'error',
           metadata: {
-            targetDomain: project.targetDomain,
+            ...metadata,
             error: errorData.detail || 'Unknown error',
           },
         })

@@ -48,6 +48,7 @@ export interface InitPayload {
   user_id: string
   project_id: string
   session_id: string
+  operating_mode?: 'guided' | 'offensive'
 }
 
 export interface QueryPayload {
@@ -118,10 +119,23 @@ export interface ToolCompletePayload {
   recommended_next_steps: string[]
 }
 
+export type AttackPathType =
+  | 'cve_exploit'
+  | 'brute_force_credential_guess'
+  | 'llm_exploit'
+  | 'web_app_exploit'
+  | 'credential_capture'
+  | 'social_engineering'
+  | 'dos'
+  | 'fuzzing'
+  | 'wireless'
+  | 'client_side_exploit'
+  | 'local_privilege_escalation'
+
 export interface PhaseUpdatePayload {
   current_phase: string
   iteration_count: number
-  attack_path_type?: 'cve_exploit' | 'brute_force_credential_guess'
+  attack_path_type?: AttackPathType
 }
 
 export interface TodoItem {

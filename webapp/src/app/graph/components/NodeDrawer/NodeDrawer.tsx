@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Drawer } from '@/components/ui'
 import { GraphNode } from '../../types'
 import { getNodeColor } from '../../utils'
 import { formatPropertyValue } from '../../utils/formatters'
+import { EvidenceDrawer } from '@/app/vulnerabilities/components/EvidenceDrawer'
+import { FileText, Key } from 'lucide-react'
 import styles from './NodeDrawer.module.css'
 
 interface NodeDrawerProps {
@@ -12,10 +15,19 @@ interface NodeDrawerProps {
   isOpen: boolean
   onClose: () => void
   onDeleteNode?: (nodeId: string) => Promise<void>
+  projectId?: string | null
 }
 
-export function NodeDrawer({ node, isOpen, onClose, onDeleteNode }: NodeDrawerProps) {
+export function NodeDrawer({ node, isOpen, onClose, onDeleteNode, projectId }: NodeDrawerProps) {
+  const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [evidenceDrawerOpen, setEvidenceDrawerOpen] = useState(false)
+
+  const handleViewInSecrets = () => {
+    if (!node || !projectId) return
+    onClose()
+    router.push(`/secrets?project=${projectId}&id=${node.id}`)
+  }
 
   const handleDelete = async () => {
     if (!node || !onDeleteNode) return
@@ -55,16 +67,40 @@ export function NodeDrawer({ node, isOpen, onClose, onDeleteNode }: NodeDrawerPr
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <h3 className={styles.sectionTitleBasicInfo}>Basic Info</h3>
-              {node.type === 'Exploit' && onDeleteNode && (
-                <button
-                  className={styles.deleteButton}
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  title="Delete exploit node"
-                >
-                  {isDeleting ? '...' : '\uD83D\uDDD1'}
-                </button>
-              )}
+              <div className={styles.sectionActions}>
+                {node.type === 'Vulnerability' && projectId && (
+                  <button
+                    type="button"
+                    className={styles.viewEvidenceButton}
+                    onClick={() => setEvidenceDrawerOpen(true)}
+                    title="View evidence"
+                  >
+                    <FileText size={14} />
+                    View Evidence
+                  </button>
+                )}
+                {node.type === 'GitHubSecret' && projectId && (
+                  <button
+                    type="button"
+                    className={styles.viewEvidenceButton}
+                    onClick={handleViewInSecrets}
+                    title="View in Secrets"
+                  >
+                    <Key size={14} />
+                    View in Secrets
+                  </button>
+                )}
+                {node.type === 'Exploit' && onDeleteNode && (
+                  <button
+                    className={styles.deleteButton}
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    title="Delete exploit node"
+                  >
+                    {isDeleting ? '...' : '\uD83D\uDDD1'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className={styles.propertyRow}>
               <span className={styles.propertyKey}>Type</span>
@@ -100,6 +136,16 @@ export function NodeDrawer({ node, isOpen, onClose, onDeleteNode }: NodeDrawerPr
             )}
           </div>
         </>
+      )}
+
+      {node?.type === 'Vulnerability' && projectId && (
+        <EvidenceDrawer
+          vulnerabilityId={node.id}
+          projectId={projectId}
+          vulnerabilityName={node.name}
+          isOpen={evidenceDrawerOpen}
+          onClose={() => setEvidenceDrawerOpen(false)}
+        />
       )}
     </Drawer>
   )

@@ -35,6 +35,33 @@ export function AgentBehaviourSection({ data, updateField }: AgentBehaviourSecti
             Configure the AI agent orchestrator that performs autonomous pentesting. Controls LLM model, phase transitions, payload settings, tool access, and safety gates.
           </p>
 
+          {/* Operating Mode */}
+          <div className={styles.subSection}>
+            <h3 className={styles.subSectionTitle}>Operating Mode</h3>
+            <div className={styles.fieldGroup}>
+              <label className={styles.fieldLabel}>Mode</label>
+              <select
+                className="select"
+                value={data.agentOperatingMode ?? 'guided'}
+                onChange={(e) => updateField('agentOperatingMode', e.target.value as 'guided' | 'offensive')}
+              >
+                <option value="guided">Guided — User approval for phase transitions</option>
+                <option value="offensive">Offensive — Autonomous, no approval gates</option>
+              </select>
+              <span className={styles.fieldHint}>Offensive mode auto-approves phase transitions and enables CTF-style exploitation.</span>
+            </div>
+            <div className={styles.toggleRow}>
+              <div>
+                <span className={styles.toggleLabel}>Multi-Agent Auto-Delegation</span>
+                <p className={styles.toggleDescription}>Delegate tool execution by phase: ReconAgent (informational), ExploitAgent (exploitation), PostExploitAgent (post-exploitation).</p>
+              </div>
+              <Toggle
+                checked={data.agentMultiAgentEnabled ?? false}
+                onChange={(checked) => updateField('agentMultiAgentEnabled', checked)}
+              />
+            </div>
+          </div>
+
           {/* LLM & Phase Configuration */}
           <div className={styles.subSection}>
             <h3 className={styles.subSectionTitle}>LLM & Phase Configuration</h3>

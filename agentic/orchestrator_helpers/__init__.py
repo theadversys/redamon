@@ -37,6 +37,7 @@ from .config import (
     create_config,
     get_config_values,
     get_identifiers,
+    get_operating_mode,
     is_session_config_complete,
 )
 
@@ -102,6 +103,7 @@ __all__ = [
     "create_config",
     "get_config_values",
     "get_identifiers",
+    "get_operating_mode",
     "is_session_config_complete",
     # planning
     "parse_plan_response",

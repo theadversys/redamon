@@ -14,6 +14,8 @@ interface ReconLogsDrawerProps {
   currentPhaseNumber: number | null
   status: ReconStatus
   onClearLogs: () => void
+  /** When recon is running, delete icon also stops recon */
+  onStopRecon?: () => void
   panelMode?: boolean // When true, disables drawer positioning
   /** Phase 1: "Explain this" — called with selected log text; parent switches to Chat and sends to agent */
   onAskAI?: (selectedLogText: string) => void
@@ -30,6 +32,7 @@ export function ReconLogsDrawer({
   currentPhaseNumber,
   status,
   onClearLogs,
+  onStopRecon,
   panelMode = false,
   onAskAI,
   highlightRequest,
@@ -189,8 +192,15 @@ export function ReconLogsDrawer({
           </button>
           <button
             className={styles.iconButton}
-            onClick={onClearLogs}
-            title="Clear logs"
+            onClick={() => {
+              if ((status === 'running' || status === 'starting') && onStopRecon) {
+                onStopRecon()
+              }
+              onClearLogs()
+            }}
+            title={(status === 'running' || status === 'starting') && onStopRecon
+              ? 'Stop recon and clear logs'
+              : 'Clear logs'}
           >
             <Trash2 size={14} />
           </button>

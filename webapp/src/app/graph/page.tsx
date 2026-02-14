@@ -10,7 +10,7 @@ import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
 import { PanelLayout } from './components/PanelLayout/PanelLayout'
 import { useGraphData, useNodeSelection } from './hooks'
-import { useTheme, useSession, useReconStatus, useReconSSE } from '@/hooks'
+import { useTheme, useSession, useReconStatus, useReconSSE, useProjectById } from '@/hooks'
 import { useProject } from '@/providers/ProjectProvider'
 import { usePanelLayout } from './hooks/usePanelLayout'
 import styles from './page.module.css'
@@ -18,6 +18,7 @@ import styles from './page.module.css'
 export default function GraphPage() {
   const router = useRouter()
   const { projectId, userId, currentProject, isLoading: projectLoading } = useProject()
+  const { data: fullProject } = useProjectById(projectId)
 
   const [is3D, setIs3D] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
@@ -33,6 +34,8 @@ export default function GraphPage() {
   // Panel layout state management
   const {
     effectiveViewMode,
+    effectiveLayoutMode,
+    setLayoutMode,
     hideAI,
     showAI,
   } = usePanelLayout()
@@ -174,8 +177,6 @@ export default function GraphPage() {
 
   return (
     <div className={styles.page}>
-      {/* Build marker to verify new code is deployed */}
-      <div data-build-version="panel-layout-v1-2026-02-10" style={{ display: 'none' }} />
       <GraphToolbar
         projectId={projectId || ''}
         is3D={is3D}
@@ -183,6 +184,8 @@ export default function GraphPage() {
         onToggle3D={setIs3D}
         onToggleLabels={setShowLabels}
         effectiveViewMode={effectiveViewMode}
+        effectiveLayoutMode={effectiveLayoutMode}
+        onLayoutModeChange={setLayoutMode}
         activeTab={activeTab}
         onHideAI={hideAI}
         onShowAI={showAI}
@@ -203,6 +206,7 @@ export default function GraphPage() {
           isOpen={drawerOpen}
           onClose={clearSelection}
           onDeleteNode={handleDeleteNode}
+          projectId={projectId}
         />
         <PanelLayout
           graphContent={(dimensions) => (
@@ -235,10 +239,24 @@ export default function GraphPage() {
               onStartRecon={handleStartRecon}
               onStopRecon={handleStopRecon}
               isReconLoading={isReconLoading}
+              showBothPanes={effectiveLayoutMode === 'all'}
+              onCloseChat={() => {
+                hideAI()
+                handleSelectTab('graph')
+              }}
+              onCloseRecon={() => {
+                hideAI()
+                handleSelectTab('graph')
+              }}
+              onBothPanelsClosed={() => {
+                setLayoutMode('single')
+                handleSelectTab('graph')
+              }}
             />
           }
           activeTab={activeTab}
           onTabChange={handleSelectTab}
+          effectiveLayoutMode={effectiveLayoutMode}
         />
       </div>
 
@@ -250,6 +268,8 @@ export default function GraphPage() {
         targetDomain={currentProject?.targetDomain || 'Unknown'}
         stats={graphStats}
         isLoading={isReconLoading}
+        scanModules={fullProject?.scanModules}
+        githubTargetOrg={fullProject?.githubTargetOrg}
       />
 
       <PageBottomBar data={data} is3D={is3D} showLabels={showLabels} />

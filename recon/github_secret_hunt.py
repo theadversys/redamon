@@ -36,11 +36,19 @@ except ImportError:
 DEFAULT_GITHUB_SETTINGS = {
     'GITHUB_ACCESS_TOKEN': os.getenv('GITHUB_ACCESS_TOKEN', ''),
     'GITHUB_TARGET_ORG': '',
+    'GITHUB_REPO_ALLOWLIST': [],
+    'GITHUB_INCLUDE_FORKS': False,
     'GITHUB_SCAN_MEMBERS': False,
     'GITHUB_SCAN_GISTS': True,
     'GITHUB_SCAN_COMMITS': True,
     'GITHUB_MAX_COMMITS': 100,
     'GITHUB_OUTPUT_JSON': True,
+    'GITHUB_SCAN_SECRETS': True,
+    'GITHUB_SCAN_HIGH_ENTROPY': True,
+    'GITHUB_SCAN_AI_LLM_KEYS': True,
+    'GITHUB_SCAN_AI_LLM_USAGE': True,
+    'GITHUB_MAX_FILES_PER_REPO': 10000,
+    'GITHUB_MAX_FILE_SIZE_BYTES': 1048576,  # 1 MB
 }
 
 # =============================================================================
@@ -148,6 +156,29 @@ SECRET_PATTERNS = {
     "Discord Bot Token": r"[MN][A-Za-z\\d]{23,}\\.[\w-]{6}\\.[\w-]{27}",
     "Discord Webhook": r"https://discord(?:app)?\\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+",
     "IP Address (Private)": r"(?:^|[^0-9])(10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|172\\.(?:1[6-9]|2[0-9]|3[01])\\.[0-9]{1,3}\\.[0-9]{1,3}|192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3})(?:[^0-9]|$)",
+
+    # AI/LLM Providers
+    "OpenAI API Key (Legacy)": r"sk-[a-zA-Z0-9]{48}",
+    "OpenAI API Key (Project)": r"sk-proj-[a-zA-Z0-9\\-_]{64,}",
+    "Anthropic API Key": r"sk-ant-[a-zA-Z0-9\\-]{95}",
+    "HuggingFace Token": r"hf_[a-zA-Z0-9]{34}",
+    "Groq API Key": r"gsk_[a-zA-Z0-9]{32}",
+    "Replicate API Token": r"r8_[a-zA-Z0-9]{32,}",
+    "Cohere API Key": r"(?i)cohere[^a-zA-Z0-9]*['\"][a-f0-9]{40}['\"]",
+    "Together AI Key": r"(?i)together[^a-zA-Z0-9]*['\"][a-f0-9]{64}['\"]",
+    "Google AI API Key": r"(?i)(?:google|gemini)[^a-zA-Z0-9]*['\"]AIza[0-9A-Za-z\\-_]{35}['\"]",
+    "Mistral API Key": r"(?i)mistral[^a-zA-Z0-9]*['\"][a-zA-Z0-9\\-_]{32,}['\"]",
+    "Perplexity API Key": r"pplx-[a-zA-Z0-9]{32}",
+    "Fireworks AI Key": r"(?i)fireworks[^a-zA-Z0-9]*['\"][a-zA-Z0-9\\-_]{20,}['\"]",
+    "Vertex AI (GCP)": r"(?i)vertex[^a-zA-Z0-9]*(?:key|credential)[^a-zA-Z0-9]*['\"][A-Za-z0-9+/=_-]{20,}['\"]",
+}
+
+# AI/LLM secret type names (for conditional scanning when GITHUB_SCAN_AI_LLM_KEYS is False)
+AI_LLM_SECRET_TYPES = {
+    "OpenAI API Key (Legacy)", "OpenAI API Key (Project)", "Anthropic API Key",
+    "HuggingFace Token", "Groq API Key", "Replicate API Token", "Cohere API Key",
+    "Together AI Key", "Google AI API Key", "Mistral API Key", "Perplexity API Key",
+    "Fireworks AI Key", "Vertex AI (GCP)",
 }
 
 # Sensitive filenames to flag
@@ -238,15 +269,117 @@ def find_high_entropy_strings(content: str, threshold: float = 4.5) -> List[Dict
     return findings
 
 # =============================================================================
+# AI/LLM USAGE DETECTION - Imports, clients, env vars, config keys
+# =============================================================================
+
+# File extensions to scan for AI/LLM usage (code and config)
+AI_LLM_SCAN_EXTENSIONS = {
+    ".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rb", ".java", ".cs", ".php",
+    ".yaml", ".yml", ".json", ".env", ".config",
+}
+
+# Provider -> (import regex, client regex, env/config key regex)
+AI_LLM_USAGE_SIGNALS: Dict[str, tuple] = {
+    "openai": (
+        r"(?i)(?:import|from)\s+openai\b|require\s*\(\s*['\"]openai['\"]\s*\)",
+        r"(?i)(?:new\s+)?OpenAI\s*\(|ChatOpenAI\s*\(|OpenAI\(|from\s+openai\s+import",
+        r"(?i)(?:OPENAI_API_KEY|openai_api_key|openai\.api_key)",
+    ),
+    "anthropic": (
+        r"(?i)(?:import|from)\s+anthropic\b|require\s*\(\s*['\"]@anthropic-ai/sdk['\"]\s*\)",
+        r"(?i)Anthropic\s*\(|Claude\s*\(|anthropic\.Anthropic",
+        r"(?i)(?:ANTHROPIC_API_KEY|anthropic_api_key)",
+    ),
+    "huggingface": (
+        r"(?i)(?:import|from)\s+(?:huggingface_hub|transformers|datasets)\b",
+        r"(?i)(?:HuggingFaceHub|HuggingFace|from_pretrained)\s*\(",
+        r"(?i)(?:HUGGINGFACE_TOKEN|HF_TOKEN|huggingface_token)",
+    ),
+    "langchain": (
+        r"(?i)(?:import|from)\s+langchain\b|require\s*\(\s*['\"]langchain['\"]\s*\)",
+        r"(?i)(?:AgentExecutor|LLMChain|@llm_chain|ChatOpenAI|langchain)",
+        r"(?i)(?:LANGCHAIN_|langchain_)",
+    ),
+    "llama_index": (
+        r"(?i)(?:from|import)\s+llama_index\b",
+        r"(?i)(?:VectorStoreIndex|SimpleDirectoryReader|QueryEngine)",
+        r"(?i)(?:OPENAI_API_KEY|llama_index)",
+    ),
+    "cohere": (
+        r"(?i)(?:import|from)\s+cohere\b",
+        r"(?i)Cohere\s*\(|cohere\.Client",
+        r"(?i)(?:COHERE_API_KEY|cohere_api_key)",
+    ),
+    "groq": (
+        r"(?i)(?:import|from)\s+groq\b",
+        r"(?i)Groq\s*\(|groq\.Groq",
+        r"(?i)(?:GROQ_API_KEY|groq_api_key)",
+    ),
+    "replicate": (
+        r"(?i)(?:import|from)\s+replicate\b|require\s*\(\s*['\"]replicate['\"]\s*\)",
+        r"(?i)replicate\.run\s*\(|Replicate\s*\(",
+        r"(?i)(?:REPLICATE_API_TOKEN|replicate_api_token)",
+    ),
+    "vertex_ai": (
+        r"(?i)(?:import|from)\s+vertexai\b|from\s+google\.cloud\s+import\s+aiplatform",
+        r"(?i)(?:VertexAI|vertexai\.init|aiplatform)",
+        r"(?i)(?:GOOGLE_APPLICATION_CREDENTIALS|vertex)",
+    ),
+    "together": (
+        r"(?i)(?:import|from)\s+together\b",
+        r"(?i)Together\s*\(|together\.Together",
+        r"(?i)(?:TOGETHER_API_KEY|together_api_key)",
+    ),
+}
+
+def scan_ai_usage(
+    content: str,
+    has_ai_key_in_file: bool,
+    add_finding_fn,
+) -> None:
+    """
+    Detect AI/LLM usage signals (imports, clients, env vars, config).
+    Calls add_finding_fn(provider, line_num, pattern, severity) for each match.
+    One finding per provider per file (first matching line).
+    """
+    lines = content.splitlines()
+    found_providers: Set[str] = set()
+    for line_num, line in enumerate(lines, 1):
+        line_stripped = line.strip()
+        if not line_stripped or line_stripped.startswith("#") or line_stripped.startswith("//"):
+            continue
+        for provider, (import_re, client_re, env_re) in AI_LLM_USAGE_SIGNALS.items():
+            if provider in found_providers:
+                continue
+            for pattern_re in (import_re, client_re, env_re):
+                try:
+                    if re.search(pattern_re, line):
+                        severity = "high" if has_ai_key_in_file else "info"
+                        add_finding_fn(provider, line_num, line_stripped[:200], severity)
+                        found_providers.add(provider)
+                        break
+                except re.error:
+                    continue
+
+# =============================================================================
 # GITHUB SECRET HUNTER CLASS
 # =============================================================================
 
 class GitHubSecretHunter:
     """Advanced GitHub secret scanning tool."""
 
-    def __init__(self, token: str, target: str, settings: Optional[Dict] = None):
+    def __init__(
+        self,
+        token: str,
+        target: str,
+        project_id: str = "",
+        user_id: str = "",
+        settings: Optional[Dict] = None,
+    ):
         self.token = token
         self.target = target
+        self.project_id = project_id
+        self.user_id = user_id
         self.auth = Auth.Token(token)
         self.github = Github(auth=self.auth)
 
@@ -263,18 +396,20 @@ class GitHubSecretHunter:
             "secrets_found": 0,
             "sensitive_files": 0,
             "high_entropy": 0,
+            "ai_llm_usage": 0,
         }
 
         # Rate limit tracking
         self.rate_limit_hits = 0
 
-        # Initialize output file for incremental saving
+        # Initialize output file for incremental saving (project-scoped)
         self.output_dir = Path(__file__).parent / "output"
         self.output_dir.mkdir(exist_ok=True)
 
-        # Create output filename
+        # Create output filename - use project_id if available, else target (backward compat)
         self.scan_start_time = datetime.now()
-        self.output_file = self.output_dir / f"github_secrets_{target}.json"
+        output_suffix = project_id if project_id else target
+        self.output_file = self.output_dir / f"github_secrets_{output_suffix}.json"
 
         # Initialize the JSON file immediately
         self._init_output_file()
@@ -285,12 +420,14 @@ class GitHubSecretHunter:
             return
             
         initial_data = {
-            "target": self.target,
+            "project_id": self.project_id,
+            "user_id": self.user_id,
+            "target_org": self.target,
             "scan_start_time": self.scan_start_time.isoformat(),
             "scan_end_time": None,
             "status": "in_progress",
             "statistics": self.stats,
-            "findings": []
+            "findings": [],
         }
         
         with open(self.output_file, 'w') as f:
@@ -304,13 +441,15 @@ class GitHubSecretHunter:
             return
             
         data = {
-            "target": self.target,
+            "project_id": self.project_id,
+            "user_id": self.user_id,
+            "target_org": self.target,
             "scan_start_time": self.scan_start_time.isoformat(),
             "scan_end_time": None,
             "status": "in_progress",
             "last_update": datetime.now().isoformat(),
             "statistics": self.stats,
-            "findings": self.findings
+            "findings": self.findings,
         }
         
         # Write to temp file first, then rename (atomic operation)
@@ -390,38 +529,89 @@ class GitHubSecretHunter:
         
         # Save incrementally after each finding
         self._save_incremental()
+
+    def _add_ai_usage_finding(self, repo: str, path: str, provider: str, line: int, pattern: str, severity: str):
+        """Add an AI_LLM_USAGE finding with provider, line, pattern."""
+        finding = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "AI_LLM_USAGE",
+            "repository": repo,
+            "path": path,
+            "secret_type": "AI/LLM Usage",
+            "provider": provider,
+            "line": line,
+            "pattern": pattern,
+            "severity": severity,
+            "details": {},
+        }
+        self.findings.append(finding)
+        self.stats["ai_llm_usage"] += 1
+        print(f"\033[94m[~] AI/LLM USAGE: {provider}\033[0m")
+        print(f"    Repository: {repo}")
+        print(f"    Path: {path} (line {line})")
+        print(f"    Pattern: {pattern[:80]}{'...' if len(pattern) > 80 else ''}")
+        print()
+        self._save_incremental()
         
     def scan_file_content(self, repo_name: str, content: str, path: str):
         """Scan file content for secrets using regex patterns."""
-        # Pattern matching
-        for secret_type, pattern in SECRET_PATTERNS.items():
-            try:
-                matches = re.findall(pattern, content)
-                if matches:
-                    self._add_finding(
-                        "SECRET", repo_name, path, secret_type,
-                        {"matches": len(matches), "sample": str(matches[0])[:100]}
-                    )
-            except re.error:
-                continue
-                
+        scan_secrets = self.settings.get('GITHUB_SCAN_SECRETS', True)
+        scan_ai_keys = self.settings.get('GITHUB_SCAN_AI_LLM_KEYS', True)
+        scan_high_entropy = self.settings.get('GITHUB_SCAN_HIGH_ENTROPY', True)
+        scan_ai_usage_flag = self.settings.get('GITHUB_SCAN_AI_LLM_USAGE', True)
+
+        has_ai_key_in_file = False
+
+        # Pattern matching for secrets
+        if scan_secrets:
+            for secret_type, pattern in SECRET_PATTERNS.items():
+                if not scan_ai_keys and secret_type in AI_LLM_SECRET_TYPES:
+                    continue
+                try:
+                    matches = re.findall(pattern, content)
+                    if matches:
+                        if secret_type in AI_LLM_SECRET_TYPES:
+                            has_ai_key_in_file = True
+                        self._add_finding(
+                            "SECRET", repo_name, path, secret_type,
+                            {"matches": len(matches), "sample": str(matches[0])[:100]}
+                        )
+                except re.error:
+                    continue
+
         # Entropy-based detection
-        high_entropy = find_high_entropy_strings(content)
-        for finding in high_entropy[:5]:  # Limit to top 5 per file
-            self._add_finding(
-                "HIGH_ENTROPY", repo_name, path,
-                f"High Entropy ({finding['entropy']})",
-                finding
-            )
+        if scan_high_entropy:
+            high_entropy = find_high_entropy_strings(content)
+            for finding in high_entropy[:5]:  # Limit to top 5 per file
+                self._add_finding(
+                    "HIGH_ENTROPY", repo_name, path,
+                    f"High Entropy ({finding['entropy']})",
+                    finding
+                )
+
+        # AI/LLM usage detection (imports, clients, env vars)
+        if scan_ai_usage_flag:
+            ext = os.path.splitext(path)[1].lower()
+            if ext in AI_LLM_SCAN_EXTENSIONS:
+                def _add(prov: str, ln: int, pat: str, sev: str):
+                    self._add_ai_usage_finding(repo_name, path, prov, ln, pat, sev)
+                scan_ai_usage(content, has_ai_key_in_file, _add)
             
     def scan_repo_contents(self, repo, path: str = ""):
         """Recursively scan repository contents."""
+        max_files = self.settings.get('GITHUB_MAX_FILES_PER_REPO', 10000) or 10000
+        max_size = self.settings.get('GITHUB_MAX_FILE_SIZE_BYTES', 1048576) or 1048576
+
         try:
             contents = repo.get_contents(path)
             if not isinstance(contents, list):
                 contents = [contents]
-                
+
             for item in contents:
+                if self.stats["files_scanned"] >= max_files:
+                    print(f"    [!] Reached max files per repo ({max_files}), stopping.")
+                    return
+
                 if item.type == "dir":
                     self.scan_repo_contents(repo, item.path)
                 else:
@@ -431,23 +621,23 @@ class GitHubSecretHunter:
                             "SENSITIVE_FILE", repo.full_name, item.path,
                             "Sensitive Filename"
                         )
-                    
+
                     # Skip binary/large files
                     if self._should_skip_file(item.name):
                         continue
-                        
+                    if item.size > max_size:
+                        continue
+
                     # Scan file content
                     try:
-                        if item.size < 500000:  # Skip files > 500KB
-                            decoded = item.decoded_content.decode('utf-8', errors='ignore')
-                            self.scan_file_content(repo.full_name, decoded, item.path)
-                            self.stats["files_scanned"] += 1
-                            # Save every 50 files to track progress
-                            if self.stats["files_scanned"] % 50 == 0:
-                                self._save_incremental()
+                        decoded = item.decoded_content.decode('utf-8', errors='ignore')
+                        self.scan_file_content(repo.full_name, decoded, item.path)
+                        self.stats["files_scanned"] += 1
+                        if self.stats["files_scanned"] % 50 == 0:
+                            self._save_incremental()
                     except Exception:
                         continue
-                        
+
         except RateLimitExceededException:
             self._handle_rate_limit()
             self.scan_repo_contents(repo, path)
@@ -491,11 +681,24 @@ class GitHubSecretHunter:
         except Exception as e:
             print(f"    [!] Error scanning commits: {e}")
                 
+    def _should_scan_repo(self, repo) -> bool:
+        """Check if repo should be scanned (allowlist, forks)."""
+        allowlist = self.settings.get('GITHUB_REPO_ALLOWLIST') or []
+        include_forks = self.settings.get('GITHUB_INCLUDE_FORKS', False)
+
+        if allowlist and repo.full_name not in allowlist:
+            return False
+        if not include_forks and repo.fork:
+            return False
+        return True
+
     def scan_repo(self, repo):
         """Scan a single repository."""
         if repo.full_name in self.scanned_repos:
             return
-            
+        if not self._should_scan_repo(repo):
+            return
+
         self.scanned_repos.add(repo.full_name)
         print(f"\n[*] Scanning repository: {repo.full_name}")
         print(f"    Stars: {repo.stargazers_count} | Forks: {repo.forks_count}")
@@ -546,7 +749,10 @@ class GitHubSecretHunter:
             print(f"\n[*] Organization found: {org.login}")
             print(f"    Public repos: {org.public_repos}")
             print(f"    Members: {org.get_members().totalCount if org.get_members() else 'N/A'}")
-            
+            allowlist = self.settings.get('GITHUB_REPO_ALLOWLIST') or []
+            if allowlist:
+                print(f"    Repo allowlist: {len(allowlist)} repos")
+
             # Scan organization repos
             for repo in org.get_repos():
                 self.scan_repo(repo)
@@ -596,14 +802,16 @@ class GitHubSecretHunter:
         duration = (scan_end_time - self.scan_start_time).total_seconds()
         
         results = {
-            "target": self.target,
+            "project_id": self.project_id,
+            "user_id": self.user_id,
+            "target_org": self.target,
             "scan_start_time": self.scan_start_time.isoformat(),
             "scan_end_time": scan_end_time.isoformat(),
             "duration_seconds": round(duration, 2),
             "status": status,
             "last_update": scan_end_time.isoformat(),
             "statistics": self.stats,
-            "findings": self.findings
+            "findings": self.findings,
         }
         
         with open(self.output_file, 'w') as f:

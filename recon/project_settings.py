@@ -43,11 +43,19 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     # GitHub Secret Hunt
     'GITHUB_ACCESS_TOKEN': os.getenv('GITHUB_ACCESS_TOKEN', ''),
     'GITHUB_TARGET_ORG': '',
+    'GITHUB_REPO_ALLOWLIST': [],
+    'GITHUB_INCLUDE_FORKS': False,
     'GITHUB_SCAN_MEMBERS': False,
     'GITHUB_SCAN_GISTS': True,
     'GITHUB_SCAN_COMMITS': True,
     'GITHUB_MAX_COMMITS': 100,
     'GITHUB_OUTPUT_JSON': True,
+    'GITHUB_SCAN_SECRETS': True,
+    'GITHUB_SCAN_HIGH_ENTROPY': True,
+    'GITHUB_SCAN_AI_LLM_KEYS': True,
+    'GITHUB_SCAN_AI_LLM_USAGE': True,
+    'GITHUB_MAX_FILES_PER_REPO': 10000,
+    'GITHUB_MAX_FILE_SIZE_BYTES': 1048576,
 
     # Naabu Port Scanner
     'NAABU_DOCKER_IMAGE': 'projectdiscovery/naabu:latest',
@@ -362,11 +370,19 @@ def fetch_project_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
     # GitHub Secret Hunt
     settings['GITHUB_ACCESS_TOKEN'] = project.get('githubAccessToken', DEFAULT_SETTINGS['GITHUB_ACCESS_TOKEN'])
     settings['GITHUB_TARGET_ORG'] = project.get('githubTargetOrg', DEFAULT_SETTINGS['GITHUB_TARGET_ORG'])
+    settings['GITHUB_REPO_ALLOWLIST'] = project.get('githubRepoAllowlist', DEFAULT_SETTINGS['GITHUB_REPO_ALLOWLIST'])
+    settings['GITHUB_INCLUDE_FORKS'] = project.get('githubIncludeForks', DEFAULT_SETTINGS['GITHUB_INCLUDE_FORKS'])
     settings['GITHUB_SCAN_MEMBERS'] = project.get('githubScanMembers', DEFAULT_SETTINGS['GITHUB_SCAN_MEMBERS'])
     settings['GITHUB_SCAN_GISTS'] = project.get('githubScanGists', DEFAULT_SETTINGS['GITHUB_SCAN_GISTS'])
     settings['GITHUB_SCAN_COMMITS'] = project.get('githubScanCommits', DEFAULT_SETTINGS['GITHUB_SCAN_COMMITS'])
     settings['GITHUB_MAX_COMMITS'] = project.get('githubMaxCommits', DEFAULT_SETTINGS['GITHUB_MAX_COMMITS'])
     settings['GITHUB_OUTPUT_JSON'] = project.get('githubOutputJson', DEFAULT_SETTINGS['GITHUB_OUTPUT_JSON'])
+    settings['GITHUB_SCAN_SECRETS'] = project.get('githubScanSecrets', DEFAULT_SETTINGS['GITHUB_SCAN_SECRETS'])
+    settings['GITHUB_SCAN_HIGH_ENTROPY'] = project.get('githubScanHighEntropy', DEFAULT_SETTINGS['GITHUB_SCAN_HIGH_ENTROPY'])
+    settings['GITHUB_SCAN_AI_LLM_KEYS'] = project.get('githubScanAiLlmKeys', DEFAULT_SETTINGS['GITHUB_SCAN_AI_LLM_KEYS'])
+    settings['GITHUB_SCAN_AI_LLM_USAGE'] = project.get('githubScanAiLlmUsage', DEFAULT_SETTINGS['GITHUB_SCAN_AI_LLM_USAGE'])
+    settings['GITHUB_MAX_FILES_PER_REPO'] = project.get('githubMaxFilesPerRepo', DEFAULT_SETTINGS['GITHUB_MAX_FILES_PER_REPO'])
+    settings['GITHUB_MAX_FILE_SIZE_BYTES'] = project.get('githubMaxFileSizeBytes', DEFAULT_SETTINGS['GITHUB_MAX_FILE_SIZE_BYTES'])
 
     # Naabu Port Scanner
     settings['NAABU_DOCKER_IMAGE'] = project.get('naabuDockerImage', DEFAULT_SETTINGS['NAABU_DOCKER_IMAGE'])

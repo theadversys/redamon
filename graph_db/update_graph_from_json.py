@@ -43,6 +43,7 @@ from graph_db import Neo4jClient
 #   - "resource_enum"    : Updates Endpoint, Parameter, Form nodes (from Katana crawl)
 #   - "vuln_scan"        : Updates Vulnerability, CVE, MitreData, Capec nodes (Nuclei DAST)
 #   - "gvm_scan"         : Updates Vulnerability, CVE nodes (GVM/OpenVAS infrastructure scan)
+#   - "github"            : Updates GitHubSecret nodes from github_secrets_{project_id}.json
 #
 # Set to list of modules to run, or empty list [] to run ALL modules
 UPDATE_MODULES = []  # Empty = run all, or specify: ["domain_discovery", "port_scan", "http_probe", "resource_enum", "vuln_scan", "gvm_scan"]
@@ -69,10 +70,19 @@ UPDATE_FUNCTION_MAP = {
     "resource_enum": "update_graph_from_resource_enum",
     "vuln_scan": "update_graph_from_vuln_scan",
     "gvm_scan": "update_graph_from_gvm_scan",
+    "github": "update_graph_from_github",
 }
 
-# Ordered execution (dependencies: domain_discovery should run first, gvm_scan last)
-UPDATE_ORDER = ["domain_discovery", "port_scan", "http_probe", "resource_enum", "vuln_scan", "gvm_scan"]
+# Ordered execution (domain_discovery first, gvm_scan and github last)
+UPDATE_ORDER = [
+    "domain_discovery",
+    "port_scan",
+    "http_probe",
+    "resource_enum",
+    "vuln_scan",
+    "gvm_scan",
+    "github",
+]
 
 
 def load_recon_json(json_path: Path) -> dict:
@@ -100,6 +110,15 @@ def get_gvm_file_path(project_id: str) -> Path:
         project_id: Project ID used in the filename
     """
     return PROJECT_ROOT / "gvm_scan" / "output" / f"gvm_{project_id}.json"
+
+
+def get_github_file_path(project_id: str) -> Path:
+    """Get the path to the GitHub secrets JSON file for a project.
+
+    Args:
+        project_id: Project ID used in the filename
+    """
+    return PROJECT_ROOT / "recon" / "output" / f"github_secrets_{project_id}.json"
 
 
 def load_gvm_json(json_path: Path) -> dict:
@@ -168,6 +187,9 @@ def run_graph_updates(
         available_data.append("vuln_scan")
     if gvm_data and gvm_data.get("scans"):
         available_data.append("gvm_scan")
+    github_path = get_github_file_path(project_id)
+    if github_path.exists():
+        available_data.append("github")
 
     print(f"[*] Data available: {', '.join(available_data) if available_data else 'None'}")
     print()
@@ -206,6 +228,11 @@ def run_graph_updates(
                     # GVM scan uses separate gvm_data instead of recon_data
                     if module == "gvm_scan":
                         stats = update_func(gvm_data, user_id, project_id)
+                    elif module == "github":
+                        # GitHub uses file path, not recon_data
+                        stats = update_func(
+                            project_id, user_id, str(get_github_file_path(project_id))
+                        )
                     else:
                         stats = update_func(recon_data, user_id, project_id)
                     results["modules"][module] = {

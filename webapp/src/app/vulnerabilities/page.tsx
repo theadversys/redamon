@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useProject } from '@/providers/ProjectProvider'
-import { ShieldCheck, AlertTriangle, AlertCircle, Info, Filter, Target } from 'lucide-react'
+import Link from 'next/link'
+import { ShieldCheck, AlertTriangle, AlertCircle, Info, Filter, Target, FileText, Key } from 'lucide-react'
+import { EvidenceDrawer } from './components/EvidenceDrawer'
 import styles from './page.module.css'
 
 interface Vulnerability {
@@ -72,6 +74,7 @@ export default function VulnerabilitiesPage() {
   const [error, setError] = useState<string | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<string | null>(null)
+  const [evidenceDrawerVuln, setEvidenceDrawerVuln] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     if (!projectId) {
@@ -140,10 +143,21 @@ export default function VulnerabilitiesPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className={styles.titleSection}>
-          <ShieldCheck size={24} />
-          <h1>Vulnerabilities</h1>
-          {stats && <span className={styles.badge}>{stats.total}</span>}
+        <div className={styles.headerRow}>
+          <div className={styles.titleSection}>
+            <ShieldCheck size={24} />
+            <h1>Vulnerabilities</h1>
+            {stats && <span className={styles.badge}>{stats.total}</span>}
+          </div>
+          {projectId && (
+            <Link
+              href={`/secrets?project=${projectId}`}
+              className={styles.secretsLink}
+            >
+              <Key size={14} />
+              GitHub Secrets & AI Attack Surface →
+            </Link>
+          )}
         </div>
 
         {stats && (
@@ -235,6 +249,15 @@ export default function VulnerabilitiesPage() {
                     {vuln.cvssScore && (
                       <span className={styles.cvssBadge}>CVSS: {vuln.cvssScore.toFixed(1)}</span>
                     )}
+                    <button
+                      type="button"
+                      className={styles.viewEvidenceButton}
+                      onClick={() => setEvidenceDrawerVuln({ id: vuln.id, name: vuln.name })}
+                      title="View evidence"
+                    >
+                      <FileText size={14} />
+                      View Evidence
+                    </button>
                   </div>
                 </div>
 
@@ -287,6 +310,16 @@ export default function VulnerabilitiesPage() {
           </div>
         )}
       </div>
+
+      {projectId && (
+        <EvidenceDrawer
+          vulnerabilityId={evidenceDrawerVuln?.id ?? ''}
+          projectId={projectId}
+          vulnerabilityName={evidenceDrawerVuln?.name}
+          isOpen={!!evidenceDrawerVuln}
+          onClose={() => setEvidenceDrawerVuln(null)}
+        />
+      )}
     </div>
   )
 }

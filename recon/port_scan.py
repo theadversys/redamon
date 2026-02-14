@@ -498,9 +498,12 @@ def run_port_scan(recon_data: dict, output_file: Path = None, settings: dict = N
     print(f"    [*] Found {len(unique_hostnames)} hostnames and {len(unique_ips)} IPs")
     print(f"    [*] Total targets to scan: {len(all_targets)}")
 
-    # Create temp directory for scan files
-    # Use /tmp/redamon to avoid spaces in paths (snap Docker issue)
-    scan_temp_dir = Path("/tmp/redamon/.naabu_temp")
+    # Create temp directory for scan files - use output dir so Docker sibling containers
+    # can access via host volume mount (HOST_RECON_OUTPUT_PATH)
+    if output_file:
+        scan_temp_dir = Path(output_file).parent / ".naabu_temp"
+    else:
+        scan_temp_dir = Path("/tmp/redamon/.naabu_temp")
     scan_temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:

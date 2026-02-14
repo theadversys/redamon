@@ -76,6 +76,59 @@
   position: relative;
 }
 
+/* Stacked layout: both panes visible, resizable vertically */
+.panelStacked .stackedPanelGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stackedPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Horizontal drag handle between AI Assistant and Recon Logs */
+.resizeHandleHorizontal {
+  height: 4px;
+  background: var(--border-default);
+  cursor: row-resize;
+  transition: background-color 150ms ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.resizeHandleHorizontal:hover {
+  background: var(--accent-primary);
+}
+
+.resizeHandleHorizontal:active {
+  background: var(--accent-primary);
+}
+
+.resizeHandleHorizontal::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.resizeHandleHorizontal:hover::before,
+.resizeHandleHorizontal:active::before {
+  opacity: 1;
+}
+
 /* Both panes fill the tab content area; hidden one is taken out of flow */
 .chatContainer,
 .reconContainer {
@@ -87,6 +140,15 @@
   position: absolute;
   inset: 0;
   transition: visibility 0.15s ease, opacity 0.15s ease;
+}
+
+/* When stacked, panels fill their Panel */
+.stackedPanelGroup .chatContainer,
+.stackedPanelGroup .reconContainer {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Hidden tab: not visible and not focusable, but still mounted so state persists */

@@ -1059,6 +1059,7 @@ These containers are designed to be deployed alongside the main stack so the AI 
 
 | Component | Documentation |
 |-----------|---------------|
+| **Application Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Project Guidelines | [.claude/CLAUDE.md](.claude/CLAUDE.md) |
 | Reconnaissance | [recon/README.RECON.md](recon/README.RECON.md) |
 | Recon Orchestrator | [recon_orchestrator/README.md](recon_orchestrator/README.md) |

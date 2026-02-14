@@ -547,14 +547,22 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
     return combined_result
 
 
-def run_github_recon(token: str, target: str, settings: dict = None) -> list:
+def run_github_recon(
+    token: str,
+    target: str,
+    project_id: str = "",
+    user_id: str = "",
+    settings: dict = None,
+) -> list:
     """
     Run GitHub secret hunting.
-    Produces a separate JSON file for GitHub findings.
+    Produces a separate JSON file for GitHub findings (project-scoped).
 
     Args:
         token: GitHub personal access token
         target: Organization or username to scan
+        project_id: Project ID for output filename and graph integration
+        user_id: User ID for graph integration
         settings: Settings dict from project_settings.get_settings()
 
     Returns:
@@ -564,13 +572,17 @@ def run_github_recon(token: str, target: str, settings: dict = None) -> list:
     print("               PandaExploit - GitHub Secret Hunt")
     print("=" * 70)
     print(f"  Target: {target}")
+    if project_id:
+        print(f"  Project: {project_id}")
     print("=" * 70 + "\n")
 
     if not token:
         print("[!] GitHub access token not configured. Skipping GitHub recon.")
         return []
 
-    hunter = GitHubSecretHunter(token, target, settings=settings)
+    hunter = GitHubSecretHunter(
+        token, target, project_id=project_id, user_id=user_id, settings=settings
+    )
     findings = hunter.run()
 
     return findings
@@ -581,6 +593,8 @@ def main():
     Main entry point - runs the complete recon pipeline.
 
     Pipeline: domain_discovery -> port_scan -> http_probe -> resource_enum -> vuln_scan -> github
+
+    Supports GitHub-only scan when TARGET_DOMAIN is empty but GITHUB_TARGET_ORG is set.
 
     Scan modes based on SUBDOMAIN_LIST:
     - Empty list []: Full subdomain discovery (discover and scan all subdomains)
@@ -594,6 +608,65 @@ def main():
     print()
 
     start_time = datetime.now()
+
+    # GitHub-only mode: no domain target, only GitHub org configured
+    has_domain = TARGET_DOMAIN and str(TARGET_DOMAIN).strip()
+    has_github_target = GITHUB_TARGET_ORG and str(GITHUB_TARGET_ORG).strip()
+    github_only = (
+        "github" in SCAN_MODULES
+        and not has_domain
+        and has_github_target
+    )
+
+    if github_only:
+        # Run only GitHub secret hunt, skip all domain phases
+        print("[*] Mode: GITHUB-ONLY SCAN")
+        print(f"[*] Target org: {GITHUB_TARGET_ORG}")
+        print()
+
+        if not GITHUB_ACCESS_TOKEN:
+            print("[!] GitHub access token not configured. Cannot run GitHub-only scan.")
+            return 1
+
+        github_findings = run_github_recon(
+            GITHUB_ACCESS_TOKEN,
+            GITHUB_TARGET_ORG,
+            project_id=PROJECT_ID or "",
+            user_id=USER_ID or "",
+            settings=_settings,
+        )
+
+        # Update graph with GitHub findings
+        github_json_path = OUTPUT_DIR / f"github_secrets_{PROJECT_ID}.json"
+        if UPDATE_GRAPH_DB and github_json_path.exists():
+            print("\n[GRAPH UPDATE] GitHub Secrets")
+            print("-" * 40)
+            try:
+                from graph_db import Neo4jClient
+                with Neo4jClient() as graph_client:
+                    if graph_client.verify_connection():
+                        github_stats = graph_client.update_graph_from_github(
+                            PROJECT_ID, USER_ID, str(github_json_path)
+                        )
+                        print(f"[+] Graph database updated with GitHub findings: {github_stats}")
+                    else:
+                        print("[!] Could not connect to Neo4j - skipping GitHub graph update")
+            except ImportError:
+                print("[!] Neo4j client not available - skipping GitHub graph update")
+            except Exception as e:
+                print(f"[!] GitHub graph update failed: {e}")
+
+        # Summary
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        print("\n" + "─" * 50)
+        print("  GITHUB SCAN COMPLETE")
+        print("─" * 50)
+        print(f"  Duration: {duration:.2f} seconds")
+        print(f"  Findings: {len(github_findings)}")
+        print(f"  Output: github_secrets_{PROJECT_ID}.json")
+        print("─" * 50)
+        return 0
 
     # Domain Ownership Verification (if enabled)
     # This MUST be the first check before any scanning to ensure we only
@@ -832,7 +905,32 @@ def main():
     # Phase 3: GitHub secret hunt - Separate JSON (if enabled)
     github_findings = []
     if "github" in SCAN_MODULES:
-        github_findings = run_github_recon(GITHUB_ACCESS_TOKEN, GITHUB_TARGET_ORG, settings=_settings)
+        github_findings = run_github_recon(
+            GITHUB_ACCESS_TOKEN,
+            GITHUB_TARGET_ORG,
+            project_id=PROJECT_ID or "",
+            user_id=USER_ID or "",
+            settings=_settings,
+        )
+        # Update graph with GitHub findings
+        github_json_path = OUTPUT_DIR / f"github_secrets_{PROJECT_ID}.json"
+        if UPDATE_GRAPH_DB and github_json_path.exists():
+            print("\n[GRAPH UPDATE] GitHub Secrets")
+            print("-" * 40)
+            try:
+                from graph_db import Neo4jClient
+                with Neo4jClient() as graph_client:
+                    if graph_client.verify_connection():
+                        github_stats = graph_client.update_graph_from_github(
+                            PROJECT_ID, USER_ID, str(github_json_path)
+                        )
+                        print(f"[+] Graph database updated with GitHub findings: {github_stats}")
+                    else:
+                        print("[!] Could not connect to Neo4j - skipping GitHub graph update")
+            except ImportError:
+                print("[!] Neo4j client not available - skipping GitHub graph update")
+            except Exception as e:
+                print(f"[!] GitHub graph update failed: {e}")
     else:
         print("\n[*] GitHub Secret Hunt: SKIPPED (add 'github' to SCAN_MODULES to enable)")
 
@@ -914,7 +1012,7 @@ def main():
     print("─" * 50)
     print("  Output: recon_{}.json".format(PROJECT_ID))
     if "github" in SCAN_MODULES:
-        print(f"  Output: github_secrets_{GITHUB_TARGET_ORG}.json")
+        print(f"  Output: github_secrets_{PROJECT_ID}.json")
     print("─" * 50)
     print()
 

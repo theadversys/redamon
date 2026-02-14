@@ -1,8 +1,17 @@
 'use client'
 
-import { AlertTriangle, Play, Loader2 } from 'lucide-react'
+import { AlertTriangle, Play, Loader2, Github } from 'lucide-react'
 import { Modal } from '@/components/ui'
 import styles from './ReconConfirmModal.module.css'
+
+const MODULE_LABELS: Record<string, string> = {
+  domain_discovery: 'Domain Discovery',
+  port_scan: 'Port Scanning',
+  http_probe: 'HTTP Probing',
+  resource_enum: 'Resource Enumeration',
+  vuln_scan: 'Vulnerability Scanning',
+  github: 'GitHub Secrets & AI Attack Surface',
+}
 
 interface GraphStats {
   totalNodes: number
@@ -17,6 +26,8 @@ interface ReconConfirmModalProps {
   targetDomain: string
   stats: GraphStats | null
   isLoading: boolean
+  scanModules?: string[]
+  githubTargetOrg?: string
 }
 
 export function ReconConfirmModal({
@@ -27,8 +38,11 @@ export function ReconConfirmModal({
   targetDomain,
   stats,
   isLoading,
+  scanModules = [],
+  githubTargetOrg = '',
 }: ReconConfirmModalProps) {
   const hasExistingData = stats && stats.totalNodes > 0
+  const hasGithub = scanModules.includes('github')
 
   return (
     <Modal
@@ -45,6 +59,33 @@ export function ReconConfirmModal({
           <p className={styles.projectInfo}>
             <strong>Target:</strong> {targetDomain}
           </p>
+        </div>
+
+        <div className={styles.modulesSection}>
+          <p className={styles.modulesTitle}>Modules to run</p>
+          <div className={styles.modulesList}>
+            {scanModules.length > 0 ? (
+              scanModules.map((id) => (
+                <span
+                  key={id}
+                  className={`${styles.moduleBadge} ${id === 'github' ? styles.moduleBadgeGithub : ''}`}
+                >
+                  {id === 'github' && <Github size={12} />}
+                  {MODULE_LABELS[id] || id}
+                  {id === 'github' && githubTargetOrg && (
+                    <span className={styles.githubOrg}> → {githubTargetOrg}</span>
+                  )}
+                </span>
+              ))
+            ) : (
+              <span className={styles.modulesDefault}>Domain discovery, port scan, HTTP probe, resource enum, vuln scan</span>
+            )}
+          </div>
+          {!hasGithub && (
+            <p className={styles.modulesHint}>
+              Enable GitHub in Project Settings → Target & Modules to scan org repos for secrets.
+            </p>
+          )}
         </div>
 
         {hasExistingData ? (

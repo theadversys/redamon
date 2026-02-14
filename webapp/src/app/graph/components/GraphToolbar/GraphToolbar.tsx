@@ -1,10 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft } from 'lucide-react'
+import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid } from 'lucide-react'
 import { Toggle } from '@/components/ui'
 import type { ReconStatus } from '@/lib/recon-types'
-import type { ViewMode } from '../../hooks/usePanelLayout'
+import type { ViewMode, LayoutMode } from '../../hooks/usePanelLayout'
 import styles from './GraphToolbar.module.css'
 
 interface GraphToolbarProps {
@@ -14,6 +14,8 @@ interface GraphToolbarProps {
   onToggle3D: (value: boolean) => void
   onToggleLabels: (value: boolean) => void
   effectiveViewMode: ViewMode
+  effectiveLayoutMode: LayoutMode
+  onLayoutModeChange?: (mode: LayoutMode) => void
   activeTab: 'graph' | 'ai'
   onHideAI?: () => void
   onShowAI?: () => void
@@ -35,6 +37,8 @@ export function GraphToolbar({
   onToggle3D,
   onToggleLabels,
   effectiveViewMode,
+  effectiveLayoutMode,
+  onLayoutModeChange,
   activeTab,
   onHideAI,
   onShowAI,
@@ -81,6 +85,32 @@ export function GraphToolbar({
           labelOn="On"
           aria-label="Toggle labels"
         />
+      </div>
+
+      {/* Layout mode: Single vs All (three-pane) - always visible */}
+      <div className={styles.divider} />
+      <div className={styles.section}>
+        <span className={styles.sectionLabel}>Layout</span>
+        <div className={styles.layoutSwitcher} role="group" aria-label="Layout mode">
+          <button
+            className={`${styles.layoutButton} ${effectiveLayoutMode === 'single' ? styles.layoutButtonActive : ''}`}
+            onClick={() => onLayoutModeChange?.('single')}
+            aria-label="Single layout (Graph or AI)"
+            title="Single layout"
+          >
+            <Layout size={14} />
+            <span>Single</span>
+          </button>
+          <button
+            className={`${styles.layoutButton} ${effectiveLayoutMode === 'all' ? styles.layoutButtonActive : ''}`}
+            onClick={() => onLayoutModeChange?.('all')}
+            aria-label="All panes (Graph + Chat + Recon)"
+            title="All three visible"
+          >
+            <LayoutGrid size={14} />
+            <span>All</span>
+          </button>
+        </div>
       </div>
 
       {targetDomain && (
@@ -149,8 +179,8 @@ export function GraphToolbar({
 
       <div className={styles.divider} />
 
-      {/* Tab mode: show Graph/AI switcher */}
-      {effectiveViewMode === 'tab' && (
+      {/* Tab/Split mode: only when in Single layout */}
+      {effectiveLayoutMode === 'single' && effectiveViewMode === 'tab' && (
         <>
           <button
             className={`${styles.tabButton} ${activeTab === 'graph' ? styles.tabButtonActive : ''}`}
@@ -173,8 +203,8 @@ export function GraphToolbar({
         </>
       )}
 
-      {/* Split mode: show Hide/Show AI buttons */}
-      {effectiveViewMode === 'split' && (
+      {/* Split mode: show Hide/Show AI buttons - only when Single layout */}
+      {effectiveLayoutMode === 'single' && effectiveViewMode === 'split' && (
         <>
           {onHideAI && (
             <button

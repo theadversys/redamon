@@ -28,6 +28,7 @@ import { AgentTimeline } from './AgentTimeline'
 import { TodoListWidget } from './TodoListWidget'
 import type { ThinkingItem, ToolExecutionItem } from './AgentTimeline'
 import { useProject } from '@/providers/ProjectProvider'
+import { useProjectById } from '@/hooks'
 import type { ReconStatus } from '@/lib/recon-types'
 import type { ExplainPayload } from '../AIPanel/AIPanel'
 
@@ -94,9 +95,23 @@ const PHASE_CONFIG = {
   },
 }
 
-type AttackPathType = 'cve_exploit' | 'brute_force_credential_guess'
+type AttackPathType =
+  | 'cve_exploit'
+  | 'brute_force_credential_guess'
+  | 'llm_exploit'
+  | 'web_app_exploit'
+  | 'credential_capture'
+  | 'social_engineering'
+  | 'dos'
+  | 'fuzzing'
+  | 'wireless'
+  | 'client_side_exploit'
+  | 'local_privilege_escalation'
 
-const ATTACK_PATH_CONFIG = {
+const ATTACK_PATH_CONFIG: Record<
+  AttackPathType,
+  { label: string; shortLabel: string; color: string; bgColor: string }
+> = {
   cve_exploit: {
     label: 'CVE Exploit',
     shortLabel: 'CVE',
@@ -109,6 +124,66 @@ const ATTACK_PATH_CONFIG = {
     color: 'var(--accent-secondary, #8b5cf6)',
     bgColor: 'rgba(139, 92, 246, 0.15)',
   },
+  llm_exploit: {
+    label: 'LLM Exploit',
+    shortLabel: 'LLM',
+    color: '#06b6d4',
+    bgColor: 'rgba(6, 182, 212, 0.15)',
+  },
+  web_app_exploit: {
+    label: 'Web App',
+    shortLabel: 'WEB',
+    color: '#10b981',
+    bgColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  credential_capture: {
+    label: 'Credential Capture',
+    shortLabel: 'CAPT',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  social_engineering: {
+    label: 'Social Engineering',
+    shortLabel: 'SOC',
+    color: '#ec4899',
+    bgColor: 'rgba(236, 72, 153, 0.15)',
+  },
+  dos: {
+    label: 'DoS',
+    shortLabel: 'DoS',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  fuzzing: {
+    label: 'Fuzzing',
+    shortLabel: 'FUZZ',
+    color: '#84cc16',
+    bgColor: 'rgba(132, 204, 22, 0.15)',
+  },
+  wireless: {
+    label: 'Wireless',
+    shortLabel: 'WIFI',
+    color: '#0ea5e9',
+    bgColor: 'rgba(14, 165, 233, 0.15)',
+  },
+  client_side_exploit: {
+    label: 'Client-Side',
+    shortLabel: 'CLI',
+    color: '#a855f7',
+    bgColor: 'rgba(168, 85, 247, 0.15)',
+  },
+  local_privilege_escalation: {
+    label: 'Local Privesc',
+    shortLabel: 'PRIV',
+    color: '#dc2626',
+    bgColor: 'rgba(220, 38, 38, 0.15)',
+  },
+}
+
+const DEFAULT_ATTACK_PATH_CONFIG = ATTACK_PATH_CONFIG.cve_exploit
+
+function getAttackPathConfig(type: string) {
+  return ATTACK_PATH_CONFIG[type as AttackPathType] ?? DEFAULT_ATTACK_PATH_CONFIG
 }
 
 export function AIAssistantDrawer({
@@ -345,7 +420,7 @@ export function AIAssistantDrawer({
         setCurrentPhase(message.payload.current_phase as Phase)
         setIterationCount(message.payload.iteration_count)
         if (message.payload.attack_path_type) {
-          setAttackPathType(message.payload.attack_path_type as AttackPathType)
+          setAttackPathType(String(message.payload.attack_path_type) as AttackPathType)
         }
         break
 
@@ -441,11 +516,24 @@ export function AIAssistantDrawer({
     }
   }, [todoList])
 
-  // Initialize WebSocket
+  // Initialize WebSocket — use currentProject when it matches, else fallback to fullProject from API.
+  // modeOverride: user can switch mode in-chat (session-only); null = use project setting.
+  const { data: fullProject } = useProjectById(projectId || null)
+  const projectMode: 'guided' | 'offensive' | undefined = currentProject?.id === projectId
+    ? (currentProject?.agentOperatingMode as 'guided' | 'offensive' | undefined)
+    : (fullProject?.agentOperatingMode as 'guided' | 'offensive' | undefined)
+  const [modeOverride, setModeOverride] = useState<'guided' | 'offensive' | null>(null)
+  const operatingMode: 'guided' | 'offensive' = modeOverride ?? projectMode ?? 'guided'
+
+  // Reset mode override when project changes so new project's default applies
+  useEffect(() => {
+    setModeOverride(null)
+  }, [projectId])
   const { status, isConnected, reconnectAttempt, sendQuery, sendApproval, sendAnswer, sendGuidance, sendStop, sendResume } = useAgentWebSocket({
     userId: userId || process.env.NEXT_PUBLIC_USER_ID || 'default_user',
     projectId: projectId || process.env.NEXT_PUBLIC_PROJECT_ID || 'default_project',
     sessionId: sessionId || process.env.NEXT_PUBLIC_SESSION_ID || 'default_session',
+    operatingMode,
     enabled: isOpen,
     onMessage: handleWebSocketMessage,
     onError: (error) => {
@@ -486,6 +574,13 @@ export function AIAssistantDrawer({
     const question = inputValue.trim()
     if (!question || !isConnected || awaitingApproval || awaitingQuestion) return
 
+    // Typing "stop" and pressing Enter stops the agent
+    if (question.toLowerCase() === 'stop') {
+      sendStop()
+      setInputValue('')
+      return
+    }
+
     if (isLoading) {
       // Agent is working → send as guidance
       const guidanceMessage: Message = {
@@ -516,7 +611,7 @@ export function AIAssistantDrawer({
         setIsLoading(false)
       }
     }
-  }, [inputValue, isConnected, isLoading, awaitingApproval, awaitingQuestion, sendQuery, sendGuidance])
+  }, [inputValue, isConnected, isLoading, awaitingApproval, awaitingQuestion, sendQuery, sendGuidance, sendStop])
 
   const handleApproval = useCallback((decision: 'approve' | 'modify' | 'abort') => {
     // Prevent double submission using ref (immediate check, not async state)
@@ -791,11 +886,24 @@ export function AIAssistantDrawer({
           </div>
           <div className={styles.headerText}>
             <h2 className={styles.title}>AI Assistant</h2>
-            <div className={styles.connectionStatus}>
+            <div className={styles.headerMeta}>
+              <select
+                className={styles.modeSwitcher}
+                value={operatingMode}
+                onChange={(e) => setModeOverride(e.target.value as 'guided' | 'offensive')}
+                title="Switch between Guided (approval gates) and Offensive (autonomous) mode"
+                aria-label="Operating mode"
+                data-mode={operatingMode}
+              >
+                <option value="guided">Guided</option>
+                <option value="offensive">Offensive</option>
+              </select>
+              <div className={styles.connectionStatus}>
               {getConnectionStatusIcon()}
               <span className={styles.subtitle} style={{ color: getConnectionStatusColor() }}>
                 {getConnectionStatusText()}
               </span>
+            </div>
             </div>
           </div>
         </div>
@@ -881,12 +989,12 @@ export function AIAssistantDrawer({
           <div
             className={styles.phaseBadge}
             style={{
-              backgroundColor: ATTACK_PATH_CONFIG[attackPathType].bgColor,
-              borderColor: ATTACK_PATH_CONFIG[attackPathType].color,
+              backgroundColor: getAttackPathConfig(attackPathType).bgColor,
+              borderColor: getAttackPathConfig(attackPathType).color,
             }}
           >
-            <span style={{ color: ATTACK_PATH_CONFIG[attackPathType].color }}>
-              {ATTACK_PATH_CONFIG[attackPathType].shortLabel}
+            <span style={{ color: getAttackPathConfig(attackPathType).color }}>
+              {getAttackPathConfig(attackPathType).shortLabel}
             </span>
           </div>
         )}
@@ -1322,8 +1430,8 @@ export function AIAssistantDrawer({
         <span className={styles.inputHint}>
           {isConnected
             ? isLoading
-              ? 'Send guidance or stop the agent'
-              : 'Press Enter to send, Shift+Enter for new line'
+              ? "Send guidance, or type 'stop' and press Enter to stop"
+              : "Press Enter to send, Shift+Enter for new line. Type 'stop' to stop."
             : 'Waiting for connection...'}
         </span>
       </div>

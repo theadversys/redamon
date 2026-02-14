@@ -2,7 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Network, ShieldCheck, Target, ClipboardList, FolderOpen } from 'lucide-react'
+import {
+  Network,
+  ShieldCheck,
+  Target,
+  ClipboardList,
+  FolderOpen,
+  Key,
+} from 'lucide-react'
 import styles from './NavigationBar.module.css'
 
 interface NavItem {
@@ -29,6 +36,12 @@ const navItems: NavItem[] = [
     label: 'Vulnerabilities',
     href: '/vulnerabilities',
     icon: <ShieldCheck size={16} />,
+    enabled: true,
+  },
+  {
+    label: 'Secrets',
+    href: '/secrets',
+    icon: <Key size={16} />,
     enabled: true,
   },
   {

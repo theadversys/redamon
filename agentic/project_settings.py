@@ -42,6 +42,9 @@ DEFAULT_AGENT_SETTINGS: dict[str, Any] = {
     # Approval Gates
     'REQUIRE_APPROVAL_FOR_EXPLOITATION': True,
     'REQUIRE_APPROVAL_FOR_POST_EXPLOITATION': True,
+
+    # Operating Mode: "guided" (default, approval gates) vs "offensive" (autonomous, flag-hunting)
+    'OPERATING_MODE': 'guided',
     
     # Autonomous Mode & Risk Assessment
     'AUTONOMOUS_MODE': False,
@@ -72,7 +75,11 @@ DEFAULT_AGENT_SETTINGS: dict[str, Any] = {
         'metasploit_console': ['exploitation', 'post_exploitation'],
         'msf_restart': ['exploitation', 'post_exploitation'],
         'web_search': ['informational', 'exploitation', 'post_exploitation'],
+        'get_github_findings': ['informational'],
+        'get_github_stats': ['informational'],
     },
+    # GitHub tools: info-only by default. If false, may expose in other phases later.
+    'GITHUB_TOOLS_INFO_ONLY': True,
 
     # Brute Force
     'BRUTE_FORCE_MAX_WORDLIST_ATTEMPTS': 3,
@@ -117,6 +124,9 @@ def fetch_agent_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
     settings['EXECUTION_TRACE_MEMORY_STEPS'] = project.get('agentExecutionTraceMemorySteps', DEFAULT_AGENT_SETTINGS['EXECUTION_TRACE_MEMORY_STEPS'])
     settings['REQUIRE_APPROVAL_FOR_EXPLOITATION'] = project.get('agentRequireApprovalForExploitation', DEFAULT_AGENT_SETTINGS['REQUIRE_APPROVAL_FOR_EXPLOITATION'])
     settings['REQUIRE_APPROVAL_FOR_POST_EXPLOITATION'] = project.get('agentRequireApprovalForPostExploitation', DEFAULT_AGENT_SETTINGS['REQUIRE_APPROVAL_FOR_POST_EXPLOITATION'])
+    raw_mode = project.get('agentOperatingMode', DEFAULT_AGENT_SETTINGS['OPERATING_MODE'])
+    normalized = str(raw_mode or '').strip().lower() if raw_mode else ''
+    settings['OPERATING_MODE'] = normalized if normalized in ('guided', 'offensive') else 'guided'
     settings['TOOL_OUTPUT_MAX_CHARS'] = project.get('agentToolOutputMaxChars', DEFAULT_AGENT_SETTINGS['TOOL_OUTPUT_MAX_CHARS'])
     settings['CYPHER_MAX_RETRIES'] = project.get('agentCypherMaxRetries', DEFAULT_AGENT_SETTINGS['CYPHER_MAX_RETRIES'])
     settings['LLM_PARSE_MAX_RETRIES'] = project.get('agentLlmParseMaxRetries', DEFAULT_AGENT_SETTINGS['LLM_PARSE_MAX_RETRIES'])
@@ -128,6 +138,7 @@ def fetch_agent_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
     settings['AUTONOMOUS_MODE'] = project.get('agentAutonomousMode', DEFAULT_AGENT_SETTINGS['AUTONOMOUS_MODE'])
     settings['RISK_THRESHOLD'] = project.get('agentRiskThreshold', DEFAULT_AGENT_SETTINGS['RISK_THRESHOLD'])
     settings['MAX_PARALLEL_TASKS'] = project.get('agentMaxParallelTasks', DEFAULT_AGENT_SETTINGS['MAX_PARALLEL_TASKS'])
+    settings['MULTI_AGENT_ENABLED'] = project.get('agentMultiAgentEnabled', DEFAULT_AGENT_SETTINGS['MULTI_AGENT_ENABLED'])
 
     logger.info(f"Loaded {len(settings)} agent settings for project {project_id}")
     return settings
@@ -158,10 +169,11 @@ _current_project_id: Optional[str] = None
 
 def load_project_settings(project_id: str) -> dict[str, Any]:
     """
-    Fetch and cache settings for a specific project from webapp API.
+    Fetch project settings from webapp API.
 
     Called by the orchestrator when it receives a project_id from the frontend.
-    Skips reload if settings are already loaded for the same project.
+    Always fetches fresh to ensure OPERATING_MODE and other settings reflect
+    the latest project configuration (e.g. after user changes offensive mode).
 
     Args:
         project_id: The project ID received from the frontend
@@ -170,10 +182,6 @@ def load_project_settings(project_id: str) -> dict[str, Any]:
         Dictionary of settings in SCREAMING_SNAKE_CASE format
     """
     global _settings, _current_project_id
-
-    # Skip if already loaded for this project
-    if _current_project_id == project_id and _settings is not None:
-        return _settings
 
     webapp_url = os.environ.get('WEBAPP_API_URL')
 

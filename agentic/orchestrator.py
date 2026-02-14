@@ -46,6 +46,7 @@ from tools import (
     MCPToolsManager,
     Neo4jToolManager,
     WebSearchToolManager,
+    GitHubToolManager,
     PhaseAwareToolExecutor,
     set_tenant_context,
     set_phase_context,
@@ -59,6 +60,7 @@ from prompts import (
     STRATEGIC_PLANNING_PROMPT,
     get_phase_tools,
 )
+from orchestrator_helpers.flag_extraction import extract_flags
 from orchestrator_helpers import (
     json_dumps_safe,
     extract_json,
@@ -71,6 +73,7 @@ from orchestrator_helpers import (
     create_config,
     get_config_values,
     get_identifiers,
+    get_operating_mode,
     is_session_config_complete,
     parse_plan_response,
     validate_plan,
@@ -135,6 +138,25 @@ class AgentOrchestrator:
         """Load project settings from webapp API and reconfigure LLM if model changed."""
         settings = load_project_settings(project_id)
         new_model = settings.get('OPENAI_MODEL', 'gpt-4o')
+        new_multi_agent = settings.get('MULTI_AGENT_ENABLED', False)
+
+        if new_multi_agent != self.multi_agent_enabled:
+            self.multi_agent_enabled = new_multi_agent
+            if new_multi_agent and not self.agent_coordinator and self.tool_executor:
+                try:
+                    from multi_agent import AgentCoordinator, ReconAgent, ExploitAgent, PostExploitAgent, SharedStateManager
+                    shared_state = SharedStateManager()
+                    self.agent_coordinator = AgentCoordinator(shared_state=shared_state)
+                    self.agent_coordinator.register_agent("recon", ReconAgent(tool_executor=self.tool_executor))
+                    self.agent_coordinator.register_agent("exploit", ExploitAgent(tool_executor=self.tool_executor))
+                    self.agent_coordinator.register_agent("post_exploit", PostExploitAgent(tool_executor=self.tool_executor))
+                    logger.info("Multi-agent coordination enabled (from project settings)")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize multi-agent coordination: {e}")
+                    self.agent_coordinator = None
+            elif not new_multi_agent:
+                self.agent_coordinator = None
+            logger.info(f"Multi-agent auto-delegation: {'enabled' if new_multi_agent else 'disabled'}")
 
         if new_model != self.model_name:
             logger.info(f"Model changed: {self.model_name} -> {new_model}")
@@ -249,8 +271,14 @@ class AgentOrchestrator:
         web_search_manager = WebSearchToolManager()
         web_search_tool = web_search_manager.get_tool()
 
+        # Setup GitHub findings tools (via webapp API)
+        github_manager = GitHubToolManager()
+        github_tools = github_manager.get_tools()
+
         # Create phase-aware tool executor
-        self.tool_executor = PhaseAwareToolExecutor(mcp_manager, graph_tool, web_search_tool)
+        self.tool_executor = PhaseAwareToolExecutor(
+            mcp_manager, graph_tool, web_search_tool, github_tools=github_tools
+        )
         self.tool_executor.register_mcp_tools(mcp_tools)
 
         logger.info(f"Tools initialized: {len(self.tool_executor.get_all_tools())} available")
@@ -352,6 +380,7 @@ class AgentOrchestrator:
         builder.add_node("plan_strategy", self._plan_strategy_node)
         builder.add_node("think", self._think_node)
         builder.add_node("execute_tool", self._execute_tool_node)
+        builder.add_node("execute_parallel_tools", self._execute_parallel_tools_node)
         builder.add_node("await_approval", self._await_approval_node)
         builder.add_node("process_approval", self._process_approval_node)
         builder.add_node("await_question", self._await_question_node)
@@ -382,6 +411,7 @@ class AgentOrchestrator:
             self._route_after_think,
             {
                 "execute_tool": "execute_tool",
+                "execute_parallel_tools": "execute_parallel_tools",
                 "await_approval": "await_approval",
                 "await_question": "await_question",
                 "generate_response": "generate_response",
@@ -390,6 +420,7 @@ class AgentOrchestrator:
 
         # Tool execution flow — goes directly back to think (analysis merged into think node)
         builder.add_edge("execute_tool", "think")
+        builder.add_edge("execute_parallel_tools", "think")
 
         # Approval flow - pause for user input
         builder.add_edge("await_approval", END)
@@ -691,11 +722,13 @@ class AgentOrchestrator:
                 logger.warning(f"[{user_id}/{project_id}/{session_id}] Failed to query vulnerabilities for planning: {e}")
         
         # Get available tools for current phase
+        operating_mode = get_operating_mode(config) if config else get_setting('OPERATING_MODE', 'guided')
         available_tools = get_phase_tools(
             current_phase,
             get_setting('ACTIVATE_POST_EXPL_PHASE', True),
             get_setting('POST_EXPL_PHASE_TYPE', 'statefull'),
-            attack_path_type
+            attack_path_type,
+            operating_mode
         )
         
         # Build exploit chain if we have vulnerabilities and chain builder
@@ -863,7 +896,24 @@ class AgentOrchestrator:
 
         # Get phase tools with attack path type for dynamic routing
         attack_path_type = state.get("attack_path_type", "cve_exploit")
-        available_tools = get_phase_tools(phase, get_setting('ACTIVATE_POST_EXPL_PHASE', True), get_setting('POST_EXPL_PHASE_TYPE', 'statefull'), attack_path_type)
+        operating_mode = get_operating_mode(config) if config else get_setting('OPERATING_MODE', 'guided')
+        available_tools = get_phase_tools(phase, get_setting('ACTIVATE_POST_EXPL_PHASE', True), get_setting('POST_EXPL_PHASE_TYPE', 'statefull'), attack_path_type, operating_mode)
+
+        # Mode-aware phase transition language (guided vs offensive)
+        if operating_mode == "offensive":
+            exploitation_prerequisites = "Auto-approved — enter when ready"
+            exploitation_approval_note = "Phase transitions are auto-approved. Proceed immediately without awaiting approval."
+            post_expl_prerequisites = "Auto-approved — enter when session established"
+            post_expl_approval_note = "Phase transitions are auto-approved. Proceed immediately."
+            info_to_expl_behavior = "Auto-approved — proceed immediately"
+            expl_to_postexpl_behavior = "Auto-approved — proceed immediately"
+        else:
+            exploitation_prerequisites = "Requires user approval to enter"
+            exploitation_approval_note = "User approval required before entering."
+            post_expl_prerequisites = "Requires user approval to enter"
+            post_expl_approval_note = "User approval required before entering."
+            info_to_expl_behavior = "Requires user approval"
+            expl_to_postexpl_behavior = "Requires user approval"
 
         system_prompt = REACT_SYSTEM_PROMPT.format(
             current_phase=phase,
@@ -876,7 +926,14 @@ class AgentOrchestrator:
             execution_trace=execution_trace_formatted,
             todo_list=todo_list_formatted,
             target_info=target_info_formatted,
+            flags_found=", ".join(state.get("flags_found", [])) or "None",
             qa_history=qa_history_formatted,
+            exploitation_prerequisites=exploitation_prerequisites,
+            exploitation_approval_note=exploitation_approval_note,
+            post_expl_prerequisites=post_expl_prerequisites,
+            post_expl_approval_note=post_expl_approval_note,
+            info_to_expl_behavior=info_to_expl_behavior,
+            expl_to_postexpl_behavior=expl_to_postexpl_behavior,
         )
 
         # CHECK: Is there a pending tool output to analyze?
@@ -1107,13 +1164,20 @@ class AgentOrchestrator:
                 logger.warning(f"[{user_id}/{project_id}/{session_id}] High-risk action detected but continuing (approval handled by phase transition)")
         
         # Create execution step
+        if decision.action == "use_tools_parallel":
+            tool_name = "parallel_tools"
+            tool_args = {"tasks": decision.parallel_tools or []}
+        else:
+            tool_name = decision.tool_name if decision.action == "use_tool" else None
+            tool_args = decision.tool_args if decision.action == "use_tool" else None
+
         step = ExecutionStep(
             iteration=iteration,
             phase=phase,
             thought=decision.thought,
             reasoning=decision.reasoning,
-            tool_name=decision.tool_name if decision.action == "use_tool" else None,
-            tool_args=decision.tool_args if decision.action == "use_tool" else None,
+            tool_name=tool_name,
+            tool_args=tool_args,
         )
         
         # Add risk assessment to step if available
@@ -1159,6 +1223,17 @@ class AgentOrchestrator:
                 if analysis.exploit_succeeded:
                     logger.info(f"EXPLOIT SUCCEEDED: {analysis.exploit_details}")
                 logger.info(f"{'='*60}\n")
+
+                # Extract and merge flags (CTF-style)
+                tool_output_raw = pending_step.get("tool_output") or ""
+                programmatic_flags = extract_flags(tool_output_raw)
+                llm_flags = getattr(analysis.extracted_info, "flags", None) or []
+                all_new_flags = list(dict.fromkeys(programmatic_flags + llm_flags))
+                current_flags = state.get("flags_found", [])
+                merged_flags = list(dict.fromkeys(current_flags + all_new_flags))
+                if all_new_flags:
+                    updates["flags_found"] = merged_flags
+                    logger.info(f"[{user_id}/{project_id}/{session_id}] Extracted flags: {all_new_flags}")
 
                 # Merge target info
                 current_target = TargetInfo(**state.get("target_info", {}))
@@ -1273,6 +1348,14 @@ class AgentOrchestrator:
                 pending_step["output_analysis"] = (pending_step.get("tool_output") or "")[:2000]
                 pending_step["actionable_findings"] = []
                 pending_step["recommended_next_steps"] = []
+                # Extract flags programmatically from tool output
+                tool_output_raw = pending_step.get("tool_output") or ""
+                programmatic_flags = extract_flags(tool_output_raw)
+                if programmatic_flags:
+                    current_flags = state.get("flags_found", [])
+                    merged_flags = list(dict.fromkeys(current_flags + programmatic_flags))
+                    updates["flags_found"] = merged_flags
+                    logger.info(f"[{user_id}/{project_id}/{session_id}] Extracted flags (fallback): {programmatic_flags}")
                 execution_trace = state.get("execution_trace", []) + [pending_step]
                 updates["execution_trace"] = execution_trace
                 updates["_completed_step"] = pending_step
@@ -1371,9 +1454,13 @@ class AgentOrchestrator:
             
             # Check if approval is required (risk-based or setting-based)
             needs_approval = risk_assessment.requires_approval
-            
-            # Override with explicit settings if configured
-            if not autonomous_mode:
+
+            # Offensive mode: auto-approve all phase transitions (no approval gates)
+            operating_mode = get_operating_mode(config) if config else get_setting('OPERATING_MODE', 'guided')
+            if operating_mode == "offensive":
+                needs_approval = False
+            # Override with explicit settings if configured (guided mode)
+            elif not autonomous_mode:
                 needs_approval = (
                     (to_phase == "exploitation" and get_setting('REQUIRE_APPROVAL_FOR_EXPLOITATION', True)) or
                     (to_phase == "post_exploitation" and get_setting('REQUIRE_APPROVAL_FOR_POST_EXPLOITATION', True))
@@ -1424,6 +1511,13 @@ class AgentOrchestrator:
             not updates.get("awaiting_user_question")):
 
             config_complete, missing_params = is_session_config_complete()
+
+            # Offensive mode: prefer BIND payload when LHOST missing (avoids blocking)
+            _operating_mode = get_operating_mode(config) if config else get_setting('OPERATING_MODE', 'guided')
+            if not config_complete and _operating_mode == "offensive":
+                bind_port = get_setting('BIND_PORT_ON_TARGET', 0)
+                if bind_port and bind_port > 0:
+                    config_complete = True  # Use bind mode, no LHOST needed
 
             if not config_complete:
                 # Check if user already answered these questions in qa_history
@@ -1518,6 +1612,36 @@ class AgentOrchestrator:
             extra_updates["msf_session_reset_done"] = True
             logger.info(f"[{user_id}/{project_id}/{session_id}] Metasploit reset complete")
 
+        # Multi-agent auto-delegate by phase when MULTI_AGENT_ENABLED
+        if self.multi_agent_enabled and self.agent_coordinator:
+            agent_task = self._build_agent_task_for_tool(phase, tool_name, tool_args, state)
+            if agent_task:
+                agent_id, task = agent_task
+                logger.info(f"[{user_id}/{project_id}/{session_id}] Auto-delegating to {agent_id} (phase={phase})")
+                try:
+                    delegate_result = await self.delegate_to_agent(agent_id, task)
+                    if delegate_result.get("success") and "result" in delegate_result:
+                        agent_output = delegate_result["result"]
+                        if isinstance(agent_output, dict):
+                            output = agent_output.get("result", agent_output.get("output", str(agent_output)))
+                        else:
+                            output = str(agent_output)
+                        result = {"success": True, "output": output}
+                    else:
+                        result = {"success": False, "error": delegate_result.get("error", "Agent delegation failed")}
+                except Exception as e:
+                    logger.warning(f"[{user_id}/{project_id}/{session_id}] Agent delegation failed: {e}, falling back to direct execution")
+                    result = None  # Fall through to direct execution
+                if result is not None:
+                    step_data["tool_output"] = result.get("output", result.get("error", ""))
+                    step_data["success"] = result.get("success", False)
+                    step_data["error_message"] = result.get("error")
+                    logger.info(f"SUCCESS (via {agent_id}): {step_data.get('success')}")
+                    return {
+                        "_current_step": step_data,
+                        "_tool_result": result,
+                    }
+
         # Check if this is a long-running metasploit command
         is_long_running_msf = (
             tool_name == "metasploit_console" and
@@ -1573,6 +1697,57 @@ class AgentOrchestrator:
         # Include any extra updates (e.g., msf_session_reset_done)
         updates.update(extra_updates)
         return updates
+
+    async def _execute_parallel_tools_node(self, state: AgentState, config = None) -> dict:
+        """Execute multiple tools in parallel and combine results for analysis."""
+        user_id, project_id, session_id = get_identifiers(state, config)
+
+        step_data = state.get("_current_step") or {}
+        tool_args = step_data.get("tool_args") or {}
+        tasks = tool_args.get("tasks", [])
+        phase = state.get("current_phase", "informational")
+        iteration = state.get("current_iteration", 0)
+
+        if not tasks:
+            logger.warning(f"[{user_id}/{project_id}/{session_id}] No parallel tasks specified")
+            step_data["tool_output"] = "Error: No parallel tasks specified"
+            step_data["success"] = False
+            step_data["error_message"] = "parallel_tools was empty"
+            return {"_current_step": step_data, "_tool_result": {"success": False, "error": "No tasks"}}
+
+        # Run tasks in parallel
+        task_list = [{"tool_name": t.get("tool_name"), "tool_args": t.get("tool_args", {})} for t in tasks if t.get("tool_name")]
+        if not task_list:
+            step_data["tool_output"] = "Error: No valid tools in parallel_tools"
+            step_data["success"] = False
+            return {"_current_step": step_data}
+
+        logger.info(f"[{user_id}/{project_id}/{session_id}] Executing {len(task_list)} tools in parallel")
+        results = await self.parallel_executor.execute_independent_tasks(task_list, phase)
+
+        # Combine outputs for analysis
+        output_parts = []
+        all_flags = []
+        for i, (task, result) in enumerate(zip(task_list, results)):
+            tool_name = task["tool_name"]
+            output = result.get("output", "") if result.get("success") else result.get("error", "Failed")
+            output_parts.append(f"--- {tool_name} (task {i+1}) ---\n{output}")
+            all_flags.extend(extract_flags(str(output)))
+
+        combined_output = "\n\n".join(output_parts)
+        step_data["tool_output"] = combined_output[:get_setting("TOOL_OUTPUT_MAX_CHARS", 8000)]
+        step_data["success"] = any(r.get("success") for r in results)
+
+        # Merge flags into state
+        if all_flags:
+            current_flags = state.get("flags_found", [])
+            merged_flags = list(dict.fromkeys(current_flags + all_flags))
+
+        return {
+            "_current_step": step_data,
+            "_tool_result": {"success": step_data["success"], "output": combined_output},
+            **({"flags_found": merged_flags} if all_flags else {}),
+        }
 
     async def _await_approval_node(self, state: AgentState, config = None) -> dict:
         """Pause and request user approval for phase transition."""
@@ -1748,11 +1923,13 @@ class AgentOrchestrator:
         logger.info(f"[{user_id}/{project_id}/{session_id}] Generating final response...")
 
         # Build final report prompt
+        flags_found = state.get("flags_found", [])
         report_prompt = FINAL_REPORT_PROMPT.format(
             objective=state.get("original_objective", ""),
             iteration_count=state.get("current_iteration", 0),
             final_phase=state.get("current_phase", "informational"),
             completion_reason=state.get("completion_reason", "Session ended"),
+            flags_found="\n".join(f"- {f}" for f in flags_found) if flags_found else "None",
             execution_trace=format_execution_trace(
                 state.get("execution_trace", []),
                 objectives=state.get("conversation_objectives", []),
@@ -1882,6 +2059,12 @@ class AgentOrchestrator:
             else:
                 logger.info("Transition ignored and no tool, generating response")
                 return "generate_response"
+        elif action == "use_tools_parallel":
+            parallel_tools = decision.get("parallel_tools") or []
+            if parallel_tools and all(t.get("tool_name") for t in parallel_tools):
+                return "execute_parallel_tools"
+            logger.warning("use_tools_parallel but no valid parallel_tools, falling back to generate_response")
+            return "generate_response"
         elif action == "use_tool" and tool_name:
             return "execute_tool"
         else:
@@ -1910,6 +2093,41 @@ class AgentOrchestrator:
     # =========================================================================
     # PUBLIC API
     # =========================================================================
+
+    def _build_agent_task_for_tool(
+        self, phase: str, tool_name: str, tool_args: dict, state: dict
+    ) -> Optional[tuple]:
+        """
+        Map (phase, tool_name, tool_args) to (agent_id, task) for auto-delegation.
+        Returns None if tool should not be delegated.
+        """
+        if phase == "informational":
+            if tool_name == "query_graph":
+                return ("recon", {"type": "graph_query", "query": tool_args.get("question", "")})
+            if tool_name == "web_search":
+                return ("recon", {"type": "web_search", "query": tool_args.get("query", "")})
+            if tool_name == "execute_naabu":
+                target_info = state.get("target_info", {})
+                target = target_info.get("primary_target", "")
+                args = tool_args.get("args", f"-host {target}")
+                return ("recon", {"type": "port_scan", "target": target, "args": args})
+        if phase == "exploitation" and tool_name == "metasploit_console":
+            return ("exploit", {"command": tool_args.get("command", ""), "metasploit_command": tool_args.get("command", "")})
+        if phase == "post_exploitation" and tool_name == "metasploit_console":
+            target_info = state.get("target_info", {})
+            sessions = target_info.get("sessions", [])
+            session_id = sessions[0] if sessions else 1
+            return ("post_exploit", {"session_id": session_id, "command": tool_args.get("command", ""), "metasploit_command": tool_args.get("command", "")})
+        return None
+
+    async def delegate_to_agent(self, agent_id: str, task: dict) -> dict:
+        """
+        Delegate a task to a specialized agent (recon, exploit, post_exploit).
+        Only works when MULTI_AGENT_ENABLED is True.
+        """
+        if not self.multi_agent_enabled or not self.agent_coordinator:
+            return {"success": False, "error": "Multi-agent not enabled"}
+        return await self.agent_coordinator.assign_task(agent_id, task)
 
     async def invoke(
         self,
@@ -2076,7 +2294,8 @@ class AgentOrchestrator:
         project_id: str,
         session_id: str,
         streaming_callback,
-        guidance_queue=None
+        guidance_queue=None,
+        operating_mode_override: Optional[str] = None
     ) -> InvokeResponse:
         """
         Invoke agent with streaming callbacks for real-time updates.
@@ -2106,7 +2325,7 @@ class AgentOrchestrator:
         self._guidance_queue = guidance_queue
 
         try:
-            config = create_config(user_id, project_id, session_id)
+            config = create_config(user_id, project_id, session_id, operating_mode_override)
             input_data = {
                 "messages": [HumanMessage(content=question)]
             }
@@ -2146,7 +2365,8 @@ class AgentOrchestrator:
         decision: str,
         modification: Optional[str],
         streaming_callback,
-        guidance_queue=None
+        guidance_queue=None,
+        operating_mode_override: Optional[str] = None
     ) -> InvokeResponse:
         """Resume after approval with streaming callbacks."""
         if not self._initialized:
@@ -2160,7 +2380,7 @@ class AgentOrchestrator:
         self._guidance_queue = guidance_queue
 
         try:
-            config = create_config(user_id, project_id, session_id)
+            config = create_config(user_id, project_id, session_id, operating_mode_override)
 
             # Get current state
             current_state = await self.graph.aget_state(config)
@@ -2207,7 +2427,8 @@ class AgentOrchestrator:
         project_id: str,
         answer: str,
         streaming_callback,
-        guidance_queue=None
+        guidance_queue=None,
+        operating_mode_override: Optional[str] = None
     ) -> InvokeResponse:
         """Resume after answer with streaming callbacks."""
         if not self._initialized:
@@ -2221,7 +2442,7 @@ class AgentOrchestrator:
         self._guidance_queue = guidance_queue
 
         try:
-            config = create_config(user_id, project_id, session_id)
+            config = create_config(user_id, project_id, session_id, operating_mode_override)
 
             # Get current state
             current_state = await self.graph.aget_state(config)
@@ -2266,7 +2487,8 @@ class AgentOrchestrator:
         project_id: str,
         session_id: str,
         streaming_callback,
-        guidance_queue=None
+        guidance_queue=None,
+        operating_mode_override: Optional[str] = None
     ) -> InvokeResponse:
         """Resume execution from last checkpoint (after stop)."""
         if not self._initialized:
@@ -2279,7 +2501,7 @@ class AgentOrchestrator:
         self._guidance_queue = guidance_queue
 
         try:
-            config = create_config(user_id, project_id, session_id)
+            config = create_config(user_id, project_id, session_id, operating_mode_override)
 
             current_state = await self.graph.aget_state(config)
             if not current_state or not current_state.values:

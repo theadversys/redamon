@@ -1,9 +1,12 @@
 """Configuration and session management helpers for the orchestrator."""
 
-from typing import TYPE_CHECKING, Tuple, List
+import logging
+from typing import TYPE_CHECKING, Tuple, List, Optional
 
-from state import AgentState
 from project_settings import get_setting
+from state import AgentState
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.memory import MemorySaver
@@ -38,10 +41,22 @@ def get_thread_id(user_id: str, project_id: str, session_id: str) -> str:
     return f"{user_id}:{project_id}:{session_id}"
 
 
+VALID_OPERATING_MODES = ("guided", "offensive")
+
+
+def _normalize_operating_mode(mode: Optional[str]) -> str:
+    """Validate and normalize operating mode. Returns 'guided' for invalid values."""
+    if not mode or not isinstance(mode, str):
+        return "guided"
+    normalized = mode.strip().lower()
+    return normalized if normalized in VALID_OPERATING_MODES else "guided"
+
+
 def create_config(
     user_id: str,
     project_id: str,
-    session_id: str
+    session_id: str,
+    operating_mode_override: Optional[str] = None
 ) -> dict:
     """
     Create config for graph invocation with checkpointer thread_id.
@@ -49,16 +64,22 @@ def create_config(
     Config contains:
     - thread_id: For MemorySaver checkpointer (session persistence)
     - user_id, project_id, session_id: For logging in nodes
+    - operating_mode: "guided" | "offensive" - for mode-aware behavior in nodes
 
     Args:
         user_id: User identifier
         project_id: Project identifier
         session_id: Session identifier for conversation continuity
+        operating_mode_override: Optional per-session override for operating mode
 
     Returns:
         Config dict for graph.invoke()
     """
     thread_id = get_thread_id(user_id, project_id, session_id)
+    raw_mode = operating_mode_override or get_setting('OPERATING_MODE', 'guided')
+    operating_mode = _normalize_operating_mode(raw_mode)
+    if operating_mode == "offensive":
+        logger.info(f"Config for {session_id}: operating_mode=offensive (client_override={bool(operating_mode_override)})")
 
     return {
         # LangGraph recursion limit - must be higher than MAX_ITERATIONS
@@ -68,9 +89,29 @@ def create_config(
             "thread_id": thread_id,
             "user_id": user_id,
             "project_id": project_id,
-            "session_id": session_id
+            "session_id": session_id,
+            "operating_mode": operating_mode
         }
     }
+
+
+def get_operating_mode(config) -> str:
+    """
+    Get operating_mode from config (for mode-aware behavior in nodes).
+    Returns "guided" if not found. Always returns a validated value.
+    """
+    configurable = None
+    if config is None:
+        return _normalize_operating_mode(get_setting("OPERATING_MODE", "guided"))
+    if isinstance(config, dict):
+        configurable = config.get("configurable", {})
+    elif hasattr(config, "configurable"):
+        configurable = config.configurable or {}
+    elif hasattr(config, "get"):
+        configurable = config.get("configurable", {})
+    if isinstance(configurable, dict):
+        return _normalize_operating_mode(configurable.get("operating_mode", "guided"))
+    return _normalize_operating_mode(get_setting("OPERATING_MODE", "guided"))
 
 
 def get_config_values(config) -> Tuple[str, str, str]:

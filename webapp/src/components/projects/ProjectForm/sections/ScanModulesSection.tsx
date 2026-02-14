@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Layers } from 'lucide-react'
+import { ChevronDown, Layers, Github } from 'lucide-react'
 import { Toggle } from '@/components/ui'
 import type { Project } from '@prisma/client'
 import styles from '../ProjectForm.module.css'
@@ -11,6 +11,7 @@ type FormData = Omit<Project, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'use
 interface ScanModulesSectionProps {
   data: FormData
   updateField: <K extends keyof FormData>(field: K, value: FormData[K]) => void
+  onNavigateToIntegrations?: () => void
 }
 
 const SCAN_MODULE_OPTIONS = [
@@ -19,15 +20,17 @@ const SCAN_MODULE_OPTIONS = [
   { id: 'http_probe', label: 'HTTP Probing', description: 'httpx HTTP analysis', indent: 2 },
   { id: 'resource_enum', label: 'Resource Enumeration', description: 'Katana, GAU, Kiterunner', indent: 3 },
   { id: 'vuln_scan', label: 'Vulnerability Scanning', description: 'Nuclei vulnerability scanner', indent: 3 },
+  { id: 'github', label: 'GitHub Secrets & AI Attack Surface', description: 'Scan GitHub org for exposed secrets, AI keys, high-entropy', indent: 0 },
 ]
 
-// Module dependency tree: child → parent
+// Module dependency tree: child → parent (null = no parent, runs independently)
 const MODULE_DEPENDENCIES: Record<string, string | null> = {
   domain_discovery: null,
   port_scan: 'domain_discovery',
   http_probe: 'port_scan',
   resource_enum: 'http_probe',
   vuln_scan: 'http_probe',
+  github: null, // Independent: scans GitHub org, not domain
 }
 
 // Get all modules that depend on a given module (direct + transitive)
@@ -49,8 +52,10 @@ function isParentEnabled(moduleId: string, enabledModules: string[]): boolean {
   return isParentEnabled(parent, enabledModules)
 }
 
-export function ScanModulesSection({ data, updateField }: ScanModulesSectionProps) {
+export function ScanModulesSection({ data, updateField, onNavigateToIntegrations }: ScanModulesSectionProps) {
   const [isOpen, setIsOpen] = useState(true)
+  const githubEnabled = data.scanModules.includes('github')
+  const githubNeedsConfig = githubEnabled && (!data.githubAccessToken?.trim() || !data.githubTargetOrg?.trim())
 
   const toggleModule = (moduleId: string) => {
     const current = data.scanModules
@@ -128,6 +133,24 @@ export function ScanModulesSection({ data, updateField }: ScanModulesSectionProp
               )
             })}
           </div>
+
+          {githubNeedsConfig && (
+            <div className={styles.githubConfigHint}>
+              <Github size={16} />
+              <span>
+                GitHub scan is enabled. Configure <strong>Access Token</strong> and <strong>Target Organization</strong> in the Integrations tab.
+              </span>
+              {onNavigateToIntegrations && (
+                <button
+                  type="button"
+                  className={styles.githubConfigButton}
+                  onClick={onNavigateToIntegrations}
+                >
+                  Configure GitHub →
+                </button>
+              )}
+            </div>
+          )}
 
           <div className={styles.subSection}>
             <h3 className={styles.subSectionTitle}>General Options</h3>
