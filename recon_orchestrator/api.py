@@ -31,11 +31,26 @@ from models import (
     ReconStatus,
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Configure structured JSON logging
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_obj = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "service": "recon-orchestrator",
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "project_id") and record.project_id:
+            log_obj["project_id"] = record.project_id
+        if hasattr(record, "user_id") and record.user_id:
+            log_obj["user_id"] = record.user_id
+        if record.exc_info:
+            log_obj["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_obj)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(JsonFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[_handler])
 logger = logging.getLogger(__name__)
 
 # Configuration

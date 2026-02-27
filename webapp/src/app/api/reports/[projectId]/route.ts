@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { marked } from 'marked'
 
 /**
@@ -152,7 +153,7 @@ ${marked.parse(markdown) as string}
       },
     })
   } catch (error) {
-    console.error('Report generation error:', error)
+    logger.error('Report generation error', { project_id: projectId, error })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Report generation failed' },
       { status: 500 }

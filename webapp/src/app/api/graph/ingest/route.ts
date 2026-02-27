@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { createActionLog } from '@/lib/actionLog'
+import { logger } from '@/lib/logger'
 import { isInScope } from '@/lib/scope'
 
 const RECON_ORCHESTRATOR_URL =
@@ -111,7 +112,11 @@ export async function POST(request: NextRequest) {
       }
     }
     if (targetDomain && hostToCheck && !isInScope(hostToCheck, scopeProject)) {
-      console.warn(`Ingest rejected: host ${hostToCheck} out of scope for project ${projectId}`)
+      logger.warn('Ingest rejected: host out of scope', {
+        project_id: projectId,
+        host: hostToCheck,
+        target_domain: targetDomain,
+      })
       return NextResponse.json(
         { error: `Host ${hostToCheck} is out of scope for this project. Only targets within ${targetDomain} are allowed.` },
         { status: 400 }
@@ -345,12 +350,15 @@ export async function POST(request: NextRequest) {
       status: 'success',
       metadata: result,
     }).catch((logErr) => {
-      console.warn('ActionLog creation failed:', logErr)
+      logger.warn('ActionLog creation failed', {
+        project_id: projectId,
+        error: logErr instanceof Error ? logErr.message : String(logErr),
+      })
     })
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Graph ingest error:', error)
+    logger.error('Graph ingest error', { error })
     return NextResponse.json(
       {
         error:
