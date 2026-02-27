@@ -92,16 +92,24 @@ Agent Zero connects to MCP servers via `conf/agent-zero-mcp-servers.json`, mount
 
 ## Skills
 
-The PandaExploit skill teaches Agent Zero when and how to use PandaExploit MCP tools. Add it using one of these methods:
+The PandaExploit skill teaches Agent Zero when and how to use PandaExploit MCP tools.
 
-### Method 1: Import via ZIP (Recommended)
+### Auto-load (Experimental)
+
+The docker-compose mounts `./docs/skills/PandaExploit` at `/a0/usr/skills/PandaExploit`. If Agent Zero auto-loads skills from that path, the PandaExploit skill will be available on startup. **This path may vary by Agent Zero version** — if the skill does not appear, use manual import below.
+
+### Manual Import (Reliable)
+
+If auto-load does not work, add the skill using one of these methods:
+
+**Method 1: Import via ZIP (Recommended)**
 
 1. Zip the skill folder: `cd docs/skills && zip -r PandaExploit-skill.zip PandaExploit`
 2. In Agent Zero: **Settings → Skills**
 3. Click **Import** (or the zip icon) and select `PandaExploit-skill.zip`
 4. Refresh the UI — the skill appears under Settings > Skills
 
-### Method 2: Create Skill via Agent
+**Method 2: Create Skill via Agent**
 
 If you have PandaExploit API docs, prompt Agent Zero:
 
@@ -109,7 +117,7 @@ If you have PandaExploit API docs, prompt Agent Zero:
 
 Then paste the tool reference from `docs/skills/PandaExploit/SKILL.md`.
 
-### Method 3: Manual Copy
+**Method 3: Manual Copy (when running A0 with custom data volume)**
 
 1. Locate Agent Zero's skills folder (e.g. `/a0/usr/skills` when using volume `-v /path/to/data:/a0/usr`)
 2. Copy the `docs/skills/PandaExploit` folder into the skills directory
