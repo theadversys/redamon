@@ -54,16 +54,18 @@ RUN wget -q https://go.dev/dl/go1.23.3.linux-amd64.tar.gz \
 ENV PATH="${PATH}:/usr/local/go/bin:/root/go/bin"
 ENV GOPATH="/root/go"
 
-# Install ProjectDiscovery tools (naabu, nuclei)
-# NOTE: These tools require CGO and may fail to build on some systems
-# If build fails, you can install them manually or use pre-built binaries
-# For now, we'll skip them to get Metasploit working - they can be installed later
-# naabu requires CGO for libpcap support
-ENV CGO_ENABLED=1
-RUN echo "Skipping naabu/nuclei installation due to build issues - install manually if needed" || true
+# Install ProjectDiscovery tools (naabu, nuclei) from pre-built binaries
+# Pinned versions avoid GitHub API rate limits at build time
+ARG NAABU_VERSION=2.4.0
+ARG NUCLEI_VERSION=3.7.0
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in amd64) DL_ARCH="amd64";; arm64) DL_ARCH="arm64";; *) DL_ARCH="amd64";; esac && \
+    wget -q "https://github.com/projectdiscovery/naabu/releases/download/v${NAABU_VERSION}/naabu_${NAABU_VERSION}_linux_${DL_ARCH}.zip" -O /tmp/naabu.zip && \
+    wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_${DL_ARCH}.zip" -O /tmp/nuclei.zip && \
+    unzip -o /tmp/naabu.zip -d /usr/local/bin && unzip -o /tmp/nuclei.zip -d /usr/local/bin && \
+    chmod +x /usr/local/bin/naabu /usr/local/bin/nuclei && rm /tmp/naabu.zip /tmp/nuclei.zip
 
-# Update nuclei templates (skip if nuclei not installed)
-# RUN nuclei -update-templates || true
+# nuclei -update-templates runs at container start via entrypoint.sh (NUCLEI_AUTO_UPDATE=true)
 
 # Create virtual environment for Python dependencies
 RUN python3 -m venv /opt/venv
