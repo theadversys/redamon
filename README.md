@@ -7,7 +7,7 @@
 <h3 align="center">Unmask the hidden before the world does.</h3>
 
 <p align="center">
-  An AI-powered agentic red team framework that automates offensive security operations, from reconnaissance to exploitation to post-exploitation, with zero human intervention.
+  An AI-powered agentic red team framework that automates offensive security operations, from reconnaissance to exploitation to post-exploitation, with zero human intervention. **Agent Zero** is the main orchestrator — an autonomous AI agent that drives the platform via MCP tools, ingests findings into the graph, and chains attacks end-to-end.
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/LICENSE-MIT-blue?style=for-the-badge" alt="MIT License"/>
   <br/>
   <img src="https://img.shields.io/badge/AI-AUTONOMOUS%20AGENT-blueviolet?style=for-the-badge&logo=openai&logoColor=white" alt="AI Powered"/>
-  <img src="https://img.shields.io/badge/ZERO-HUMAN%20INTERVENTION-orange?style=for-the-badge" alt="Zero Click"/>
+  <img src="https://img.shields.io/badge/Agent%20Zero-MAIN%20ORCHESTRATOR-orange?style=for-the-badge" alt="Agent Zero"/>
   <img src="https://img.shields.io/badge/Kali-Powered-557C94?style=for-the-badge&logo=kalilinux&logoColor=white" alt="Kali Powered"/>
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
 </p>
@@ -75,16 +75,21 @@ Go to **http://localhost:3000** — create a project, configure your target, and
 
 ### Services
 
-| Service | URL |
-|---------|-----|
-| **Webapp** | http://localhost:3000 |
-| Neo4j Browser | http://localhost:7474 |
-| Recon Orchestrator | http://localhost:8010 |
-| Agent API | http://localhost:8090 |
-| MCP Naabu | http://localhost:8000 |
-| MCP Curl | http://localhost:8001 |
-| MCP Nuclei | http://localhost:8002 |
-| MCP Metasploit | http://localhost:8003 |
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Webapp** | http://localhost:3000 | Next.js dashboard, graph visualization, Agent Zero iframe |
+| **Agent Zero** | http://localhost:50001 | Main AI orchestrator — drives pentest via MCP tools |
+| PandaExploit MCP | http://localhost:8011 | Platform API bridge (projects, graph, ingest) |
+| Neo4j Browser | http://localhost:7474 | Graph database UI |
+| Recon Orchestrator | http://localhost:8010 | Recon pipeline control, ingest API |
+| Agent API | http://localhost:8090 | LangGraph agent (legacy) |
+| MCP Naabu | http://localhost:8000 | Port scanner |
+| MCP Curl | http://localhost:8001 | HTTP client |
+| MCP Nuclei | http://localhost:8002 | Vulnerability scanner |
+| MCP Metasploit | http://localhost:8003 | Exploitation framework |
+| MCP Nikto | http://localhost:8004 | Web server scanner |
+| MCP Sqlmap | http://localhost:8005 | SQL injection scanner |
+| MCP Nmap | http://localhost:8006 | Network scanner |
 
 ### Common Commands
 
@@ -94,9 +99,11 @@ docker compose down                         # Stop all services
 docker compose ps                           # Check service status
 docker compose logs -f                      # Follow all logs
 docker compose logs -f webapp               # Webapp (Next.js)
-docker compose logs -f agent                # AI agent orchestrator
+docker compose logs -f agent-zero           # Agent Zero (main orchestrator)
+docker compose logs -f pandaexploit-mcp     # PandaExploit MCP (platform API)
+docker compose logs -f agent                # Legacy AI agent
 docker compose logs -f recon-orchestrator   # Recon orchestrator
-docker compose logs -f kali-sandbox         # MCP tool servers
+docker compose logs -f kali-sandbox         # MCP tool servers (naabu, nuclei, etc.)
 docker compose logs -f neo4j                # Neo4j graph database
 docker compose logs -f postgres             # PostgreSQL database
 
@@ -148,7 +155,8 @@ No rebuild needed — just restart.
 
 - [Overview](#overview)
   - [Reconnaissance Pipeline](#reconnaissance-pipeline)
-  - [AI Agent Orchestrator](#ai-agent-orchestrator)
+  - [Agent Zero — Main Orchestrator](#agent-zero--main-orchestrator)
+  - [AI Agent Orchestrator (Legacy)](#ai-agent-orchestrator-legacy)
   - [Attack Surface Graph](#attack-surface-graph)
   - [Project Settings](#project-settings)
 - [System Architecture](#system-architecture)
@@ -177,9 +185,9 @@ The platform is built around four pillars:
 
 | Pillar | What it does |
 |--------|-------------|
-| **Reconnaissance Pipeline** | Six sequential scanning phases that map your target's entire attack surface — from subdomain discovery to vulnerability detection — and store the results as a rich, queryable graph. |
-| **AI Agent Orchestrator** | A LangGraph-based autonomous agent that reasons about the graph, selects security tools via MCP, transitions through informational / exploitation / post-exploitation phases, and can be steered in real-time via chat. |
-| **Attack Surface Graph** | A Neo4j knowledge graph with 17 node types and 20+ relationship types that serves as the single source of truth for every finding — and the primary data source the AI agent queries before every decision. |
+| **Agent Zero (Main Orchestrator)** | An autonomous AI agent that drives the entire platform. It uses MCP tools to run scans (nmap, nuclei, nikto, sqlmap), ingests findings into the graph, queries the graph for intelligence, chains attacks, and operates with minimal human intervention. Embedded in the webapp via iframe. |
+| **Reconnaissance Pipeline** | Six sequential scanning phases that map your target's entire attack surface — from subdomain discovery to vulnerability detection — and store the results as a rich, queryable graph. Can be started by Agent Zero or manually from the webapp. |
+| **Attack Surface Graph** | A Neo4j knowledge graph with 17 node types and 20+ relationship types that serves as the single source of truth for every finding — and the primary data source Agent Zero queries before every decision. |
 | **Project Settings Engine** | 180+ per-project parameters — exposed through the webapp UI — that control every tool's behavior, from Naabu thread counts to Nuclei severity filters to agent approval gates. |
 
 ---
@@ -256,9 +264,22 @@ All results are combined into a single JSON file (`recon/output/recon_{PROJECT_I
 
 ---
 
-### AI Agent Orchestrator
+### Agent Zero — Main Orchestrator
 
-The AI agent is a **LangGraph-based autonomous system** that implements the ReAct (Reasoning + Acting) pattern. It operates in a loop — reason about the current state, select and execute a tool, analyze the results, repeat — until the objective is complete or the user stops it.
+**Agent Zero** is the primary AI orchestrator of PandaExploit. It runs as a standalone service (`agent0ai/agent-zero`) and is embedded in the webapp via iframe. Agent Zero connects to PandaExploit through MCP (Model Context Protocol):
+
+- **PandaExploit MCP** (port 8011) — Platform API: list projects, get graph, get vulnerabilities, start recon, and **ingest** tool output into the graph.
+- **Kali Sandbox MCPs** (ports 8000–8006) — Execute tools: naabu, curl, nuclei, metasploit, nikto, sqlmap, nmap.
+
+Agent Zero uses the **PandaExploit skill** to know when to call `set_pandaexploit_context`, `get_graph`, `get_vulnerabilities`, and the `ingest_*` tools. After every scan, it ingests results so the graph stays up to date. It reasons about the attack surface, prioritizes high-impact findings, and chains reconnaissance → vulnerability scan → exploitation.
+
+**Legacy AI Agent** — A LangGraph-based agent (port 8090) is also available for WebSocket chat and phase-based exploitation. Agent Zero is the recommended orchestrator for autonomous pentesting.
+
+---
+
+### AI Agent Orchestrator (Legacy)
+
+The legacy AI agent is a **LangGraph-based autonomous system** that implements the ReAct (Reasoning + Acting) pattern. It operates in a loop — reason about the current state, select and execute a tool, analyze the results, repeat — until the objective is complete or the user stops it.
 
 #### Three Execution Phases
 
@@ -301,17 +322,29 @@ The agent runs as a background task, keeping the WebSocket connection free for c
 
 #### MCP Tool Integration
 
-The agent executes security tools through the **Model Context Protocol**, with each tool running in a dedicated server inside the Kali sandbox container:
+**Agent Zero** connects to two MCP layers:
 
-| Tool | Purpose | Available In |
-|------|---------|-------------|
-| **query_graph** | Neo4j Cypher queries for target intelligence | All phases |
-| **web_search** | Tavily-based CVE/exploit research | All phases |
-| **execute_curl** | HTTP requests, API probing, header inspection | All phases |
-| **execute_naabu** | Fast port scanning and service detection | All phases |
-| **metasploit_console** | Exploit execution, payload delivery, sessions | Exploitation & Post-exploitation |
+**PandaExploit MCP** (platform API + ingest):
+| Tool | Purpose |
+|------|---------|
+| `set_pandaexploit_context` | Set project/user for subsequent calls |
+| `list_projects`, `get_project` | Project management |
+| `get_graph`, `get_vulnerabilities`, `get_evidence` | Query attack surface |
+| `start_recon`, `get_recon_status`, `get_recon_logs` | Recon pipeline control |
+| `ingest_nmap_output`, `ingest_nuclei_output`, `ingest_nikto_output`, `ingest_sqlmap_output`, `ingest_custom_findings` | Write tool output to graph |
 
-For long-running Metasploit operations (e.g., brute force with large wordlists), the agent streams progress updates every 5 seconds to the WebSocket, so you see output in real time.
+**Kali Sandbox MCPs** (execute tools):
+| Tool | Purpose |
+|------|---------|
+| `execute_naabu` | Port scanning |
+| `execute_curl` | HTTP requests |
+| `execute_nuclei` | Vulnerability scanning |
+| `execute_nikto` | Web server scanning |
+| `execute_sqlmap` | SQL injection testing |
+| `execute_nmap` | Network scanning |
+| `metasploit_console` | Exploitation |
+
+After each `execute_*` run, Agent Zero calls the matching `ingest_*` tool so findings populate the graph. For long-running Metasploit operations, progress streams every 5 seconds via WebSocket.
 
 ---
 
@@ -516,58 +549,63 @@ Controls how the AI agent operates during chat sessions:
 
 ```mermaid
 flowchart TB
-    subgraph User["👤 User Layer"]
+    subgraph User["User Layer"]
         Browser[Web Browser]
         CLI[Terminal/CLI]
     end
 
-    subgraph Frontend["🖥️ Frontend Layer"]
-        Webapp[Next.js Webapp<br/>:3000]
+    subgraph Frontend["Frontend Layer"]
+        Webapp[Next.js Webapp :3000]
     end
 
-    subgraph Backend["⚙️ Backend Layer"]
-        Agent[AI Agent Orchestrator<br/>FastAPI + LangGraph<br/>:8090]
-        ReconOrch[Recon Orchestrator<br/>FastAPI + Docker SDK<br/>:8010]
+    subgraph AgentZero["Agent Zero - Main Orchestrator"]
+        A0[Agent Zero :50001]
     end
 
-    subgraph Tools["🔧 MCP Tools Layer"]
-        Naabu[Naabu Server<br/>:8000]
-        Curl[Curl Server<br/>:8001]
-        Nuclei[Nuclei Server<br/>:8002]
-        Metasploit[Metasploit Server<br/>:8003]
+    subgraph PandaExploitMCP["PandaExploit MCP :8011"]
+        PE[Platform API + Ingest]
     end
 
-    subgraph Data["💾 Data Layer"]
-        Neo4j[(Neo4j Graph DB<br/>:7474/:7687)]
-        Postgres[(PostgreSQL<br/>Project Settings<br/>:5432)]
-        Recon[Recon Pipeline<br/>Docker Container]
+    subgraph Backend["Backend Layer"]
+        Agent[Legacy AI Agent :8090]
+        ReconOrch[Recon Orchestrator :8010]
     end
 
-    subgraph Targets["🎯 Target Layer"]
+    subgraph KaliTools["Kali Sandbox MCPs :8000-8006"]
+        Naabu[Naabu]
+        Curl[Curl]
+        Nuclei[Nuclei]
+        Nikto[Nikto]
+        Sqlmap[Sqlmap]
+        Nmap[Nmap]
+        Metasploit[Metasploit]
+    end
+
+    subgraph Data["Data Layer"]
+        Neo4j[(Neo4j Graph)]
+        Postgres[(PostgreSQL)]
+        Recon[Recon Pipeline]
+    end
+
+    subgraph Targets["Target Layer"]
         Target[Target Systems]
-        GuineaPigs[Guinea Pigs<br/>Test VMs]
     end
 
     Browser --> Webapp
+    Webapp -->|iframe| A0
     CLI --> Recon
-    Webapp <-->|WebSocket| Agent
+    A0 -->|MCP HTTP| PE
+    A0 -->|MCP SSE| KaliTools
+    PE -->|API| Webapp
+    PE -->|API| ReconOrch
+    PE -->|ingest| Neo4j
     Webapp -->|REST + SSE| ReconOrch
     Webapp --> Neo4j
     Webapp --> Postgres
     ReconOrch -->|Docker SDK| Recon
-    Recon -->|Fetch Settings| Webapp
-    Agent --> Neo4j
-    Agent -->|MCP Protocol| Naabu
-    Agent -->|MCP Protocol| Curl
-    Agent -->|MCP Protocol| Nuclei
-    Agent -->|MCP Protocol| Metasploit
     Recon --> Neo4j
-    Naabu --> Target
-    Nuclei --> Target
-    Metasploit --> Target
-    Naabu --> GuineaPigs
-    Nuclei --> GuineaPigs
-    Metasploit --> GuineaPigs
+    Agent -->|MCP| KaliTools
+    KaliTools --> Target
 ```
 
 ### Data Flow Pipeline
@@ -628,11 +666,22 @@ flowchart TB
                 Knockpy[Knockpy]
             end
 
-            subgraph MCPContainer["kali-mcp-sandbox"]
+            subgraph A0Container["agent-zero-container"]
+                A0Service[Agent Zero :50001]
+            end
+
+            subgraph PDMCPContainer["pandaexploit-mcp"]
+                PDMCP[PandaExploit MCP :8011]
+            end
+
+            subgraph MCPContainer["kali-sandbox"]
                 MCPServers[MCP Servers]
                 NaabuTool[Naabu :8000]
                 CurlTool[Curl :8001]
                 NucleiTool[Nuclei :8002]
+                NiktoTool[Nikto :8004]
+                SqlmapTool[Sqlmap :8005]
+                NmapTool[Nmap :8006]
                 MSFTool[Metasploit :8003]
             end
 
@@ -981,32 +1030,44 @@ Domain → Subdomain → IP → Port → Service → Technology → Vulnerabilit
 
 ### 3. MCP Tool Servers
 
-Security tools exposed via Model Context Protocol for AI agent integration.
+Security tools exposed via Model Context Protocol. **Agent Zero** connects to all of these.
 
+**PandaExploit MCP** (platform bridge):
+| Server | Port | Capability |
+|--------|------|------------|
+| pandaexploit-mcp | 8011 | Projects, graph, vulnerabilities, recon control, ingest pipeline |
+
+**Kali Sandbox** (execute tools):
 | Server | Port | Tool | Capability |
 |--------|------|------|------------|
-| naabu | 8000 | Naabu | Fast port scanning, service detection |
-| curl | 8001 | Curl | HTTP requests, header inspection |
-| nuclei | 8002 | Nuclei | 9000+ vulnerability templates |
-| metasploit | 8003 | Metasploit | Exploitation, post-exploitation, sessions |
+| naabu | 8000 | Naabu | Port scanning |
+| curl | 8001 | Curl | HTTP requests |
+| nuclei | 8002 | Nuclei | Vulnerability scanning |
+| metasploit | 8003 | Metasploit | Exploitation |
+| nikto | 8004 | Nikto | Web server scanning |
+| sqlmap | 8005 | Sqlmap | SQL injection testing |
+| nmap | 8006 | Nmap | Network scanning |
 
-📖 **[Read MCP Documentation](mcp/README.MCP.md)**
+📖 **[Read MCP Documentation](mcp/README.MCP.md)**  
+📖 **[Agent Zero + PandaExploit Guide](docs/Agent-zero-PandaExploit.md)**
 
 ---
 
-### 4. AI Agent Orchestrator
+### 4. Agent Zero (Main Orchestrator)
 
-LangGraph-based autonomous agent with ReAct pattern.
+**Agent Zero** is the primary AI orchestrator — an autonomous agent that drives pentesting via MCP.
 
-- **WebSocket Streaming**: Real-time updates to frontend
-- **Phase-Aware Execution**: Human approval for dangerous operations
-- **Memory Persistence**: Conversation history via MemorySaver
-- **Multi-Objective Support**: Complex attack chain planning
-- **Live Guidance**: Send steering messages to the agent while it works
-- **Stop & Resume**: Interrupt execution and resume from the last checkpoint
+- **Embedded in Webapp**: Loaded via iframe on the Graph page
+- **PandaExploit MCP**: Projects, graph queries, ingest pipeline
+- **Kali MCPs**: Execute nmap, nuclei, nikto, sqlmap, naabu, curl, metasploit
+- **Ingest Flow**: After each scan, Agent Zero calls `ingest_*` to populate the graph
+- **Skills**: PandaExploit skill guides tool selection and workflow
 
+**Legacy Agent** (port 8090): LangGraph-based agent with WebSocket chat, phase-based exploitation, and approval workflows.
+
+📖 **[Agent Zero + PandaExploit Guide](docs/Agent-zero-PandaExploit.md)**  
+📖 **[Agent Zero Setup](docs/AGENT_ZERO_SETUP.md)**  
 📖 **[Read Agentic Documentation](agentic/README.AGENTIC.md)**
-📖 **[Metasploit Integration Guide](agentic/README.METASPLOIT.GUIDE.md)**
 
 ---
 
@@ -1015,7 +1076,8 @@ LangGraph-based autonomous agent with ReAct pattern.
 Next.js dashboard for visualization and AI interaction.
 
 - **Graph Visualization**: Interactive Neo4j graph explorer
-- **AI Chat Interface**: WebSocket-based agent communication
+- **Agent Zero iframe**: Embedded Agent Zero on the Graph page — the main AI orchestrator for autonomous pentesting
+- **AI Chat Interface**: WebSocket-based legacy agent communication
 - **Node Inspector**: Detailed view of assets and relationships
 - **Approval Workflows**: Confirm dangerous tool executions
 
@@ -1060,6 +1122,8 @@ These containers are designed to be deployed alongside the main stack so the AI 
 | Component | Documentation |
 |-----------|---------------|
 | **Application Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Agent Zero Integration** | [docs/Agent-zero-PandaExploit.md](docs/Agent-zero-PandaExploit.md) |
+| **Agent Zero Setup** | [docs/AGENT_ZERO_SETUP.md](docs/AGENT_ZERO_SETUP.md) |
 | Project Guidelines | [.claude/CLAUDE.md](.claude/CLAUDE.md) |
 | Reconnaissance | [recon/README.RECON.md](recon/README.RECON.md) |
 | Recon Orchestrator | [recon_orchestrator/README.md](recon_orchestrator/README.md) |
