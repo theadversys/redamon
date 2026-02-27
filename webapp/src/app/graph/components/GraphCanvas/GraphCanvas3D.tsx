@@ -2,6 +2,8 @@
 
 import { useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import * as THREE from 'three'
+import SpriteText from 'three-spritetext'
 import { GraphData, GraphNode, GraphLink } from '../../types'
 import { getNodeColor, getNodeSize, getGlowLevel } from '../../utils'
 import { getLinkColor, getLinkWidth3D, getParticleCount } from '../../utils/linkHelpers'
@@ -97,8 +99,6 @@ export function GraphCanvas3D({
       onNodeClick={(node) => onNodeClick(node as GraphNode)}
       nodeThreeObject={(node: object) => {
         const graphNode = node as GraphNode
-        const THREE = require('three')
-        const SpriteText = require('three-spritetext').default
 
         const group = new THREE.Group()
 
@@ -189,7 +189,7 @@ export function GraphCanvas3D({
           const sprite = new SpriteText(graphNode.name)
           sprite.color = '#ffffff'
           sprite.textHeight = BASE_SIZES.label3D
-          sprite.position.y = sphereSize + BASE_SIZES.label3D
+          ;(sprite as THREE.Object3D).position.y = sphereSize + BASE_SIZES.label3D
           group.add(sprite)
         }
 

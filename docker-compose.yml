@@ -89,11 +89,12 @@ services:
     environment:
       RECON_PATH: ${PWD}/recon
       RECON_IMAGE: pandaexploit-recon:latest
-      # Forwarded to spawned recon containers (host network, so localhost)
-      NVD_API_KEY: ${NVD_API_KEY:-}
+      # Neo4j: NEO4J_URI for recon containers (host network), NEO4J_URI_INGEST for orchestrator ingest
       NEO4J_URI: bolt://localhost:7687
+      NEO4J_URI_INGEST: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-changeme123}
+      NVD_API_KEY: ${NVD_API_KEY:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
@@ -103,6 +104,21 @@ services:
       start_period: 10s
     networks:
       - pandaexploit
+
+  pandaexploit-mcp:
+    build:
+      context: ./mcp
+      dockerfile: pandaexploit-mcp/Dockerfile
+    container_name: pandaexploit-mcp
+    ports:
+      - "${PANDAEXPLOIT_MCP_PORT:-8011}:8011"
+    environment:
+      PANDAEXPLOIT_WEBAPP_URL: http://webapp:3000
+      PANDAEXPLOIT_RECON_ORCH_URL: http://recon-orchestrator:8010
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-}
+    networks:
+      - pandaexploit
+    restart: unless-stopped
 
   kali-sandbox:
     build:
@@ -125,6 +141,9 @@ services:
       - "${MCP_CURL_PORT:-8001}:8001"
       - "${MCP_NUCLEI_PORT:-8002}:8002"
       - "${MCP_METASPLOIT_PORT:-8003}:8003"
+      - "${MCP_NIKTO_PORT:-8004}:8004"
+      - "${MCP_SQLMAP_PORT:-8005}:8005"
+      - "${MCP_NMAP_PORT:-8006}:8006"
       - "8013:8013"
       - "4444:4444"
     volumes:
@@ -139,6 +158,7 @@ services:
       CURL_PORT: "8001"
       NUCLEI_PORT: "8002"
       METASPLOIT_PORT: "8003"
+      NMAP_PORT: "8006"
       MSF_PROGRESS_PORT: "8013"
       MSF_AUTO_UPDATE: "${MSF_AUTO_UPDATE:-true}"
       NUCLEI_AUTO_UPDATE: "${NUCLEI_AUTO_UPDATE:-true}"
@@ -200,6 +220,34 @@ services:
       - pandaexploit
 
   # ===========================================================================
+  # Agent Zero (General-purpose AI agent - separate from PandaExploit agent)
+  # ===========================================================================
+
+  agent-zero:
+    image: agent0ai/agent-zero:latest
+    container_name: pandaexploit-agent-zero
+    ports:
+      - "${A0_PORT:-50001}:80"
+    volumes:
+      - ./conf/agent-zero-mcp-servers.json:/app/mcp_servers.json:ro
+      # Override A0's conf: pandaexploit uses HTTP at /mcp, not SSE at /sse
+      - ./conf/agent-zero-mcp-servers-a0-conf.json:/a0/conf/agent-zero-mcp-servers.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      PANDAEXPLOIT_WEBAPP_URL: http://webapp:3000
+      PANDAEXPLOIT_RECON_ORCH_URL: http://recon-orchestrator:8010
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Disable SSL verification for corporate proxies (LiteLLM/httpx)
+      SSL_VERIFY: ${A0_SSL_VERIFY:-false}
+    depends_on:
+      - pandaexploit-mcp
+    networks:
+      - pandaexploit
+    restart: unless-stopped
+
+  # ===========================================================================
   # Frontend
   # ===========================================================================
 
@@ -223,7 +271,10 @@ services:
     restart: "no"
 
   webapp:
-    build: ./webapp
+    build:
+      context: ./webapp
+      args:
+        NEXT_PUBLIC_AGENT_ZERO_URL: http://localhost:${A0_PORT:-50001}
     container_name: pandaexploit-webapp
     ports:
       - "${WEBAPP_PORT:-3000}:3000"
@@ -241,6 +292,8 @@ services:
       RECON_ORCHESTRATOR_URL: http://recon-orchestrator:8010
       AGENT_API_URL: http://agent:8080
       AGENT_WS_URL: ws://agent:8080/ws/agent
+      AGENT_ZERO_URL: http://agent-zero:80
+      NEXT_PUBLIC_AGENT_ZERO_URL: http://localhost:${A0_PORT:-50001}
       # Recon container connects via host network, needs host-accessible webapp URL
       WEBAPP_URL: http://localhost:${WEBAPP_PORT:-3000}
       # Recon output path (mounted volume)

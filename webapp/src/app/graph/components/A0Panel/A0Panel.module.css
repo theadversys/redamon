@@ -1,0 +1,213 @@
+/* =============================================================================
+   A0 PANEL - Agent Zero
+   Layout-agnostic panel with Agent Zero iframe + Recon tabs
+   ============================================================================= */
+
+.panel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.tabSwitcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.tabButton:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tabButton:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.tabButtonActive {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.tabButtonActive:hover {
+  background: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+  color: var(--text-on-accent);
+}
+
+.tabContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.panelStacked .stackedPanelGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stackedPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.resizeHandleHorizontal {
+  height: 4px;
+  background: var(--border-default);
+  cursor: row-resize;
+  transition: background-color 150ms ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.resizeHandleHorizontal:hover {
+  background: var(--accent-primary);
+}
+
+.a0Container,
+.reconContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+  inset: 0;
+  transition: visibility 0.15s ease, opacity 0.15s ease;
+}
+
+.stackedPanelGroup .a0Container,
+.stackedPanelGroup .reconContainer {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.tabPaneHidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.a0Container:not(.tabPaneHidden),
+.reconContainer:not(.tabPaneHidden) {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.reconContainer[data-panel-mode="true"] :global(.drawer),
+.reconContainer[data-panel-mode="true"] :global(.drawerOpen) {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  visibility: visible !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: auto !important;
+  box-shadow: none !important;
+  border-left: none !important;
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* Persistent "Open in new tab" link when iframe may be black */
+.openInNewTab {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  z-index: 10;
+  transition: var(--transition-all);
+}
+
+.openInNewTab:hover {
+  color: var(--accent-primary);
+  background: var(--bg-hover);
+  border-color: var(--accent-primary);
+}
+
+.unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-4);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.unavailable p {
+  margin: 0 0 var(--space-2);
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--text-quaternary);
+}
+
+.externalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.externalLink:hover {
+  text-decoration: underline;
+}

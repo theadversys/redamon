@@ -19,8 +19,8 @@ import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 interface PanelLayoutProps {
   graphContent: (dimensions: { width: number; height: number }) => ReactNode
   aiContent: ReactNode
-  activeTab?: 'graph' | 'ai' // For tab mode
-  onTabChange?: (tab: 'graph' | 'ai') => void
+  activeTab?: 'graph' | 'panda-ai' | 'a0' // For tab mode
+  onTabChange?: (tab: 'graph' | 'panda-ai' | 'a0') => void
   /** When 'all', use three-pane layout (Graph | Chat+Recon stacked) */
   effectiveLayoutMode?: 'single' | 'all'
 }

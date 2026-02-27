@@ -6,6 +6,7 @@ import { GraphToolbar } from './components/GraphToolbar'
 import { GraphCanvas } from './components/GraphCanvas'
 import { NodeDrawer } from './components/NodeDrawer'
 import { AIPanel } from './components/AIPanel/AIPanel'
+import { A0Panel } from './components/A0Panel/A0Panel'
 import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
 import { PanelLayout } from './components/PanelLayout/PanelLayout'
@@ -25,16 +26,17 @@ export default function GraphPage() {
   const [isReconModalOpen, setIsReconModalOpen] = useState(false)
   const [hasReconData, setHasReconData] = useState(false)
   const [graphStats, setGraphStats] = useState<{ totalNodes: number; nodesByType: Record<string, number> } | null>(null)
-  const [activeTab, setActiveTab] = useState<'graph' | 'ai'>('graph')
 
   const { selectedNode, drawerOpen, selectNode, clearSelection } = useNodeSelection()
   const { isDark } = useTheme()
   const { sessionId, resetSession } = useSession()
   
-  // Panel layout state management
+  // Panel layout state management (activeTab persisted so Agent Zero doesn't disappear on refresh)
   const {
     effectiveViewMode,
     effectiveLayoutMode,
+    activeTab,
+    setActiveTab,
     setLayoutMode,
     hideAI,
     showAI,
@@ -111,10 +113,10 @@ export default function GraphPage() {
     }
   }, [reconState?.status, refetchGraph, checkReconData])
 
-  // Auto-switch to AI tab when recon starts (if in tab mode)
+  // Auto-switch to Panda AI tab when recon starts (if in tab mode)
   useEffect(() => {
     if ((reconState?.status === 'running' || reconState?.status === 'starting') && effectiveViewMode === 'tab') {
-      setActiveTab('ai')
+      setActiveTab('panda-ai')
     }
   }, [reconState?.status, effectiveViewMode])
 
@@ -127,9 +129,9 @@ export default function GraphPage() {
     const result = await startRecon()
     if (result) {
       setIsReconModalOpen(false)
-      // Auto-switch to AI tab (Recon tab) when recon starts
+      // Auto-switch to Panda AI tab (Recon tab) when recon starts
       if (effectiveViewMode === 'tab') {
-        setActiveTab('ai')
+        setActiveTab('panda-ai')
       }
     }
   }, [startRecon, clearLogs, effectiveViewMode])
@@ -156,9 +158,16 @@ export default function GraphPage() {
     refetchGraph()
   }, [projectId, refetchGraph])
 
-  const handleSelectTab = useCallback((tab: 'graph' | 'ai') => {
+  const handleSelectTab = useCallback((tab: 'graph' | 'panda-ai' | 'a0') => {
     setActiveTab(tab)
   }, [])
+
+  const handleShowAI = useCallback(() => {
+    if (activeTab === 'graph') {
+      setActiveTab('panda-ai')
+    }
+    showAI()
+  }, [activeTab, showAI])
 
   // Show message if no project is selected
   if (!projectLoading && !projectId) {
@@ -188,7 +197,7 @@ export default function GraphPage() {
         onLayoutModeChange={setLayoutMode}
         activeTab={activeTab}
         onHideAI={hideAI}
-        onShowAI={showAI}
+        onShowAI={handleShowAI}
         onSelectTab={handleSelectTab}
         // Target info
         targetDomain={currentProject?.targetDomain}
@@ -225,34 +234,62 @@ export default function GraphPage() {
             />
           )}
           aiContent={
-            <AIPanel
-              userId={userId || ''}
-              projectId={projectId || ''}
-              sessionId={sessionId || ''}
-              onResetSession={resetSession}
-              modelName={currentProject?.agentOpenaiModel}
-              reconLogs={reconLogs}
-              currentPhase={currentPhase}
-              currentPhaseNumber={currentPhaseNumber}
-              reconStatus={reconState?.status || 'idle'}
-              onClearLogs={clearLogs}
-              onStartRecon={handleStartRecon}
-              onStopRecon={handleStopRecon}
-              isReconLoading={isReconLoading}
-              showBothPanes={effectiveLayoutMode === 'all'}
-              onCloseChat={() => {
-                hideAI()
-                handleSelectTab('graph')
-              }}
-              onCloseRecon={() => {
-                hideAI()
-                handleSelectTab('graph')
-              }}
-              onBothPanelsClosed={() => {
-                setLayoutMode('single')
-                handleSelectTab('graph')
-              }}
-            />
+            activeTab === 'a0' ? (
+              <A0Panel
+                projectId={projectId || ''}
+                userId={userId || ''}
+                reconLogs={reconLogs}
+                currentPhase={currentPhase}
+                currentPhaseNumber={currentPhaseNumber}
+                reconStatus={reconState?.status || 'idle'}
+                onClearLogs={clearLogs}
+                onStartRecon={handleStartRecon}
+                onStopRecon={handleStopRecon}
+                isReconLoading={isReconLoading}
+                showBothPanes={effectiveLayoutMode === 'all'}
+                onCloseChat={() => {
+                  hideAI()
+                  handleSelectTab('graph')
+                }}
+                onCloseRecon={() => {
+                  hideAI()
+                  handleSelectTab('graph')
+                }}
+                onBothPanelsClosed={() => {
+                  setLayoutMode('single')
+                  handleSelectTab('graph')
+                }}
+              />
+            ) : (
+              <AIPanel
+                userId={userId || ''}
+                projectId={projectId || ''}
+                sessionId={sessionId || ''}
+                onResetSession={resetSession}
+                modelName={currentProject?.agentOpenaiModel}
+                reconLogs={reconLogs}
+                currentPhase={currentPhase}
+                currentPhaseNumber={currentPhaseNumber}
+                reconStatus={reconState?.status || 'idle'}
+                onClearLogs={clearLogs}
+                onStartRecon={handleStartRecon}
+                onStopRecon={handleStopRecon}
+                isReconLoading={isReconLoading}
+                showBothPanes={effectiveLayoutMode === 'all'}
+                onCloseChat={() => {
+                  hideAI()
+                  handleSelectTab('graph')
+                }}
+                onCloseRecon={() => {
+                  hideAI()
+                  handleSelectTab('graph')
+                }}
+                onBothPanelsClosed={() => {
+                  setLayoutMode('single')
+                  handleSelectTab('graph')
+                }}
+              />
+            )
           }
           activeTab={activeTab}
           onTabChange={handleSelectTab}

@@ -1,9 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { GraphData, GraphNode } from '../../types'
 import { GraphCanvas2D } from './GraphCanvas2D'
-import { GraphCanvas3D } from './GraphCanvas3D'
 import styles from './GraphCanvas.module.css'
+
+// Lazy-load 3D to avoid loading Three.js until 3D mode is selected (reduces multiple Three.js instance risk)
+const GraphCanvas3D = dynamic(() => import('./GraphCanvas3D').then((m) => ({ default: m.GraphCanvas3D })), {
+  ssr: false,
+})
 
 interface GraphCanvasProps {
   data: GraphData | undefined

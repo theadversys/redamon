@@ -1081,6 +1081,101 @@ class Neo4jClient:
 
         return stats
 
+    def update_graph_from_curl_probe(
+        self,
+        url: str,
+        status_code: int,
+        user_id: str,
+        project_id: str,
+        headers: dict = None,
+        server: str = None,
+    ) -> dict:
+        """
+        Create minimal BaseURL and Subdomain nodes from a curl probe (Agent Zero ingest).
+
+        Used when Agent Zero runs execute_curl and we want to add the result to the graph
+        without running the full http_probe pipeline.
+
+        Args:
+            url: Full URL (e.g. https://example.com/path)
+            status_code: HTTP status code
+            user_id: User identifier
+            project_id: Project identifier
+            headers: Optional dict of response headers (e.g. {"Server": "nginx"})
+            server: Optional Server header value (extracted from headers if not provided)
+
+        Returns:
+            Dictionary with statistics
+        """
+        stats = {
+            "baseurls_created": 0,
+            "subdomains_created": 0,
+            "relationships_created": 0,
+            "errors": []
+        }
+
+        try:
+            parsed = urlparse(url)
+            host = parsed.netloc or parsed.path
+            if ":" in host:
+                host = host.split(":")[0]
+            scheme = parsed.scheme or "http"
+            base_url = f"{scheme}://{host}"
+        except Exception as e:
+            stats["errors"].append(f"URL parse failed: {e}")
+            return stats
+
+        server_val = server
+        if not server_val and headers:
+            server_val = headers.get("Server") or headers.get("server")
+
+        with self.driver.session() as session:
+            self._init_schema(session)
+
+            try:
+                baseurl_props = {
+                    "url": base_url,
+                    "user_id": user_id,
+                    "project_id": project_id,
+                    "scheme": scheme,
+                    "host": host,
+                    "status_code": status_code,
+                    "server": server_val,
+                    "is_live": status_code is not None and 200 <= status_code < 400,
+                    "source": "curl_probe",
+                    "updated_at": datetime.now().isoformat(),
+                }
+                baseurl_props = {k: v for k, v in baseurl_props.items() if v is not None}
+
+                session.run(
+                    """
+                    MERGE (u:BaseURL {url: $url})
+                    SET u += $props,
+                        u.updated_at = datetime()
+                    """,
+                    url=base_url, props=baseurl_props
+                )
+                stats["baseurls_created"] += 1
+
+                # Create Subdomain node and link to BaseURL if host looks like a hostname
+                if host and not _is_ip_address(host):
+                    session.run(
+                        """
+                        MERGE (s:Subdomain {name: $host})
+                        SET s.user_id = $user_id,
+                            s.project_id = $project_id,
+                            s.has_dns_records = true,
+                            s.updated_at = datetime()
+                        """,
+                        host=host, user_id=user_id, project_id=project_id
+                    )
+                    stats["subdomains_created"] += 1
+
+            except Exception as e:
+                stats["errors"].append(f"BaseURL creation failed: {e}")
+
+        return stats
+
     def _find_cwes_with_capec(self, cwe_node: dict, results: list):
         """
         Recursively traverse CWE hierarchy and collect only CWEs that have non-empty related_capec.
@@ -1448,12 +1543,15 @@ class Neo4jClient:
 
                         vuln_base_url = f"{vuln_scheme}://{vuln_host}"
 
+                        # Source from finding (nuclei, nikto, sqlmap, custom)
+                        finding_source = finding.get("source", "nuclei")
+
                         # Create Vulnerability node with all fields
                         vuln_props = {
                             "id": vuln_id,
                             "user_id": user_id,
                             "project_id": project_id,
-                            "source": "nuclei",  # CRITICAL: Set source for filtering
+                            "source": finding_source,  # CRITICAL: Set source for filtering
                             "template_id": template_id,
                             "template_path": finding.get("template_path"),
                             "template_url": raw.get("template-url"),
@@ -1504,7 +1602,10 @@ class Neo4jClient:
 
                             # Timestamp
                             "timestamp": finding.get("timestamp"),
-                            "discovered_at": finding.get("timestamp")
+                            "discovered_at": finding.get("timestamp"),
+
+                            # Tool name (for custom/A0 tools: dirb, hydra, etc.)
+                            "tool_name": finding.get("tool_name"),
                         }
 
                         # Remove None values
@@ -1522,7 +1623,7 @@ class Neo4jClient:
 
                         # Create Evidence node for traceability (Evidence Chain)
                         severity_val = finding.get("severity")
-                        tool_name = "nuclei"
+                        tool_name = finding.get("tool_name") or finding_source
                         id_input = f"{vuln_id}{template_id}{matched_at}{tool_name}"
                         evidence_id = f"evidence-{hashlib.sha256(id_input.encode()).hexdigest()[:24]}"
                         summary = f"{template_id} at {matched_at}"[:200]

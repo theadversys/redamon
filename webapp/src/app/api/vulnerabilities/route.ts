@@ -7,7 +7,18 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const projectId = searchParams.get('projectId')
   const severity = searchParams.get('severity') // optional filter
-  const source = searchParams.get('source') // optional filter: 'nuclei', 'gvm', 'security_check'
+  const sourceParam = searchParams.get('source') // optional: 'nuclei', 'custom:dirb', etc.
+
+  // Parse source:tool_name format (e.g. custom:dirb)
+  let source: string | null = null
+  let toolName: string | null = null
+  if (sourceParam && sourceParam.includes(':')) {
+    const [s, t] = sourceParam.split(':', 2)
+    source = s
+    toolName = t || null
+  } else if (sourceParam) {
+    source = sourceParam
+  }
 
   if (!projectId) {
     return NextResponse.json(
@@ -62,6 +73,16 @@ export async function GET(request: NextRequest) {
       params.source = source
     }
 
+    // Add tool_name filter (for custom:dirb, custom:hydra, etc.)
+    if (toolName) {
+      if (severity || source) {
+        query += ` AND v.tool_name = $toolName`
+      } else {
+        query += ` WHERE v.tool_name = $toolName`
+      }
+      params.toolName = toolName
+    }
+
     query += `
       OPTIONAL MATCH (v)-[:FOUND_AT]->(e:Endpoint)
       OPTIONAL MATCH (v)-[:AFFECTS_PARAMETER]->(p:Parameter)
@@ -105,6 +126,7 @@ export async function GET(request: NextRequest) {
         name: props.name || props.template_id || 'Unknown',
         severity: props.severity || 'info',
         source: props.source || 'unknown',
+        toolName: props.tool_name || undefined,
         category: props.category,
         cvssScore: props.cvss_score,
         description: props.description,
@@ -145,7 +167,7 @@ export async function GET(request: NextRequest) {
             const vulnCategory = props.category || ''
             const vulnName = (props.name || '').toLowerCase()
             
-            // Map common vulnerability types to ATT&CK techniques
+            // Map common vulnerability types to ATT&CK techniques (includes nikto, sqlmap, custom sources)
             if (vulnCategory.includes('sqli') || vulnName.includes('sql injection')) {
               inferredTechniques.push({ id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' })
             }
@@ -160,6 +182,9 @@ export async function GET(request: NextRequest) {
             }
             if (vulnCategory.includes('ssrf') || vulnName.includes('server-side request forgery')) {
               inferredTechniques.push({ id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'Initial Access' })
+            }
+            if (vulnCategory.includes('exposure') || vulnCategory.includes('exposed_panel') || vulnName.includes('exposed') || vulnName.includes('directory listing')) {
+              inferredTechniques.push({ id: 'T1083', name: 'File and Directory Discovery', tactic: 'Discovery' })
             }
             
             return inferredTechniques.length > 0 ? inferredTechniques : undefined
@@ -176,6 +201,21 @@ export async function GET(request: NextRequest) {
     })
 
     // Get summary statistics
+    const bySource: Record<string, number> = {
+      nuclei: vulnerabilities.filter(v => v.source === 'nuclei').length,
+      gvm: vulnerabilities.filter(v => v.source === 'gvm').length,
+      security_check: vulnerabilities.filter(v => v.source === 'security_check').length,
+      nikto: vulnerabilities.filter(v => v.source === 'nikto').length,
+      sqlmap: vulnerabilities.filter(v => v.source === 'sqlmap').length,
+      custom: vulnerabilities.filter(v => v.source === 'custom').length,
+    }
+    // Add custom:tool_name for A0 tools (dirb, hydra, etc.)
+    const customWithTool = vulnerabilities.filter(v => v.source === 'custom' && v.toolName)
+    for (const v of customWithTool) {
+      const key = `custom:${v.toolName}`
+      bySource[key] = (bySource[key] || 0) + 1
+    }
+
     const stats = {
       total: vulnerabilities.length,
       bySeverity: {
@@ -185,11 +225,7 @@ export async function GET(request: NextRequest) {
         low: vulnerabilities.filter(v => v.severity === 'low').length,
         info: vulnerabilities.filter(v => v.severity === 'info').length,
       },
-      bySource: {
-        nuclei: vulnerabilities.filter(v => v.source === 'nuclei').length,
-        gvm: vulnerabilities.filter(v => v.source === 'gvm').length,
-        security_check: vulnerabilities.filter(v => v.source === 'security_check').length,
-      },
+      bySource,
     }
 
     return NextResponse.json({

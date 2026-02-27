@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid } from 'lucide-react'
+import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid, Bot } from 'lucide-react'
 import { Toggle } from '@/components/ui'
 import type { ReconStatus } from '@/lib/recon-types'
 import type { ViewMode, LayoutMode } from '../../hooks/usePanelLayout'
@@ -16,10 +16,10 @@ interface GraphToolbarProps {
   effectiveViewMode: ViewMode
   effectiveLayoutMode: LayoutMode
   onLayoutModeChange?: (mode: LayoutMode) => void
-  activeTab: 'graph' | 'ai'
+  activeTab: 'graph' | 'panda-ai' | 'a0'
   onHideAI?: () => void
   onShowAI?: () => void
-  onSelectTab?: (tab: 'graph' | 'ai') => void
+  onSelectTab?: (tab: 'graph' | 'panda-ai' | 'a0') => void
   // Target info
   targetDomain?: string
   subdomainList?: string[]
@@ -192,40 +192,62 @@ export function GraphToolbar({
             <span>Graph</span>
           </button>
           <button
-            className={`${styles.tabButton} ${activeTab === 'ai' ? styles.tabButtonActive : ''}`}
-            onClick={() => onSelectTab?.('ai')}
-            aria-label="Show AI Assistant"
-            title="Show AI Assistant"
+            className={`${styles.tabButton} ${activeTab === 'panda-ai' ? styles.tabButtonActive : ''}`}
+            onClick={() => onSelectTab?.('panda-ai')}
+            aria-label="Show Panda AI Assistant"
+            title="Panda AI (Guided/Offensive)"
           >
             <Sparkles size={14} />
-            <span>AI</span>
+            <span>Panda AI</span>
+          </button>
+          <button
+            className={`${styles.tabButton} ${activeTab === 'a0' ? styles.tabButtonActive : ''}`}
+            onClick={() => onSelectTab?.('a0')}
+            aria-label="Show Agent Zero"
+            title="Agent Zero (General-purpose)"
+          >
+            <Bot size={14} />
+            <span>Agent Zero</span>
           </button>
         </>
       )}
 
-      {/* Split mode: show Hide/Show AI buttons - only when Single layout */}
+      {/* Split mode: show Hide/Show AI + Panda AI / Agent Zero switcher - only when Single layout */}
       {effectiveLayoutMode === 'single' && effectiveViewMode === 'split' && (
         <>
+          <button
+            className={`${styles.aiButton} ${activeTab === 'panda-ai' ? styles.aiButtonActive : ''}`}
+            onClick={() => {
+              onSelectTab?.('panda-ai')
+              onShowAI?.()
+            }}
+            aria-label="Show Panda AI"
+            title="Panda AI (Guided/Offensive)"
+          >
+            <Sparkles size={14} />
+            <span>Panda AI</span>
+          </button>
+          <button
+            className={`${styles.aiButton} ${activeTab === 'a0' ? styles.aiButtonActive : ''}`}
+            onClick={() => {
+              onSelectTab?.('a0')
+              onShowAI?.()
+            }}
+            aria-label="Show Agent Zero"
+            title="Agent Zero (General-purpose)"
+          >
+            <Bot size={14} />
+            <span>Agent Zero</span>
+          </button>
           {onHideAI && (
             <button
               className={styles.aiButton}
               onClick={onHideAI}
-              aria-label="Hide AI Assistant"
-              title="Hide AI Assistant"
+              aria-label="Hide AI Panel"
+              title="Hide AI Panel"
             >
               <X size={14} />
-              <span>Hide AI</span>
-            </button>
-          )}
-          {onShowAI && (
-            <button
-              className={styles.aiButton}
-              onClick={onShowAI}
-              aria-label="Show AI Assistant"
-              title="Show AI Assistant"
-            >
-              <Sparkles size={14} />
-              <span>Show AI</span>
+              <span>Hide</span>
             </button>
           )}
         </>

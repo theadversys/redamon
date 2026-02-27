@@ -282,6 +282,111 @@ def build_naabu_command(targets_file: str, output_file: str, settings: dict, use
 # Result Parsing
 # =============================================================================
 
+def parse_naabu_output_from_string(raw_output: str) -> Dict:
+    """
+    Parse Naabu JSON Lines output from a string (for Agent Zero / ingest API).
+
+    Naabu outputs one JSON object per line:
+    {"host":"example.com","ip":"93.184.216.34","port":80}
+    {"host":"example.com","ip":"93.184.216.34","port":443}
+
+    Args:
+        raw_output: Raw naabu -json output as string
+
+    Returns:
+        Structured dictionary with by_host, by_ip, and summary sections
+    """
+    by_host = {}
+    by_ip = {}
+    all_ports = set()
+
+    for line in raw_output.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        host = entry.get("host", "")
+        ip = entry.get("ip", "")
+        port = entry.get("port")
+        cdn = entry.get("cdn", "")
+        cdn_name = entry.get("cdn-name", "")
+
+        if port:
+            all_ports.add(port)
+
+        # Organize by host
+        if host:
+            if host not in by_host:
+                by_host[host] = {
+                    "host": host,
+                    "ip": ip,
+                    "ports": [],
+                    "port_details": [],
+                    "cdn": cdn_name if cdn_name else None,
+                    "is_cdn": bool(cdn or cdn_name)
+                }
+
+            if port and port not in by_host[host]["ports"]:
+                by_host[host]["ports"].append(port)
+
+                # Determine service based on common port mappings
+                service = get_service_name(port)
+                by_host[host]["port_details"].append({
+                    "port": port,
+                    "protocol": "tcp",
+                    "service": service
+                })
+
+        # Organize by IP
+        if ip:
+            if ip not in by_ip:
+                by_ip[ip] = {
+                    "ip": ip,
+                    "hostnames": [],
+                    "ports": [],
+                    "cdn": cdn_name if cdn_name else None,
+                    "is_cdn": bool(cdn or cdn_name)
+                }
+
+            if host and host not in by_ip[ip]["hostnames"]:
+                by_ip[ip]["hostnames"].append(host)
+
+            if port and port not in by_ip[ip]["ports"]:
+                by_ip[ip]["ports"].append(port)
+
+    # Sort ports
+    for h in by_host:
+        by_host[h]["ports"].sort()
+        by_host[h]["port_details"].sort(key=lambda x: x["port"])
+
+    for i in by_ip:
+        by_ip[i]["ports"].sort()
+
+    all_ports_sorted = sorted(list(all_ports))
+
+    summary = {
+        "hosts_scanned": len(by_host),
+        "ips_scanned": len(by_ip),
+        "hosts_with_open_ports": len([h for h in by_host.values() if h["ports"]]),
+        "total_open_ports": sum(len(h["ports"]) for h in by_host.values()),
+        "unique_ports": all_ports_sorted,
+        "unique_port_count": len(all_ports_sorted),
+        "cdn_hosts": len([h for h in by_host.values() if h.get("is_cdn")])
+    }
+
+    return {
+        "by_host": by_host,
+        "by_ip": by_ip,
+        "all_ports": all_ports_sorted,
+        "summary": summary
+    }
+
+
 def parse_naabu_output(output_file: str) -> Dict:
     """
     Parse Naabu JSON Lines output into structured format.
@@ -293,10 +398,6 @@ def parse_naabu_output(output_file: str) -> Dict:
     Returns:
         Structured dictionary with by_host, by_ip, and summary sections
     """
-    by_host = {}
-    by_ip = {}
-    all_ports = set()
-
     if not Path(output_file).exists():
         return {
             "by_host": {},
@@ -314,92 +415,7 @@ def parse_naabu_output(output_file: str) -> Dict:
         }
 
     with open(output_file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            host = entry.get("host", "")
-            ip = entry.get("ip", "")
-            port = entry.get("port")
-            cdn = entry.get("cdn", "")
-            cdn_name = entry.get("cdn-name", "")
-
-            if port:
-                all_ports.add(port)
-
-            # Organize by host
-            if host:
-                if host not in by_host:
-                    by_host[host] = {
-                        "host": host,
-                        "ip": ip,
-                        "ports": [],
-                        "port_details": [],
-                        "cdn": cdn_name if cdn_name else None,
-                        "is_cdn": bool(cdn or cdn_name)
-                    }
-
-                if port and port not in by_host[host]["ports"]:
-                    by_host[host]["ports"].append(port)
-
-                    # Determine service based on common port mappings
-                    service = get_service_name(port)
-                    by_host[host]["port_details"].append({
-                        "port": port,
-                        "protocol": "tcp",
-                        "service": service
-                    })
-
-            # Organize by IP
-            if ip:
-                if ip not in by_ip:
-                    by_ip[ip] = {
-                        "ip": ip,
-                        "hostnames": [],
-                        "ports": [],
-                        "cdn": cdn_name if cdn_name else None,
-                        "is_cdn": bool(cdn or cdn_name)
-                    }
-
-                if host and host not in by_ip[ip]["hostnames"]:
-                    by_ip[ip]["hostnames"].append(host)
-
-                if port and port not in by_ip[ip]["ports"]:
-                    by_ip[ip]["ports"].append(port)
-
-    # Sort ports
-    for host in by_host:
-        by_host[host]["ports"].sort()
-        by_host[host]["port_details"].sort(key=lambda x: x["port"])
-
-    for ip in by_ip:
-        by_ip[ip]["ports"].sort()
-
-    all_ports_sorted = sorted(list(all_ports))
-
-    # Build summary
-    summary = {
-        "hosts_scanned": len(by_host),
-        "ips_scanned": len(by_ip),
-        "hosts_with_open_ports": len([h for h in by_host.values() if h["ports"]]),
-        "total_open_ports": sum(len(h["ports"]) for h in by_host.values()),
-        "unique_ports": all_ports_sorted,
-        "unique_port_count": len(all_ports_sorted),
-        "cdn_hosts": len([h for h in by_host.values() if h.get("is_cdn")])
-    }
-
-    return {
-        "by_host": by_host,
-        "by_ip": by_ip,
-        "all_ports": all_ports_sorted,
-        "summary": summary
-    }
+        return parse_naabu_output_from_string(f.read())
 
 
 # =============================================================================

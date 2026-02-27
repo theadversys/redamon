@@ -23,12 +23,16 @@ interface PanelLayoutState {
   effectiveLayoutMode: LayoutMode
   panelSizes: [number, number] // percentages [graph, ai]
   savedSplitSizes: [number, number] | null // preserved when switching to tab
+  activeTab: ActiveTab
 }
+
+export type ActiveTab = 'graph' | 'panda-ai' | 'a0'
 
 interface StoredLayout {
   viewMode: ViewMode
   layoutMode: LayoutMode
   panelSizes: [number, number]
+  activeTab?: ActiveTab
 }
 
 const DEFAULT_LAYOUT: PanelLayoutState = {
@@ -38,6 +42,7 @@ const DEFAULT_LAYOUT: PanelLayoutState = {
   effectiveLayoutMode: 'single',
   panelSizes: [65, 35], // Graph 65%, AI 35%
   savedSplitSizes: null,
+  activeTab: 'graph',
 }
 
 const MIN_SIZES = {
@@ -59,6 +64,11 @@ function validateStoredLayout(data: unknown): StoredLayout | null {
   // Check layoutMode (optional - default to single)
   const layoutMode = obj.layoutMode === 'all' ? 'all' : 'single'
   
+  // Check activeTab (optional)
+  const activeTab = (obj.activeTab === 'graph' || obj.activeTab === 'panda-ai' || obj.activeTab === 'a0')
+    ? obj.activeTab
+    : undefined
+  
   // Check panelSizes
   if (!Array.isArray(obj.panelSizes) || obj.panelSizes.length !== 2) return null
   const sizes = obj.panelSizes as [unknown, unknown]
@@ -77,6 +87,7 @@ function validateStoredLayout(data: unknown): StoredLayout | null {
     viewMode: obj.viewMode as ViewMode,
     layoutMode,
     panelSizes: [graphSize, aiSize],
+    activeTab,
   }
 }
 
@@ -132,6 +143,7 @@ export function usePanelLayout() {
           effectiveLayoutMode: layoutMode,
           panelSizes: stored.panelSizes,
           savedSplitSizes: null,
+          activeTab: stored.activeTab ?? 'graph',
         }
       }
     }
@@ -153,6 +165,7 @@ export function usePanelLayout() {
           effectiveLayoutMode: layoutMode,
           panelSizes: stored.panelSizes,
           savedSplitSizes: null,
+          activeTab: stored.activeTab ?? 'graph',
         })
       }
     }
@@ -234,8 +247,23 @@ export function usePanelLayout() {
         viewMode: newState.userViewMode,
         layoutMode: newState.layoutMode,
         panelSizes: newState.panelSizes,
+        activeTab: newState.activeTab,
       })
       
+      return newState
+    })
+  }, [])
+
+  // Set active tab (persisted so Agent Zero doesn't "disappear" on refresh)
+  const setActiveTab = useCallback((tab: ActiveTab) => {
+    setState(prev => {
+      const newState = { ...prev, activeTab: tab }
+      saveDebounced.current({
+        viewMode: newState.userViewMode,
+        layoutMode: newState.layoutMode,
+        panelSizes: newState.panelSizes,
+        activeTab: newState.activeTab,
+      })
       return newState
     })
   }, [])
@@ -253,6 +281,7 @@ export function usePanelLayout() {
         viewMode: newState.userViewMode,
         layoutMode: newState.layoutMode,
         panelSizes: newState.panelSizes,
+        activeTab: newState.activeTab,
       })
 
       return newState
@@ -273,6 +302,7 @@ export function usePanelLayout() {
         viewMode: newState.userViewMode,
         layoutMode: newState.layoutMode,
         panelSizes: newState.panelSizes,
+        activeTab: newState.activeTab,
       })
       
       return newState
@@ -295,6 +325,8 @@ export function usePanelLayout() {
     layoutMode: state.layoutMode,
     effectiveLayoutMode: state.effectiveLayoutMode,
     panelSizes: state.panelSizes,
+    activeTab: state.activeTab,
+    setActiveTab,
     containerRef,
     setUserViewMode,
     setLayoutMode,

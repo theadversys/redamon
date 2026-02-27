@@ -12,6 +12,7 @@ interface Vulnerability {
   name: string
   severity: string
   source: string
+  toolName?: string
   category?: string
   cvssScore?: number
   description?: string
@@ -38,11 +39,7 @@ interface VulnerabilitiesResponse {
       low: number
       info: number
     }
-    bySource: {
-      nuclei: number
-      gvm: number
-      security_check: number
-    }
+    bySource: Record<string, number>
   }
   scanStatus?: {
     skipped: boolean
@@ -201,9 +198,24 @@ export default function VulnerabilitiesPage() {
             className={styles.filterSelect}
           >
             <option value="">All Sources</option>
-            <option value="nuclei">Nuclei</option>
-            <option value="gvm">GVM/OpenVAS</option>
-            <option value="security_check">Security Check</option>
+            {stats?.bySource && Object.entries(stats.bySource)
+              .filter(([, count]) => count > 0)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([sourceKey]) => (
+                <option key={sourceKey} value={sourceKey}>
+                  {sourceKey.replace('custom:', 'Custom: ')} ({stats.bySource[sourceKey]})
+                </option>
+              ))}
+            {(!stats?.bySource || Object.keys(stats.bySource).length === 0) && (
+              <>
+                <option value="nuclei">Nuclei</option>
+                <option value="gvm">GVM/OpenVAS</option>
+                <option value="security_check">Security Check</option>
+                <option value="nikto">Nikto</option>
+                <option value="sqlmap">Sqlmap</option>
+                <option value="custom">Custom</option>
+              </>
+            )}
           </select>
         </div>
       </div>
@@ -245,7 +257,9 @@ export default function VulnerabilitiesPage() {
                     <h3>{vuln.name}</h3>
                   </div>
                   <div className={styles.vulnMeta}>
-                    <span className={styles.sourceBadge}>{vuln.source}</span>
+                    <span className={styles.sourceBadge}>
+                      {vuln.toolName ? `${vuln.source} (${vuln.toolName})` : vuln.source}
+                    </span>
                     {vuln.cvssScore && (
                       <span className={styles.cvssBadge}>CVSS: {vuln.cvssScore.toFixed(1)}</span>
                     )}

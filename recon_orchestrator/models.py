@@ -53,3 +53,77 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     running_recons: int
+
+
+class IngestNaabuRequest(BaseModel):
+    """Request to ingest naabu output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: str
+
+
+class IngestNmapRequest(BaseModel):
+    """Request to ingest nmap XML output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: str
+
+
+class IngestNucleiRequest(BaseModel):
+    """Request to ingest nuclei output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: Optional[str] = None
+
+
+class IngestCurlRequest(BaseModel):
+    """Request to ingest curl probe into graph"""
+    project_id: str
+    user_id: str
+    url: str
+    status_code: int
+    raw_response: Optional[str] = None
+
+
+class IngestNiktoRequest(BaseModel):
+    """Request to ingest nikto output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: str
+
+
+class IngestSqlmapRequest(BaseModel):
+    """Request to ingest sqlmap output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_url: str
+    target_domain: Optional[str] = None
+
+
+class IngestDirbRequest(BaseModel):
+    """Request to ingest dirb output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: str
+
+
+class IngestHydraRequest(BaseModel):
+    """Request to ingest hydra output into graph"""
+    project_id: str
+    user_id: str
+    raw_output: str
+    target_domain: str
+
+
+class IngestCustomRequest(BaseModel):
+    """Request to ingest custom tool findings into graph"""
+    project_id: str
+    user_id: str
+    findings: list
+    target_domain: str

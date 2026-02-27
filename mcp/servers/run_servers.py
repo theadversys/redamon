@@ -72,6 +72,21 @@ SERVERS = {
         "module": "metasploit_server",
         "port": 8003,
         "description": "Exploitation Framework"
+    },
+    "nikto": {
+        "module": "nikto_server",
+        "port": 8004,
+        "description": "Web Server Scanner"
+    },
+    "sqlmap": {
+        "module": "sqlmap_server",
+        "port": 8005,
+        "description": "SQL Injection Scanner"
+    },
+    "nmap": {
+        "module": "nmap_server",
+        "port": 8006,
+        "description": "Network Scanner"
     }
 }
 
