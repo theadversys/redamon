@@ -27,6 +27,12 @@ services:
       - "8001:8001"  # curl MCP server
       - "8002:8002"  # nuclei MCP server
       - "8003:8003"  # metasploit MCP server
+      - "8004:8004"  # nikto MCP server
+      - "8005:8005"  # sqlmap MCP server
+      - "8006:8006"  # nmap MCP server
+      - "8007:8007"  # ffuf MCP server
+      - "8008:8008"  # gobuster MCP server
+      - "8009:8009"  # hydra MCP server
       - "8013:8013"  # metasploit progress HTTP endpoint
       - "4444:4444"  # Metasploit reverse shell listener
     volumes:
@@ -46,6 +52,12 @@ services:
       - CURL_PORT=8001
       - NUCLEI_PORT=8002
       - METASPLOIT_PORT=8003
+      - NIKTO_PORT=8004
+      - SQLMAP_PORT=8005
+      - NMAP_PORT=8006
+      - FFUF_PORT=8007
+      - GOBUSTER_PORT=8008
+      - HYDRA_PORT=8009
       - MSF_PROGRESS_PORT=8013
       # Auto-update toggles (set to "false" for faster startup)
       - MSF_AUTO_UPDATE=true

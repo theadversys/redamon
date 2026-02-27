@@ -87,6 +87,21 @@ SERVERS = {
         "module": "nmap_server",
         "port": 8006,
         "description": "Network Scanner"
+    },
+    "ffuf": {
+        "module": "ffuf_server",
+        "port": 8007,
+        "description": "Web Fuzzer"
+    },
+    "gobuster": {
+        "module": "gobuster_server",
+        "port": 8008,
+        "description": "Directory/DNS Fuzzer"
+    },
+    "hydra": {
+        "module": "hydra_server",
+        "port": 8009,
+        "description": "Credential Cracker"
     }
 }
 
