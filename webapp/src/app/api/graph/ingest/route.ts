@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { createActionLog } from '@/lib/actionLog'
+import { isInScope } from '@/lib/scope'
 
 const RECON_ORCHESTRATOR_URL =
   process.env.RECON_ORCHESTRATOR_URL || 'http://localhost:8010'
@@ -47,13 +48,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify project exists and get targetDomain
+    // Verify project exists and get targetDomain, subdomainList
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
         id: true,
         userId: true,
         targetDomain: true,
+        subdomainList: true,
       },
     })
 
@@ -65,6 +67,56 @@ export async function POST(request: NextRequest) {
     }
 
     const targetDomain = (project.targetDomain ?? '').trim()
+
+    // Scope check: extract host from data and reject if out of scope
+    const scopeProject = {
+      targetDomain: project.targetDomain,
+      subdomainList: project.subdomainList,
+    }
+    let hostToCheck: string | null = null
+    if (data.target_domain && typeof data.target_domain === 'string') {
+      hostToCheck = data.target_domain.trim()
+    } else if (data.target_url && typeof data.target_url === 'string') {
+      try {
+        const u = new URL(
+          data.target_url.startsWith('http') ? data.target_url : `https://${data.target_url}`
+        )
+        hostToCheck = u.hostname
+      } catch {
+        hostToCheck = data.target_url
+      }
+    } else if (data.url && typeof data.url === 'string') {
+      try {
+        const u = new URL(
+          data.url.startsWith('http') ? data.url : `https://${data.url}`
+        )
+        hostToCheck = u.hostname
+      } catch {
+        hostToCheck = data.url
+      }
+    } else if (source === 'custom' && Array.isArray(data.findings) && data.findings.length > 0) {
+      const first = data.findings[0] as Record<string, unknown>
+      const matchedAt = first?.matched_at ?? first?.url
+      if (typeof matchedAt === 'string') {
+        try {
+          const u = new URL(
+            matchedAt.startsWith('http') ? matchedAt : `https://${matchedAt}`
+          )
+          hostToCheck = u.hostname
+        } catch {
+          hostToCheck = matchedAt
+        }
+      } else if (data.target_domain && typeof data.target_domain === 'string') {
+        hostToCheck = data.target_domain
+      }
+    }
+    if (targetDomain && hostToCheck && !isInScope(hostToCheck, scopeProject)) {
+      console.warn(`Ingest rejected: host ${hostToCheck} out of scope for project ${projectId}`)
+      return NextResponse.json(
+        { error: `Host ${hostToCheck} is out of scope for this project. Only targets within ${targetDomain} are allowed.` },
+        { status: 400 }
+      )
+    }
 
     // Validate source-specific data
     if (source === 'naabu') {

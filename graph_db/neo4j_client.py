@@ -24,15 +24,29 @@ from dotenv import load_dotenv
 
 # Maximum characters for raw_output in Evidence nodes (sanitization)
 MAX_RAW_OUTPUT = 2000
+_REDACTED = "[REDACTED]"
+
+# Curated credential redaction patterns (see recon_orchestrator/sanitize.py for extended set)
+_SANITIZE_PATTERNS = [
+    (re.compile(r'Bearer\s+[A-Za-z0-9\-_\.]+', re.I), f"Bearer {_REDACTED}"),
+    (re.compile(r'Authorization:\s*Bearer\s+[A-Za-z0-9\-_\.]+', re.I), f"Authorization: Bearer {_REDACTED}"),
+    (re.compile(r'api[_-]?key["\']?\s*[:=]\s*["\']?[A-Za-z0-9\-_]{20,}["\']?', re.I), f"api_key={_REDACTED}"),
+    (re.compile(r'password["\']?\s*[:=]\s*["\']?[^\s"\'&]+["\']?', re.I), f"password={_REDACTED}"),
+    (re.compile(r'([?&])password=([^&\s]+)', re.I), r'\1password=' + _REDACTED),
+    (re.compile(r'([?&])token=([^&\s]+)', re.I), r'\1token=' + _REDACTED),
+    (re.compile(r'sk_live_[0-9a-zA-Z]{24,}'), "sk_live_[REDACTED]"),
+    (re.compile(r'AKIA[0-9A-Z]{16}'), "AKIA[REDACTED]"),
+]
 
 
 def sanitize_raw_output(raw: str | None) -> str:
-    """Sanitize and truncate raw output before storing in Neo4j Evidence nodes."""
+    """Sanitize and truncate raw output before storing in Neo4j Evidence nodes.
+    Redacts credentials (Bearer tokens, API keys, passwords in URLs)."""
     if raw is None:
         return ""
     text = str(raw)
-    # TODO: Basic redaction: Authorization headers, cookies, common secret patterns.
-    # For now, at least truncate to avoid huge payloads.
+    for pattern, replacement in _SANITIZE_PATTERNS:
+        text = pattern.sub(replacement, text)
     if len(text) > MAX_RAW_OUTPUT:
         return text[:MAX_RAW_OUTPUT] + "\n...[truncated]..."
     return text
