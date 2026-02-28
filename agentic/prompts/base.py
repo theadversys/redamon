@@ -22,7 +22,13 @@ TOOL_AVAILABILITY = """
 | **get_github_findings** | GitHub secret findings   | Detailed list of leaked secrets, AI keys       | Informational only         |
 | **execute_curl**    | HTTP reachability checks     | ONLY verify host/IP is reachable (NOT for vuln testing) | All phases         |
 | **execute_naabu**   | Port scanning                | ONLY to verify ports or scan new targets       | All phases                  |
-| **metasploit_console** | Exploit execution         | Execute exploits, manage sessions              | Exploitation, Post-Expl     |
+| **execute_nuclei**  | Vulnerability scanning       | Scan targets for vulnerabilities using templates| Informational, Exploitation |
+| **execute_nikto**   | Web server scanning          | Scan web servers for multiple vulnerabilities  | Informational, Exploitation |
+| **execute_sqlmap**  | SQL injection testing        | Test and exploit SQL injection flaws           | Exploitation                |
+| **execute_nmap**    | Advanced port/vuln scanning  | Deep network discovery and port scanning       | Informational, Exploitation |
+| **execute_ffuf**    | Web fuzzing                  | Discover directories and files quickly         | Informational, Exploitation |
+| **execute_gobuster**| Directory/DNS brute-forcing  | Brute-force URIs and DNS subdomains            | Informational, Exploitation |
+| **execute_hydra**   | Credential brute-forcing     | Perform rapid network logon cracking           | Exploitation                || **metasploit_console** | Exploit execution         | Execute exploits, manage sessions              | Exploitation, Post-Expl     |
 
 **Tool Selection Priority:**
 1. **query_graph** FIRST - Check existing reconnaissance data (includes vulnerabilities!)
@@ -96,7 +102,26 @@ INFORMATIONAL_TOOLS = """
    - Example args: "-s -I http://target.com" (check if site is up, get basic headers)
    - Example args: "-s http://target.com" (verify service responds)
 
-6. **execute_naabu** (Auxiliary - for verification)
+6. **execute_nuclei** (Vulnerability Scanner)
+   - Fast and customizable vulnerability scanner using templates
+   - Example args: "-u https://target.com -severity critical,high -jsonl"
+
+7. **execute_nikto** (Web Scanner)
+   - Comprehensive web server scanner for outdated software and misconfigurations
+   - Example args: "-h target.com -Format json"
+
+8. **execute_nmap** (Network Scanner)
+   - Advanced network discovery and port scanning
+   - Example args: "-sV -oX - target.com"
+
+9. **execute_ffuf** (Web Fuzzer)
+   - Fast web fuzzer for discovering directories and files
+   - Example args: "-u http://target.com/FUZZ -w /usr/share/wordlists/dirb/common.txt"
+
+10. **execute_gobuster** (Directory Brute-forcer)
+    - Brute-force URIs and DNS subdomains
+    - Example args: "dir -u http://target.com -w /usr/share/wordlists/dirb/common.txt"
+11. **execute_naabu** (Auxiliary - for verification)
    - Fast port scanner for verification
    - Use ONLY to verify ports are actually open or scan new targets not in graph
    - Example args: "-host 10.0.0.5 -p 80,443,8080 -json"
@@ -298,7 +323,7 @@ Based on the context above, decide your next action. You MUST output valid JSON:
     "thought": "Your analysis of the current situation and what needs to be done next",
     "reasoning": "Why you chose this specific action over alternatives",
     "action": "<one of: use_tool, use_tools_parallel, transition_phase, complete, ask_user>",
-    "tool_name": "<only if action=use_tool: query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu, or metasploit_console>",
+    "tool_name": "<only if action=use_tool: query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu, execute_nuclei, execute_nikto, execute_sqlmap, execute_nmap, execute_ffuf, execute_gobuster, execute_hydra, or metasploit_console>",
     "tool_args": "<only if action=use_tool: {{'question': '...'}} or {{'query': '...'}} or {{'finding_type': '...', 'severity': '...'}} or {{'args': '...'}} or {{'command': '...'}}",
     "parallel_tools": "<only if action=use_tools_parallel: [{{'tool_name': '...', 'tool_args': {{}}}}, ...]>",
     "phase_transition": "<only if action=transition_phase>",

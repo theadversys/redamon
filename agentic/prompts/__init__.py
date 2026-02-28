@@ -121,13 +121,13 @@ def get_phase_tools(
 
     # Determine allowed tools for current phase
     if phase == "informational":
-        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu"
+        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu, execute_nuclei, execute_nikto, execute_nmap, execute_ffuf, execute_gobuster"
     elif phase == "exploitation":
-        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, metasploit_console"
+        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, execute_nuclei, execute_nikto, execute_sqlmap, execute_nmap, execute_ffuf, execute_gobuster, execute_hydra, metasploit_console"
     elif phase == "post_exploitation":
-        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, metasploit_console"
+        allowed_tools = "query_graph, web_search, execute_curl, execute_naabu, execute_nuclei, execute_nikto, execute_sqlmap, execute_nmap, execute_ffuf, execute_gobuster, execute_hydra, metasploit_console"
     else:
-        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu"
+        allowed_tools = "query_graph, web_search, get_github_stats, get_github_findings, execute_curl, execute_naabu, execute_nuclei, execute_nikto, execute_nmap, execute_ffuf, execute_gobuster"
 
     # Add tool availability matrix (concise, no redundancy)
     parts.append(TOOL_AVAILABILITY.format(phase=phase, allowed_tools=allowed_tools))

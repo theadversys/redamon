@@ -64,10 +64,24 @@ class MCPToolsManager:
         curl_url: str = None,
         naabu_url: str = None,
         metasploit_url: str = None,
+        nuclei_url: str = None,
+        nikto_url: str = None,
+        sqlmap_url: str = None,
+        nmap_url: str = None,
+        ffuf_url: str = None,
+        gobuster_url: str = None,
+        hydra_url: str = None,
     ):
         self.curl_url = curl_url or os.environ.get('MCP_CURL_URL', 'http://host.docker.internal:8001/sse')
         self.naabu_url = naabu_url or os.environ.get('MCP_NAABU_URL', 'http://host.docker.internal:8000/sse')
         self.metasploit_url = metasploit_url or os.environ.get('MCP_METASPLOIT_URL', 'http://host.docker.internal:8003/sse')
+        self.nuclei_url = nuclei_url or os.environ.get('MCP_NUCLEI_URL', 'http://host.docker.internal:8002/sse')
+        self.nikto_url = nikto_url or os.environ.get('MCP_NIKTO_URL', 'http://host.docker.internal:8004/sse')
+        self.sqlmap_url = sqlmap_url or os.environ.get('MCP_SQLMAP_URL', 'http://host.docker.internal:8005/sse')
+        self.nmap_url = nmap_url or os.environ.get('MCP_NMAP_URL', 'http://host.docker.internal:8006/sse')
+        self.ffuf_url = ffuf_url or os.environ.get('MCP_FFUF_URL', 'http://host.docker.internal:8007/sse')
+        self.gobuster_url = gobuster_url or os.environ.get('MCP_GOBUSTER_URL', 'http://host.docker.internal:8008/sse')
+        self.hydra_url = hydra_url or os.environ.get('MCP_HYDRA_URL', 'http://host.docker.internal:8009/sse')
         self.client: Optional[MultiServerMCPClient] = None
         self._tools_cache: Dict[str, any] = {}
 
@@ -91,7 +105,14 @@ class MCPToolsManager:
         server_configs = [
             ("curl", self.curl_url, 60, 300),           # 1 min connect, 5 min read
             ("naabu", self.naabu_url, 60, 600),         # 1 min connect, 10 min read
-            ("metasploit", self.metasploit_url, 60, 1800),  # 1 min connect, 30 min read
+            ("metasploit", self.metasploit_url, 60, 1800),
+            ("nuclei", self.nuclei_url, 60, 1200),
+            ("nikto", self.nikto_url, 60, 600),
+            ("sqlmap", self.sqlmap_url, 60, 1200),
+            ("nmap", self.nmap_url, 60, 600),
+            ("ffuf", self.ffuf_url, 60, 600),
+            ("gobuster", self.gobuster_url, 60, 600),
+            ("hydra", self.hydra_url, 60, 1200),
         ]
 
         for server_name, url, timeout, sse_read_timeout in server_configs:
