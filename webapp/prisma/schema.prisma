@@ -280,3 +280,50 @@ model Project {
 
   @@map("projects")
 }
+
+// ========== AI SECURITY (PROMPTFOO RED TEAMING) ==========
+
+model AIScan {
+  id           String      @id @default(cuid())
+  projectId    String?     @map("project_id")
+  name         String
+  status       String      @default("queued") // queued | running | completed | failed | cancelled
+  targetUrl    String      @map("target_url")
+  targetType   String      @default("http") @map("target_type") // http | openai | anthropic | custom
+  purpose      String?
+  systemPrompt String?     @map("system_prompt")
+  plugins      Json        // string[] of plugin IDs
+  strategies   Json        // strategy config array
+  profile      String      @default("custom") // quick | owasp | agent-security | full | custom
+  numTests     Int         @default(5) @map("num_tests")
+  configYaml   String?     @map("config_yaml") @db.Text
+  pid          Int?        // OS process ID for background monitoring
+  totalTests   Int?        @map("total_tests")
+  passedTests  Int?        @map("passed_tests")
+  failedTests  Int?        @map("failed_tests")
+  errorMessage String?     @map("error_message") @db.Text
+  startedAt    DateTime?   @map("started_at")
+  completedAt  DateTime?   @map("completed_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  findings     AIFinding[]
+
+  @@map("ai_scans")
+}
+
+model AIFinding {
+  id        String   @id @default(cuid())
+  scanId    String   @map("scan_id")
+  scan      AIScan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  plugin    String
+  strategy  String?
+  severity  String   // critical | high | medium | low | info
+  category  String   // OWASP/framework category
+  prompt    String   @db.Text
+  response  String   @db.Text
+  assertion String?  @db.Text
+  rawResult Json?    @map("raw_result")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("ai_findings")
+}
+

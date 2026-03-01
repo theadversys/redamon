@@ -8,8 +8,8 @@
 
 'use client'
 
-import { useRef, ReactNode, useEffect } from 'react'
-import { usePanelLayout } from '../../hooks/usePanelLayout'
+import { useRef, ReactNode, RefObject } from 'react'
+import { ViewMode } from '@/hooks/usePanelLayout'
 import { useGraphPanelDimensions } from '../../hooks/useGraphPanelDimensions'
 import styles from './PanelLayout.module.css'
 
@@ -23,6 +23,11 @@ interface PanelLayoutProps {
   onTabChange?: (tab: 'graph' | 'panda-ai' | 'a0') => void
   /** When 'all', use three-pane layout (Graph | Chat+Recon stacked) */
   effectiveLayoutMode?: 'single' | 'all'
+  /** Props from usePanelLayout hook in parent */
+  effectiveViewMode: ViewMode
+  panelSizes: [number, number]
+  containerRef: RefObject<HTMLDivElement | null>
+  onPanelResize: (sizes: [number, number]) => void
 }
 
 export function PanelLayout({
@@ -31,23 +36,20 @@ export function PanelLayout({
   activeTab = 'graph',
   onTabChange,
   effectiveLayoutMode = 'single',
+  effectiveViewMode,
+  panelSizes,
+  containerRef,
+  onPanelResize,
 }: PanelLayoutProps) {
-  const {
-    effectiveViewMode,
-    panelSizes,
-    containerRef,
-    setPanelSizes,
-  } = usePanelLayout()
-  
   const graphPanelRef = useRef<HTMLDivElement>(null)
   const graphDimensions = useGraphPanelDimensions(graphPanelRef)
-  
+
   const handlePanelResize = (sizes: number[]) => {
     if (sizes.length === 2) {
-      setPanelSizes([sizes[0], sizes[1]])
+      onPanelResize([sizes[0], sizes[1]])
     }
   }
-  
+
   // Three-pane mode: Graph | Chat+Recon (resizable horizontally and vertically)
   if (effectiveLayoutMode === 'all') {
     return (
@@ -87,7 +89,7 @@ export function PanelLayout({
 
   // Split mode: show both panels side-by-side
   const viewMode = effectiveViewMode || 'split'
-  
+
   try {
     if (viewMode === 'split') {
       return (
@@ -107,10 +109,10 @@ export function PanelLayout({
                 {graphContent(graphDimensions)}
               </div>
             </Panel>
-            
+
             {/* Resize Handle */}
             <PanelResizeHandle className={styles.resizeHandle} />
-            
+
             {/* AI Panel */}
             <Panel
               defaultSize={panelSizes[1]}
@@ -138,7 +140,7 @@ export function PanelLayout({
       </div>
     )
   }
-  
+
   // Tab mode: show single panel based on activeTab
   return (
     <div ref={containerRef} className={styles.container}>

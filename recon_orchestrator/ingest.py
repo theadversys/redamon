@@ -295,7 +295,15 @@ def ingest_naabu(
 
     Bootstraps Domain/Subdomain/IP if no prior recon exists.
     """
-    from graph_db import Neo4jClient
+    import sys
+    from pathlib import Path
+    
+    # Add graph_db path
+    _pd_root = Path(__file__).parent.parent
+    if str(_pd_root) not in sys.path:
+        sys.path.insert(0, str(_pd_root))
+        
+    from graph_db.neo4j_client import Neo4jClient
 
     result = {"success": False, "stats": {}, "errors": []}
 

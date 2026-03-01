@@ -1,21 +1,153 @@
 /**
  * Global Styles
- * Base element styles using design tokens
+ * Base element styles using design tokens + keyframe animations
  */
 
-/* Root element - applies theme to entire document */
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+
+  0%,
+  100% {
+    box-shadow: 0 0 12px var(--color-crimson-glow-20), 0 0 4px var(--color-crimson-glow-10);
+  }
+
+  50% {
+    box-shadow: 0 0 24px var(--color-crimson-glow-30), 0 0 8px var(--color-crimson-glow-20);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT & BODY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 html {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: background-color var(--transition-slow), color var(--transition-slow);
+  font-family: var(--font-sans);
+  line-height: var(--leading-normal);
+  transition: background-color var(--duration-slow) var(--ease-smooth),
+    color var(--duration-slow) var(--ease-smooth);
 }
 
-/* Links */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LINKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 a {
   color: var(--accent-primary);
   text-decoration: none;
@@ -32,44 +164,52 @@ a:focus-visible {
   border-radius: var(--radius-sm);
 }
 
-/* Focus styles */
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOCUS & SELECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 
-/* Selection */
 ::selection {
   background-color: var(--accent-primary);
   color: var(--text-on-accent);
 }
 
-/* Scrollbar styling (Webkit browsers) */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBARS (Premium thin style)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: var(--color-gray-700);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+  background: var(--color-gray-600);
 }
 
-/* Firefox scrollbar */
+/* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) var(--bg-tertiary);
+  scrollbar-color: var(--color-gray-700) transparent;
 }
 
-/* Code elements */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CODE ELEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 code,
 pre {
   font-family: var(--font-mono);
@@ -80,21 +220,27 @@ code {
   background-color: var(--bg-tertiary);
   padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
 }
 
 pre {
   background-color: var(--bg-tertiary);
   padding: var(--space-4);
   border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
   overflow-x: auto;
 }
 
 pre code {
   background: none;
   padding: 0;
+  border: none;
 }
 
-/* Tables */
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -110,19 +256,25 @@ td {
 th {
   font-weight: var(--font-semibold);
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-wider);
 }
 
-/* Horizontal rule */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIVIDERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 hr {
   border: none;
   border-top: 1px solid var(--border-default);
   margin: var(--space-6) 0;
 }
 
-/* Disabled state */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DISABLED STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 [disabled] {
   opacity: 0.5;
   cursor: not-allowed;

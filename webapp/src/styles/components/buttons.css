@@ -1,14 +1,8 @@
 /**
  * Shared Button & Interactive Component Styles
  *
- * These classes define the standard look and feel for all interactive elements.
+ * Premium button system with glassmorphism, gradient accents, and micro-animations.
  * Import specific classes in CSS Modules using :global() or compose.
- *
- * Usage in CSS Modules:
- *   .myButton { composes: iconButton from global; }
- *
- * Or apply directly:
- *   <button className="iconButton">...</button>
  */
 
 /* =============================================================================
@@ -20,20 +14,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .iconButton:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
   color: var(--text-primary);
+  transform: scale(1.08);
+}
+
+.iconButton:active {
+  transform: scale(0.95);
 }
 
 .iconButton:focus-visible {
@@ -42,8 +41,9 @@
 }
 
 .iconButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Icon button with border (for close buttons, drawer close, etc.) */
@@ -51,20 +51,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  background: transparent;
-  border: 1px solid var(--border-default);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .iconButtonBordered:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
+  border-color: var(--glass-border-hover);
   color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.iconButtonBordered:active {
+  transform: scale(0.95);
 }
 
 .iconButtonBordered:focus-visible {
@@ -73,8 +79,9 @@
 }
 
 .iconButtonBordered:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* =============================================================================
@@ -88,15 +95,15 @@
   height: 16px;
   padding: 0;
   background: var(--toggle-bg);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   flex-shrink: 0;
 }
 
 .toggleSwitch:hover {
-  border-color: var(--accent-secondary);
+  border-color: var(--glass-border-hover);
 }
 
 .toggleSwitch:focus-visible {
@@ -105,7 +112,7 @@
 }
 
 .toggleSwitch:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -117,7 +124,8 @@
   height: 10px;
   background: var(--toggle-knob);
   border-radius: var(--radius-full);
-  transition: transform var(--transition-default), background-color var(--transition-default);
+  transition: transform var(--duration-fast) var(--ease-spring),
+    background-color var(--duration-fast) var(--ease-smooth);
   pointer-events: none;
 }
 
@@ -150,17 +158,22 @@
   padding: var(--space-1) var(--space-2);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .textButton:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg-light);
   color: var(--text-primary);
+}
+
+.textButton:active {
+  transform: scale(0.97);
 }
 
 .textButton:focus-visible {
@@ -169,13 +182,13 @@
 }
 
 .textButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 /* =============================================================================
    PRIMARY BUTTON
-   Solid background button for primary actions
+   Gradient button for primary actions with glow
    ============================================================================= */
 
 .primaryButton {
@@ -184,18 +197,27 @@
   justify-content: center;
   gap: var(--space-1-5);
   padding: var(--space-1-5) var(--space-3);
-  background: var(--accent-primary);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--color-crimson-700) 100%);
   border: none;
-  border-radius: var(--radius-default);
+  border-radius: var(--radius-md);
   color: var(--text-on-accent);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
+  box-shadow: 0 2px 8px var(--color-crimson-glow-20);
 }
 
 .primaryButton:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
+  box-shadow: 0 4px 16px var(--color-crimson-glow-30);
+  transform: translateY(-1px);
+}
+
+.primaryButton:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 1px 4px var(--color-crimson-glow-10);
 }
 
 .primaryButton:focus-visible {
@@ -204,8 +226,10 @@
 }
 
 .primaryButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .primaryButton svg {
@@ -215,7 +239,7 @@
 
 /* =============================================================================
    SECONDARY BUTTON
-   Outlined button for secondary actions
+   Glassmorphism outlined button
    ============================================================================= */
 
 .secondaryButton {
@@ -224,19 +248,26 @@
   justify-content: center;
   gap: var(--space-1-5);
   padding: var(--space-1-5) var(--space-3);
-  background: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .secondaryButton:hover {
-  background: var(--bg-hover);
-  border-color: var(--text-tertiary);
+  background: var(--glass-bg);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.secondaryButton:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .secondaryButton:focus-visible {
@@ -245,8 +276,42 @@
 }
 
 .secondaryButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* =============================================================================
+   DANGER BUTTON
+   Red gradient for destructive actions
+   ============================================================================= */
+
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-3);
+  background: linear-gradient(135deg, var(--color-red-600) 0%, var(--color-red-800) 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-on-accent);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+}
+
+.dangerButton:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  transform: translateY(-1px);
+}
+
+.dangerButton:active {
+  transform: translateY(0) scale(0.97);
 }
 
 /* =============================================================================
@@ -261,11 +326,12 @@
   min-width: 14px;
   height: 14px;
   padding: 0 var(--space-0-5);
-  background: var(--status-error);
+  background: var(--accent-primary);
   color: var(--text-on-accent);
   font-size: 9px;
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   border-radius: var(--radius-full);
+  box-shadow: 0 0 8px var(--color-crimson-glow-20);
 }
 
 /* =============================================================================
@@ -276,7 +342,7 @@
 .divider {
   width: 1px;
   height: 16px;
-  background: var(--border-default);
+  background: linear-gradient(180deg, transparent, var(--glass-border-hover), transparent);
   flex-shrink: 0;
 }
 

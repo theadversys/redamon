@@ -172,6 +172,7 @@ async def start_recon(project_id: str, request: ReconStartRequest):
             project_id=project_id,
             user_id=request.user_id,
             webapp_api_url=request.webapp_api_url,
+            target_domain=request.target_domain,
             recon_path=RECON_PATH,
         )
         return state

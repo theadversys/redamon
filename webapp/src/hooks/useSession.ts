@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
+import { useSessionStorage } from './useSessionStorage'
 
 const SESSION_STORAGE_KEY = 'pandaexploit-session-id'
 
@@ -11,29 +12,25 @@ function generateSessionId(): string {
 }
 
 export function useSession() {
-  const [sessionId, setSessionId] = useState<string>('')
-  const [mounted, setMounted] = useState(false)
+  const [sessionId, setSessionId] = useSessionStorage<string>(SESSION_STORAGE_KEY, '')
 
-  // Initialize session on mount
+  // Initialize session on mount if empty
   useEffect(() => {
-    // Use environment variable if available, otherwise generate new session ID
-    const envSessionId = process.env.NEXT_PUBLIC_SESSION_ID
-    const newSessionId = envSessionId || generateSessionId()
-    setSessionId(newSessionId)
-    sessionStorage.setItem(SESSION_STORAGE_KEY, newSessionId)
-    setMounted(true)
-  }, [])
+    if (!sessionId) {
+      const envSessionId = process.env.NEXT_PUBLIC_SESSION_ID
+      const newSessionId = envSessionId || generateSessionId()
+      setSessionId(newSessionId)
+    }
+  }, [sessionId, setSessionId])
 
   const resetSession = useCallback(() => {
     const newSessionId = generateSessionId()
     setSessionId(newSessionId)
-    sessionStorage.setItem(SESSION_STORAGE_KEY, newSessionId)
     return newSessionId
-  }, [])
+  }, [setSessionId])
 
   return {
     sessionId,
     resetSession,
-    mounted,
   }
 }

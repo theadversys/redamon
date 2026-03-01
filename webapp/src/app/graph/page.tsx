@@ -11,9 +11,8 @@ import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
 import { PanelLayout } from './components/PanelLayout/PanelLayout'
 import { useGraphData, useNodeSelection } from './hooks'
-import { useTheme, useSession, useReconStatus, useReconSSE, useProjectById } from '@/hooks'
+import { useTheme, useSession, useReconStatus, useReconSSE, useProjectById, usePanelLayout } from '@/hooks'
 import { useProject } from '@/providers/ProjectProvider'
-import { usePanelLayout } from './hooks/usePanelLayout'
 import styles from './page.module.css'
 
 export default function GraphPage() {
@@ -30,14 +29,17 @@ export default function GraphPage() {
   const { selectedNode, drawerOpen, selectNode, clearSelection } = useNodeSelection()
   const { isDark } = useTheme()
   const { sessionId, resetSession } = useSession()
-  
+
   // Panel layout state management (activeTab persisted so Agent Zero doesn't disappear on refresh)
   const {
     effectiveViewMode,
     effectiveLayoutMode,
     activeTab,
+    panelSizes,
+    containerRef,
     setActiveTab,
     setLayoutMode,
+    setPanelSizes,
     hideAI,
     showAI,
   } = usePanelLayout()
@@ -294,6 +296,10 @@ export default function GraphPage() {
           activeTab={activeTab}
           onTabChange={handleSelectTab}
           effectiveLayoutMode={effectiveLayoutMode}
+          effectiveViewMode={effectiveViewMode}
+          panelSizes={panelSizes}
+          containerRef={containerRef}
+          onPanelResize={setPanelSizes}
         />
       </div>
 

@@ -1,10 +1,11 @@
 /**
  * Status Indicator & Alert Component Styles
+ * With glow effects and premium severity badges
  */
 
 /* =============================================================================
    STATUS DOT
-   Small colored indicator
+   Small colored indicator with subtle glow
    ============================================================================= */
 
 .statusDot {
@@ -17,18 +18,22 @@
 
 .statusDotSuccess {
   background: var(--status-success);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
 }
 
 .statusDotWarning {
   background: var(--status-warning);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
 }
 
 .statusDotError {
   background: var(--status-error);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
 
 .statusDotInfo {
   background: var(--status-info);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
 }
 
 .statusDotNeutral {
@@ -43,7 +48,7 @@
 
 /* =============================================================================
    STATUS BADGE
-   Labeled status indicator
+   Labeled status indicator with glass background
    ============================================================================= */
 
 .statusBadge {
@@ -53,32 +58,38 @@
   padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-full);
   font-size: 10px;
-  font-weight: var(--font-medium);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
 }
 
 .statusBadgeSuccess {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--status-success);
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--status-success-text);
+  border: 1px solid rgba(34, 197, 94, 0.15);
 }
 
 .statusBadgeWarning {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--status-warning);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--status-warning-text);
+  border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
 .statusBadgeError {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--status-error);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--status-error-text);
+  border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .statusBadgeInfo {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--status-info);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--status-info-text);
+  border: 1px solid rgba(59, 130, 246, 0.15);
 }
 
 .statusBadgeNeutral {
-  background: var(--bg-elevated);
+  background: var(--glass-bg);
   color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
 }
 
 /* =============================================================================
@@ -90,8 +101,10 @@
   display: flex;
   gap: var(--space-3);
   padding: var(--space-3);
-  border-radius: var(--radius-default);
+  border-radius: var(--radius-xl);
   border: 1px solid;
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
 }
 
 .alertIcon {
@@ -127,19 +140,19 @@
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   margin-left: auto;
 }
 
 .alertDismiss:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
   color: var(--text-primary);
 }
 
 /* Alert variants */
 .alertSuccess {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: var(--status-success);
+  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.2);
 }
 
 .alertSuccess .alertIcon,
@@ -152,8 +165,8 @@
 }
 
 .alertWarning {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: var(--status-warning);
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.2);
 }
 
 .alertWarning .alertIcon,
@@ -166,8 +179,8 @@
 }
 
 .alertError {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: var(--status-error);
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .alertError .alertIcon,
@@ -180,8 +193,8 @@
 }
 
 .alertInfo {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: var(--status-info);
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
 .alertInfo .alertIcon,
@@ -195,7 +208,7 @@
 
 /* =============================================================================
    SEVERITY INDICATOR
-   Security severity levels (for vulnerability context)
+   Security severity levels with glow
    ============================================================================= */
 
 .severity {
@@ -203,41 +216,48 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-0-5) var(--space-1-5);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: 10px;
   font-weight: var(--font-bold);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-wider);
 }
 
 .severityCritical {
-  background: var(--severity-critical, #7f1d1d);
-  color: var(--color-red-100);
+  background: rgba(255, 51, 51, 0.15);
+  color: var(--color-red-400);
+  border: 1px solid rgba(255, 51, 51, 0.2);
+  box-shadow: var(--glow-critical);
 }
 
 .severityHigh {
-  background: var(--severity-high, #dc2626);
-  color: white;
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--color-orange-500);
+  border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
 .severityMedium {
-  background: var(--severity-medium, #f59e0b);
-  color: var(--color-gray-900);
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--color-yellow-500);
+  border: 1px solid rgba(234, 179, 8, 0.2);
 }
 
 .severityLow {
-  background: var(--severity-low, #22c55e);
-  color: var(--color-gray-900);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-blue-400);
+  border: 1px solid rgba(59, 130, 246, 0.15);
 }
 
 .severityInfo {
-  background: var(--severity-info, #3b82f6);
-  color: white;
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
 }
 
 .severityNone {
-  background: var(--bg-elevated);
+  background: var(--glass-bg);
   color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
 }
 
 /* =============================================================================
@@ -261,11 +281,11 @@
 
 .connectionOnline .connectionDot {
   background: var(--status-success);
-  box-shadow: 0 0 4px var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
 }
 
 .connectionOnline .connectionLabel {
-  color: var(--status-success);
+  color: var(--status-success-text);
 }
 
 .connectionOffline .connectionDot {
@@ -282,13 +302,20 @@
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* =============================================================================
    CVSS SCORE
-   CVSS score display (security specific)
+   CVSS score display with glass styling
    ============================================================================= */
 
 .cvssScore {
@@ -297,34 +324,40 @@
   justify-content: center;
   min-width: 36px;
   height: 20px;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-md);
   font-size: 10px;
   font-weight: var(--font-bold);
   font-family: var(--font-mono);
+  letter-spacing: var(--tracking-wide);
 }
 
 .cvssScoreCritical {
-  background: var(--severity-critical, #7f1d1d);
-  color: var(--color-red-100);
+  background: rgba(255, 51, 51, 0.15);
+  color: var(--color-red-400);
+  border: 1px solid rgba(255, 51, 51, 0.2);
 }
 
 .cvssScoreHigh {
-  background: var(--severity-high, #dc2626);
-  color: white;
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--color-orange-500);
+  border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
 .cvssScoreMedium {
-  background: var(--severity-medium, #f59e0b);
-  color: var(--color-gray-900);
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--color-yellow-500);
+  border: 1px solid rgba(234, 179, 8, 0.2);
 }
 
 .cvssScoreLow {
-  background: var(--severity-low, #22c55e);
-  color: var(--color-gray-900);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-blue-400);
+  border: 1px solid rgba(59, 130, 246, 0.15);
 }
 
 .cvssScoreNone {
-  background: var(--bg-elevated);
+  background: var(--glass-bg);
   color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
 }

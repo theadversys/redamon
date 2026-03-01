@@ -9,6 +9,10 @@ import {
   ClipboardList,
   FolderOpen,
   Key,
+  BarChart3,
+  Search,
+  Bot,
+  Home,
 } from 'lucide-react'
 import styles from './NavigationBar.module.css'
 
@@ -20,6 +24,18 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  {
+    label: 'Home',
+    href: '/',
+    icon: <Home size={16} />,
+    enabled: true,
+  },
+  {
+    label: 'Analytics',
+    href: '/dashboard',
+    icon: <BarChart3 size={16} />,
+    enabled: true,
+  },
   {
     label: 'Projects',
     href: '/projects',
@@ -56,6 +72,18 @@ const navItems: NavItem[] = [
     icon: <ClipboardList size={16} />,
     enabled: true,
   },
+  {
+    label: 'AI Security',
+    href: '/ai-security',
+    icon: <Bot size={16} />,
+    enabled: true,
+  },
+  {
+    label: 'OSINT',
+    href: '/osint',
+    icon: <Search size={16} />,
+    enabled: true,
+  },
 ]
 
 export function NavigationBar() {
@@ -65,7 +93,9 @@ export function NavigationBar() {
     <nav className={styles.nav}>
       <ul className={styles.navList}>
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const isActive = item.href === '/'
+            ? pathname === '/'
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           if (!item.enabled) {
             return (

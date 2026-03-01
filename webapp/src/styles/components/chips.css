@@ -1,5 +1,6 @@
 /**
  * Chips, Tags, and Badge Styles
+ * Glassmorphism chip system
  */
 
 /* =============================================================================
@@ -12,13 +13,14 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-0-5) var(--space-2);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
   font-size: 10px;
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 /* Chip with remove button */
@@ -37,23 +39,22 @@
   border-radius: var(--radius-full);
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .chipRemove:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
   color: var(--text-primary);
 }
 
 /* Clickable/selectable chip */
 .chipClickable {
   cursor: pointer;
-  transition: var(--transition-all);
 }
 
 .chipClickable:hover {
-  background: var(--bg-hover);
-  border-color: var(--text-tertiary);
+  background: var(--glass-bg-heavy);
+  border-color: var(--glass-border-hover);
 }
 
 .chipSelected {
@@ -67,39 +68,39 @@
    ============================================================================= */
 
 .chipPrimary {
-  background: rgba(229, 57, 53, 0.15);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  background: rgba(229, 57, 53, 0.12);
+  border-color: rgba(229, 57, 53, 0.2);
+  color: var(--color-crimson-400);
 }
 
 .chipSecondary {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: var(--accent-secondary);
-  color: var(--accent-secondary);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: var(--color-blue-400);
 }
 
 .chipSuccess {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: var(--status-success);
-  color: var(--status-success);
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.15);
+  color: var(--status-success-text);
 }
 
 .chipWarning {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: var(--status-warning);
-  color: var(--status-warning);
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.15);
+  color: var(--status-warning-text);
 }
 
 .chipError {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: var(--status-error);
-  color: var(--status-error);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.15);
+  color: var(--status-error-text);
 }
 
 .chipInfo {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: var(--status-info);
-  color: var(--status-info);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.15);
+  color: var(--status-info-text);
 }
 
 /* =============================================================================
@@ -122,22 +123,22 @@
   align-items: center;
   gap: var(--space-0-5);
   padding: var(--space-0-5) var(--space-1-5);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border-radius: var(--radius-md);
   font-size: 10px;
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-wider);
 }
 
 .tagPrimary {
-  background: var(--accent-primary);
+  background: linear-gradient(135deg, var(--accent-primary), var(--color-crimson-700));
   color: var(--text-on-accent);
 }
 
 .tagSecondary {
-  background: var(--accent-secondary);
+  background: linear-gradient(135deg, var(--accent-secondary), var(--color-blue-700));
   color: var(--text-on-accent);
 }
 
@@ -153,7 +154,8 @@
   min-width: 18px;
   height: 18px;
   padding: 0 var(--space-1);
-  background: var(--bg-elevated);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
   font-size: 10px;
   font-weight: var(--font-semibold);
@@ -162,10 +164,14 @@
 
 .countBadgePrimary {
   background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: var(--text-on-accent);
+  box-shadow: 0 0 8px var(--color-crimson-glow-20);
 }
 
 .countBadgeSecondary {
   background: var(--accent-secondary);
+  border-color: var(--accent-secondary);
   color: var(--text-on-accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
 }

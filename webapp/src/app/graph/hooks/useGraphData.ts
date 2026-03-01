@@ -1,28 +1,39 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { GraphData } from '../types'
 
+const DISPLAY_NODE_LIMIT = 5000
+
 async function fetchGraphData(projectId: string): Promise<GraphData> {
-  const response = await fetch(`/api/graph?projectId=${projectId}`)
+  const response = await fetch(
+    `/api/graph?projectId=${projectId}&limit=${DISPLAY_NODE_LIMIT}`
+  )
   if (!response.ok) {
     throw new Error('Failed to fetch graph data')
   }
   return response.json()
 }
 
+/** Max nodes for full fingerprint; above this use counts-only to avoid UI freeze */
+const FINGERPRINT_SAMPLE_THRESHOLD = 500
+
 /**
  * Generate a fingerprint of the graph data to detect actual changes.
- * Only considers structural changes (nodes/links added/removed), not position changes.
+ * For large graphs, use counts-only to avoid creating huge strings that freeze the UI.
  */
 function getGraphFingerprint(data: GraphData | undefined): string {
   if (!data) return ''
 
-  // Sort IDs to ensure consistent fingerprint regardless of order
-  const nodeIds = data.nodes.map(n => n.id).sort().join(',')
-  const linkIds = data.links.map(l => `${l.source}-${l.target}`).sort().join(',')
+  const n = data.nodes.length
+  const l = data.links.length
 
-  // Include counts and IDs for a comprehensive fingerprint
-  return `${data.nodes.length}:${data.links.length}:${nodeIds}:${linkIds}`
+  if (n > FINGERPRINT_SAMPLE_THRESHOLD) {
+    return `${n}:${l}`
+  }
+
+  const nodeIds = data.nodes.map(nn => nn.id).sort().join(',')
+  const linkIds = data.links.map(link => `${link.source}-${link.target}`).sort().join(',')
+  return `${n}:${l}:${nodeIds}:${linkIds}`
 }
 
 interface UseGraphDataOptions {
@@ -43,6 +54,12 @@ export function useGraphData(projectId: string | null, options?: UseGraphDataOpt
     // Poll every 5 seconds while recon is running
     refetchInterval: isReconRunning ? 5000 : false,
   })
+
+  // Reset stable data when project changes so we don't show wrong project's graph
+  useEffect(() => {
+    stableDataRef.current = undefined
+    lastFingerprintRef.current = ''
+  }, [projectId])
 
   // Only update the stable data reference when the fingerprint changes
   const stableData = useMemo(() => {

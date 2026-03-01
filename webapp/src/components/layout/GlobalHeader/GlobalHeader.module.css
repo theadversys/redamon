@@ -3,10 +3,32 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-1) var(--space-4);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-default);
-  height: 36px;
+  background: var(--nav-bg, var(--glass-bg-heavy));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--nav-border, var(--glass-border));
+  box-shadow: var(--nav-shadow, none);
+  height: 40px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* Subtle gradient accent line at bottom */
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--color-crimson-glow-10) 20%,
+      var(--color-crimson-glow-20) 50%,
+      var(--color-crimson-glow-10) 80%,
+      transparent 100%);
+  pointer-events: none;
 }
 
 .logo {
@@ -20,13 +42,16 @@
 }
 
 .logoText {
+  font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--font-bold);
   color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
 }
 
 .logoAccent {
   color: var(--accent-primary);
+  text-shadow: 0 0 24px var(--color-crimson-glow-20);
 }
 
 .spacer {
@@ -37,12 +62,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
-  padding: var(--space-1) var(--space-2);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2-5);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
   color: var(--text-tertiary);
-  min-width: 160px;
+  min-width: 180px;
+  transition: var(--transition-all);
+}
+
+.search:focus-within {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 0 0 2px var(--color-crimson-glow-05);
 }
 
 .searchInput {
@@ -50,6 +83,7 @@
   border: none;
   outline: none;
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   width: 100%;
 }
@@ -59,7 +93,8 @@
 }
 
 .searchInput:disabled {
-  cursor: not-allowed;
+  cursor: default;
+  opacity: 0.7;
 }
 
 .actions {
@@ -73,40 +108,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   font-size: var(--text-sm);
 }
 
 .iconButton:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
   color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.iconButton:active {
+  transform: scale(0.97);
 }
 
 .badge {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 2px;
+  right: 2px;
   min-width: 14px;
   height: 14px;
   padding: 0 var(--space-0-5);
-  background: var(--status-error);
+  background: var(--accent-primary);
   color: var(--text-on-accent);
   font-size: 9px;
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: pulse-glow 2.5s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--color-crimson-glow-30);
 }
 
 .divider {
   width: 1px;
   height: 18px;
-  background: var(--border-default);
+  background: linear-gradient(180deg, transparent, var(--glass-border-hover), transparent);
   margin: 0 var(--space-1);
 }
 
@@ -114,28 +156,29 @@
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
-  padding: var(--space-0-5) var(--space-1-5);
-  border-radius: var(--radius-sm);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-lg);
   color: var(--text-secondary);
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .userButton:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
   color: var(--text-primary);
 }
 
 .avatar {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-full);
-  background: var(--accent-primary);
+  background: linear-gradient(135deg, var(--accent-primary), var(--color-crimson-700));
   color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
+  box-shadow: 0 0 0 2px var(--color-crimson-glow-10);
 }
 
 .userName {

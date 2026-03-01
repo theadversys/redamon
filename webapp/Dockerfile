@@ -13,7 +13,7 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=120000
 ENV NPM_CONFIG_FETCH_RETRIES=5
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Stage 2: Builder
 FROM node:22-alpine AS builder
@@ -39,7 +39,7 @@ COPY . .
 
 ENV NPM_CONFIG_FETCH_TIMEOUT=120000
 ENV NPM_CONFIG_FETCH_RETRIES=5
-RUN npm ci && npm run build
+RUN npm install --include=dev && npm run build
 
 # Verify react-resizable-panels exists before copying
 RUN test -d node_modules/react-resizable-panels && echo "✅ react-resizable-panels found" || (echo "❌ react-resizable-panels NOT FOUND" && ls -la node_modules/ | grep react)

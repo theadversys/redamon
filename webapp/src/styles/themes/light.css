@@ -4,58 +4,86 @@
  */
 
 [data-theme="light"] {
-  /* Backgrounds */
-  --bg-primary: var(--color-gray-50);
-  --bg-secondary: var(--color-white);
-  --bg-tertiary: var(--color-gray-100);
-  --bg-elevated: var(--color-white);
-  --bg-hover: var(--color-gray-100);
-  --bg-active: var(--color-gray-200);
-  --bg-input: var(--color-white);
+  /* New Expert Light Mode Colors based on prompt */
+  --bg-primary: #F0F2F5; /* Was var(--color-gray-50) */
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #FFFFFF; /* matching card elevated */
+  --bg-elevated: #FFFFFF;
+  --bg-hover: #F8F9FA;
+  --bg-active: #E8ECF2;
+  --bg-input: #FFFFFF;
   --bg-overlay: rgba(0, 0, 0, 0.3);
 
+  /* Specific Component Variables */
+  --bg-header-hero: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+  --bg-header-element: rgba(255, 255, 255, 0.05);
+  --border-header-element: rgba(255, 255, 255, 0.1);
+  --bar-track: #E8ECF2;
+  --nav-bg: #FFFFFF;
+  --nav-border: rgba(0, 0, 0, 0.08);
+  --nav-shadow: 0 1px 4px rgba(0,0,0,0.06);
+
   /* Text */
-  --text-primary: var(--color-gray-900);
-  --text-secondary: var(--color-gray-600);
-  --text-tertiary: var(--color-gray-500);
-  --text-inverse: var(--color-gray-50);
+  --text-primary: #0D1117;
+  --text-secondary: #5A6478;
+  --text-tertiary: #8B95A5; /* text-muted */
+  --text-inverse: #FFFFFF;
+  --text-on-hero: #FFFFFF;
+  --text-on-hero-muted: rgba(255,255,255,0.6);
 
   /* Borders */
-  --border-default: var(--color-gray-200);
-  --border-subtle: var(--color-gray-100);
-  --border-strong: var(--color-gray-300);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.12);
 
-  /* Shadows - lighter, more visible for light theme */
+  /* Shadows - Premium card shadow */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-default: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
   /* Toggle */
-  --toggle-bg: var(--color-gray-300);
-  --toggle-knob: var(--color-gray-400);
+  --toggle-bg: #E8ECF2;
+  --toggle-knob: #FFFFFF;
 
   /* Graph - slightly off-white for better contrast */
-  --graph-bg: var(--color-gray-100);
-  --graph-link-default: var(--color-gray-500);
+  --graph-bg: #F0F2F5;
+  --graph-link-default: #8B95A5;
 
   /* Drawer */
-  --drawer-bg: var(--color-white);
-  --drawer-header-bg: var(--color-gray-50);
+  --drawer-bg: #FFFFFF;
+  --drawer-header-bg: #F0F2F5;
 
-  /* Status backgrounds - lighter versions */
-  --status-success-bg: var(--color-green-100);
-  --status-success-text: var(--color-green-700);
-  --status-warning-bg: var(--color-amber-100);
-  --status-warning-text: var(--color-amber-700);
-  --status-error-bg: var(--color-red-100);
-  --status-error-text: var(--color-red-700);
-  --status-info-bg: var(--color-blue-100);
-  --status-info-text: var(--color-blue-700);
+  /* Accent Adjustments - Functional severities */
+  --accent-critical: #E8453C;
+  --accent-high: #F97316;
+  --accent-medium: #F59E0B;
+  --accent-low: #3B82F6;
+  
+  --status-success-bg: #E6F4EA;
+  --status-success-text: #137333;
+  --status-warning-bg: #FEF7E0;
+  --status-warning-text: #B06000;
+  --status-error-bg: #FCE8E6;
+  --status-error-text: #C5221F;
+  --status-info-bg: #E8F0FE;
+  --status-info-text: #1967D2;
 
-  /* Accent adjustments for better contrast on light */
-  --accent-primary-subtle: var(--color-blue-100);
+  --accent-primary-subtle: #FCE8E6;
+
+  /* Glassmorphism overrides for Light Mode (Cards) */
+  --glass-bg: #FFFFFF;
+  --glass-bg-heavy: #FFFFFF;
+  --glass-bg-light: #FFFFFF;
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border-hover: rgba(0, 0, 0, 0.08);
+  --glass-border-active: #E8453C;
+  --glass-shimmer: rgba(0, 0, 0, 0.02);
+  --glass-bg-shimmer: rgba(0, 0, 0, 0.02);
+  --glass-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+  --glass-shadow-elevated: 0 4px 6px rgba(0,0,0,0.08), 0 10px 24px rgba(0,0,0,0.08);
+  --glass-shadow-color: rgba(0, 0, 0, 0.05);
 
   color-scheme: light;
 }
@@ -63,56 +91,86 @@
 /* Auto-detect system preference */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    /* Backgrounds */
-    --bg-primary: var(--color-gray-50);
-    --bg-secondary: var(--color-white);
-    --bg-tertiary: var(--color-gray-100);
-    --bg-elevated: var(--color-white);
-    --bg-hover: var(--color-gray-100);
-    --bg-active: var(--color-gray-200);
-    --bg-input: var(--color-white);
+    /* New Expert Light Mode Colors based on prompt */
+    --bg-primary: #F0F2F5; /* Was var(--color-gray-50) */
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #FFFFFF; /* matching card elevated */
+    --bg-elevated: #FFFFFF;
+    --bg-hover: #F8F9FA;
+    --bg-active: #E8ECF2;
+    --bg-input: #FFFFFF;
     --bg-overlay: rgba(0, 0, 0, 0.3);
 
+    /* Specific Component Variables */
+    --bg-header-hero: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+    --bg-header-element: rgba(255, 255, 255, 0.05);
+    --border-header-element: rgba(255, 255, 255, 0.1);
+    --bar-track: #E8ECF2;
+    --nav-bg: #FFFFFF;
+    --nav-border: rgba(0, 0, 0, 0.08);
+    --nav-shadow: 0 1px 4px rgba(0,0,0,0.06);
+
     /* Text */
-    --text-primary: var(--color-gray-900);
-    --text-secondary: var(--color-gray-600);
-    --text-tertiary: var(--color-gray-500);
-    --text-inverse: var(--color-gray-50);
+    --text-primary: #0D1117;
+    --text-secondary: #5A6478;
+    --text-tertiary: #8B95A5; /* text-muted */
+    --text-inverse: #FFFFFF;
+    --text-on-hero: #FFFFFF;
+    --text-on-hero-muted: rgba(255,255,255,0.6);
 
     /* Borders */
-    --border-default: var(--color-gray-200);
-    --border-subtle: var(--color-gray-100);
-    --border-strong: var(--color-gray-300);
+    --border-default: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-strong: rgba(0, 0, 0, 0.12);
 
-    /* Shadows */
+    /* Shadows - Premium card shadow */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-default: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
     /* Toggle */
-    --toggle-bg: var(--color-gray-300);
-    --toggle-knob: var(--color-gray-400);
+    --toggle-bg: #E8ECF2;
+    --toggle-knob: #FFFFFF;
 
-    /* Graph */
-    --graph-bg: var(--color-gray-100);
-    --graph-link-default: var(--color-gray-500);
+    /* Graph - slightly off-white for better contrast */
+    --graph-bg: #F0F2F5;
+    --graph-link-default: #8B95A5;
 
     /* Drawer */
-    --drawer-bg: var(--color-white);
-    --drawer-header-bg: var(--color-gray-50);
+    --drawer-bg: #FFFFFF;
+    --drawer-header-bg: #F0F2F5;
 
-    /* Status backgrounds */
-    --status-success-bg: var(--color-green-100);
-    --status-success-text: var(--color-green-700);
-    --status-warning-bg: var(--color-amber-100);
-    --status-warning-text: var(--color-amber-700);
-    --status-error-bg: var(--color-red-100);
-    --status-error-text: var(--color-red-700);
-    --status-info-bg: var(--color-blue-100);
-    --status-info-text: var(--color-blue-700);
+    /* Accent Adjustments - Functional severities */
+    --accent-critical: #E8453C;
+    --accent-high: #F97316;
+    --accent-medium: #F59E0B;
+    --accent-low: #3B82F6;
+    
+    --status-success-bg: #E6F4EA;
+    --status-success-text: #137333;
+    --status-warning-bg: #FEF7E0;
+    --status-warning-text: #B06000;
+    --status-error-bg: #FCE8E6;
+    --status-error-text: #C5221F;
+    --status-info-bg: #E8F0FE;
+    --status-info-text: #1967D2;
 
-    --accent-primary-subtle: var(--color-blue-100);
+    --accent-primary-subtle: #FCE8E6;
+
+    /* Glassmorphism overrides for Light Mode (Cards) */
+    --glass-bg: #FFFFFF;
+    --glass-bg-heavy: #FFFFFF;
+    --glass-bg-light: #FFFFFF;
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-border-hover: rgba(0, 0, 0, 0.08);
+    --glass-border-active: #E8453C;
+    --glass-shimmer: rgba(0, 0, 0, 0.02);
+    --glass-bg-shimmer: rgba(0, 0, 0, 0.02);
+    --glass-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+    --glass-shadow-elevated: 0 4px 6px rgba(0,0,0,0.08), 0 10px 24px rgba(0,0,0,0.08);
+    --glass-shadow-color: rgba(0, 0, 0, 0.05);
 
     color-scheme: light;
   }

@@ -18,6 +18,8 @@ interface Neo4jRelationship {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const projectId = searchParams.get('projectId')
+  const limitParam = searchParams.get('limit')
+  const nodeLimit = limitParam ? Math.min(50000, Math.max(100, parseInt(limitParam, 10) || 5000)) : undefined
 
   if (!projectId) {
     return NextResponse.json(
@@ -130,6 +132,7 @@ export async function GET(request: NextRequest) {
     const links: { source: string; target: string; type: string }[] = []
 
     result.records.forEach((record) => {
+      if (nodeLimit !== undefined && nodesMap.size >= nodeLimit) return
       const sourceNode = record.get('n') as Neo4jNode
       const targetNode = record.get('m') as Neo4jNode
       const relationship = record.get('r') as Neo4jRelationship
@@ -163,11 +166,17 @@ export async function GET(request: NextRequest) {
     })
 
     const nodes = Array.from(nodesMap.values())
+    const totalNodes = nodes.length
+
+    const filteredLinks = links.filter(
+      (l) => nodesMap.has(String(l.source)) && nodesMap.has(String(l.target))
+    )
 
     return NextResponse.json({
       nodes,
-      links,
+      links: filteredLinks,
       projectId,
+      truncated: nodeLimit !== undefined && totalNodes >= nodeLimit,
     })
   } catch (error) {
     console.error('Graph query error:', error)

@@ -5,6 +5,7 @@ import { useProject } from '@/providers/ProjectProvider'
 import Link from 'next/link'
 import { ShieldCheck, AlertTriangle, AlertCircle, Info, Filter, Target, FileText, Key } from 'lucide-react'
 import { EvidenceDrawer } from './components/EvidenceDrawer'
+import { Skeleton } from '@/components/ui'
 import styles from './page.module.css'
 
 interface Vulnerability {
@@ -101,7 +102,7 @@ export default function VulnerabilitiesPage() {
     }
 
     fetchVulnerabilities()
-    
+
     // Refresh every 10 seconds to get new vulnerabilities dynamically
     const interval = setInterval(fetchVulnerabilities, 10000)
     return () => clearInterval(interval)
@@ -118,10 +119,30 @@ export default function VulnerabilitiesPage() {
     )
   }
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className={styles.page}>
-        <div className={styles.loading}>Loading vulnerabilities...</div>
+        <div className={styles.header}>
+          <div className={styles.headerRow}>
+            <div className={styles.titleSection}>
+              <Skeleton variant="avatar" width={24} height={24} />
+              <Skeleton variant="title" width={180} />
+            </div>
+          </div>
+          <div className={styles.stats}>
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+          </div>
+        </div>
+        <div className={styles.content}>
+          <div className={styles.list}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="card" height={160} />
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

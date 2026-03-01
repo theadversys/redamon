@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid, Bot } from 'lucide-react'
 import { Toggle } from '@/components/ui'
 import type { ReconStatus } from '@/lib/recon-types'
-import type { ViewMode, LayoutMode } from '../../hooks/usePanelLayout'
+import type { ViewMode, LayoutMode } from '@/hooks/usePanelLayout'
 import styles from './GraphToolbar.module.css'
 
 interface GraphToolbarProps {

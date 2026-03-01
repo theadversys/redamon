@@ -14,6 +14,8 @@ from docker.errors import NotFound, APIError
 from docker.models.containers import Container
 
 from models import ReconState, ReconStatus, ReconLogEvent
+from spiderfoot_client import SpiderFootClient
+from intelligence_bridge import IntelligenceBridge
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,10 @@ class ContainerManager:
         self.recon_image = recon_image
         self.running_states: dict[str, ReconState] = {}
         self._log_tasks: dict[str, asyncio.Task] = {}
+        
+        # Initialize SpiderFoot Integration
+        self.sf_client = SpiderFootClient(base_url="http://spiderfoot:5001")
+        self.intel_bridge = IntelligenceBridge(self.sf_client)
 
     def _get_container_name(self, project_id: str) -> str:
         """Generate container name for a project"""
@@ -115,7 +121,8 @@ class ContainerManager:
         project_id: str,
         user_id: str,
         webapp_api_url: str,
-        recon_path: str = "/home/samuele/Progetti didattici/PandaExploit/recon",
+        target_domain: str = "",
+        recon_path: str = "/app/recon",
     ) -> ReconState:
         """Start a recon container for a project"""
 
@@ -257,6 +264,25 @@ class ContainerManager:
             state.container_id = container.id
             state.status = ReconStatus.RUNNING
             logger.info(f"Started recon container {container.id} for project {project_id}")
+
+            # Trigger SpiderFoot OSINT Scan
+            try:
+                if target_domain:
+                    scan_name = f"Panda-{project_id[:8]}"
+                    sf_scan_id = self.sf_client.start_scan(scan_name, target_domain, usecase="Footprint")
+                    if sf_scan_id:
+                        logger.info(f"Triggered SpiderFoot scan {sf_scan_id} for {target_domain}")
+                        # Start real-time intelligence bridge
+                        asyncio.create_task(
+                            self.intel_bridge.start_monitoring(
+                                project_id=project_id,
+                                user_id=user_id,
+                                scan_id=sf_scan_id,
+                                target_domain=target_domain
+                            )
+                        )
+            except Exception as sf_err:
+                logger.error(f"Failed to trigger SpiderFoot for {project_id}: {sf_err}")
 
         except Exception as e:
             state.status = ReconStatus.ERROR

@@ -129,3 +129,16 @@ LAUNCHPLAN.md
 
 # Claude Code config
 .claude/
+
+# SpiderFoot inner git (tracked as regular directory, not submodule)
+spiderfoot/.git/
+
+# GCP data exports
+gcp data/
+
+# Generated reports (re-generate via API)
+report.html
+report.md
+
+# Test fixtures
+dummy_target.js

@@ -1,43 +1,78 @@
 /**
- * Shadow Tokens
- * Box shadows and elevation system
+ * Shadow & Animation Tokens
+ * Box shadows, glow effects, glassmorphism, easing, and timing
  */
 
 :root {
-  /* ═══════════════════════════════════════════════════════════════════════════
-     BOX SHADOWS (Dark theme optimized)
+   /* ═══════════════════════════════════════════════════════════════════════════
+     BOX SHADOWS (Obsidian depth optimized)
      ═══════════════════════════════════════════════════════════════════════════ */
-  --shadow-none: none;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+   --shadow-none: none;
+   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+   --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.45), 0 1px 2px -1px rgba(0, 0, 0, 0.45);
+   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.45);
+   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.45), 0 4px 6px -4px rgba(0, 0, 0, 0.45);
+   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
 
-  /* Inner shadows */
-  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+   /* Inner shadows */
+   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
 
-  /* Glow effects for security indicators */
-  --glow-critical: 0 0 20px rgba(255, 51, 51, 0.4);
-  --glow-high: 0 0 15px rgba(239, 68, 68, 0.3);
-  --glow-success: 0 0 10px rgba(34, 197, 94, 0.3);
-  --glow-info: 0 0 10px rgba(59, 130, 246, 0.3);
-
-  /* ═══════════════════════════════════════════════════════════════════════════
-     TRANSITIONS
+   /* ═══════════════════════════════════════════════════════════════════════════
+     GLASSMORPHISM
      ═══════════════════════════════════════════════════════════════════════════ */
-  --transition-fast: 150ms ease;
-  --transition-default: 200ms ease;
-  --transition-slow: 300ms ease;
-  --transition-slower: 500ms ease;
+   --glass-blur: blur(16px);
+   --glass-blur-heavy: blur(24px);
+   --glass-blur-light: blur(8px);
+   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+   --glass-shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.55);
 
-  /* Specific transitions */
-  --transition-colors: color var(--transition-default),
-                       background-color var(--transition-default),
-                       border-color var(--transition-default);
-  --transition-transform: transform var(--transition-default);
-  --transition-opacity: opacity var(--transition-default);
-  --transition-shadow: box-shadow var(--transition-default);
-  --transition-all: all var(--transition-default);
+   /* ═══════════════════════════════════════════════════════════════════════════
+     SEVERITY GLOWS
+     Multi-layer glow for a premium halo effect
+     ═══════════════════════════════════════════════════════════════════════════ */
+   --glow-critical: 0 0 20px rgba(255, 51, 51, 0.35), 0 0 60px rgba(255, 51, 51, 0.10);
+   --glow-high: 0 0 15px rgba(249, 115, 22, 0.30), 0 0 45px rgba(249, 115, 22, 0.08);
+   --glow-medium: 0 0 12px rgba(234, 179, 8, 0.25), 0 0 36px rgba(234, 179, 8, 0.06);
+   --glow-low: 0 0 10px rgba(59, 130, 246, 0.25), 0 0 30px rgba(59, 130, 246, 0.06);
+   --glow-info: 0 0 8px rgba(107, 114, 128, 0.20);
+   --glow-success: 0 0 10px rgba(34, 197, 94, 0.3);
+   --glow-crimson: 0 0 12px rgba(229, 57, 53, 0.25), 0 0 36px rgba(229, 57, 53, 0.06);
+
+   /* Card interactions */
+   --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+   --card-shadow-active: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+   /* ═══════════════════════════════════════════════════════════════════════════
+     EASING CURVES
+     ═══════════════════════════════════════════════════════════════════════════ */
+   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+   --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+   /* ═══════════════════════════════════════════════════════════════════════════
+     TIMING
+     ═══════════════════════════════════════════════════════════════════════════ */
+   --duration-micro: 120ms;
+   --duration-fast: 200ms;
+   --duration-normal: 300ms;
+   --duration-slow: 500ms;
+   --duration-slower: 800ms;
+
+   /* Legacy transition tokens (backward compatible) */
+   --transition-fast: 150ms ease;
+   --transition-default: 200ms ease;
+   --transition-slow: 300ms ease;
+   --transition-slower: 500ms ease;
+
+   /* Specific transitions */
+   --transition-colors: color var(--duration-fast) var(--ease-smooth),
+      background-color var(--duration-fast) var(--ease-smooth),
+      border-color var(--duration-fast) var(--ease-smooth);
+   --transition-transform: transform var(--duration-fast) var(--ease-smooth);
+   --transition-opacity: opacity var(--duration-fast) var(--ease-smooth);
+   --transition-shadow: box-shadow var(--duration-fast) var(--ease-smooth);
+   --transition-all: all var(--duration-fast) var(--ease-smooth);
 }

@@ -1,21 +1,23 @@
 /**
  * Shared Input & Form Component Styles
+ * Glassmorphism inputs with focus glow effects
  */
 
 /* =============================================================================
    TEXT INPUT
-   Standard text input field
+   Standard text input field with glass styling
    ============================================================================= */
 
 .textInput {
   width: 100%;
-  padding: var(--space-1-5) var(--space-2);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  padding: var(--space-1-5) var(--space-2-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .textInput::placeholder {
@@ -23,17 +25,17 @@
 }
 
 .textInput:hover {
-  border-color: var(--text-tertiary);
+  border-color: var(--glass-border-hover);
 }
 
 .textInput:focus {
   outline: none;
   border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 2px var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .textInput:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -64,15 +66,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
-  padding: var(--space-1) var(--space-2);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  transition: var(--transition-all);
+  padding: var(--space-1) var(--space-2-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .searchInput:focus-within {
-  border-color: var(--accent-secondary);
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
 }
 
 .searchInputField {
@@ -81,6 +84,7 @@
   border: none;
   outline: none;
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   min-width: 0;
 }
@@ -96,53 +100,54 @@
 
 /* =============================================================================
    SELECT / DROPDOWN
-   Standard select dropdown
+   Standard select dropdown with glass styling
    ============================================================================= */
 
 .select {
   appearance: none;
-  padding: var(--space-1-5) var(--space-6) var(--space-1-5) var(--space-2);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  padding: var(--space-1-5) var(--space-6) var(--space-1-5) var(--space-2-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   cursor: pointer;
-  transition: var(--transition-all);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  transition: all var(--duration-fast) var(--ease-smooth);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7a8e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right var(--space-2) center;
 }
 
 .select:hover {
-  border-color: var(--text-tertiary);
+  border-color: var(--glass-border-hover);
 }
 
 .select:focus {
   outline: none;
   border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 2px var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .select:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 /* =============================================================================
    CHECKBOX
-   Standard checkbox
+   Standard checkbox with glass styling
    ============================================================================= */
 
 .checkbox {
   appearance: none;
   width: 16px;
   height: 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   flex-shrink: 0;
 }
 
@@ -164,7 +169,7 @@
 }
 
 .checkbox:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -187,11 +192,11 @@
   appearance: none;
   width: 16px;
   height: 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   flex-shrink: 0;
 }
 
@@ -200,7 +205,7 @@
 }
 
 .radio:checked {
-  background: var(--bg-tertiary);
+  background: var(--glass-bg);
   border-color: var(--accent-secondary);
   border-width: 4px;
 }
@@ -211,7 +216,7 @@
 }
 
 .radio:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -223,15 +228,15 @@
 .textarea {
   width: 100%;
   min-height: 80px;
-  padding: var(--space-2);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  padding: var(--space-2) var(--space-2-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: var(--text-xs);
-  font-family: inherit;
+  font-family: var(--font-sans);
   resize: vertical;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .textarea::placeholder {
@@ -239,17 +244,17 @@
 }
 
 .textarea:hover {
-  border-color: var(--text-tertiary);
+  border-color: var(--glass-border-hover);
 }
 
 .textarea:focus {
   outline: none;
   border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 2px var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .textarea:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   resize: none;
 }
@@ -262,13 +267,14 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-1-5);
 }
 
 .formLabel {
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .formLabelRequired::after {
@@ -296,5 +302,5 @@
 .textInput.inputError:focus,
 .select.inputError:focus,
 .textarea.inputError:focus {
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }

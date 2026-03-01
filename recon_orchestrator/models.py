@@ -22,6 +22,7 @@ class ReconStartRequest(BaseModel):
     project_id: str
     user_id: str
     webapp_api_url: str
+    target_domain: Optional[str] = None
 
 
 class ReconState(BaseModel):

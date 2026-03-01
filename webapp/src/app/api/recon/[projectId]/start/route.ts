@@ -79,12 +79,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         project_id: projectId,
         user_id: project.userId,
         webapp_api_url: WEBAPP_URL,
+        target_domain: project.targetDomain,
       }),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      
+
       // Update ActionLog to error status
       try {
         await createActionLog({
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       } catch (logError) {
         console.error('Failed to create error ActionLog:', logError)
       }
-      
+
       return NextResponse.json(
         { error: errorData.detail || 'Failed to start recon' },
         { status: response.status }

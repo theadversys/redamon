@@ -1,18 +1,21 @@
 /**
  * Container & Layout Component Styles
- * Cards, Panels, Lists, Tables
+ * Glassmorphism cards, panels, lists, tables, and stat cards
  */
 
 /* =============================================================================
    CARD
-   Contained content block
+   Glassmorphism contained content block
    ============================================================================= */
 
 .card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
   overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-smooth);
 }
 
 .cardHeader {
@@ -20,13 +23,14 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .cardTitle {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
 }
 
 .cardSubtitle {
@@ -45,35 +49,47 @@
   justify-content: flex-end;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border-default);
-  background: var(--bg-tertiary);
+  border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg-light);
 }
 
 /* Card variants */
 .cardClickable {
   cursor: pointer;
-  transition: var(--transition-all);
 }
 
 .cardClickable:hover {
-  border-color: var(--text-tertiary);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.cardClickable:active {
+  transform: translateY(0);
+  box-shadow: var(--card-shadow-active);
 }
 
 .cardSelected {
-  border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 1px var(--accent-secondary);
+  border-color: var(--glass-border-active);
+  box-shadow: var(--glow-crimson);
+}
+
+/* Card stagger animation (use with animation-delay on nth-child) */
+.cardAnimated {
+  animation: slide-up var(--duration-normal) var(--ease-out-expo) both;
 }
 
 /* =============================================================================
    PANEL
-   Simple contained area
+   Simple contained area with glassmorphism
    ============================================================================= */
 
 .panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
   padding: var(--space-4);
 }
 
@@ -100,7 +116,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .listItem:last-child {
@@ -109,15 +125,15 @@
 
 .listItemClickable {
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .listItemClickable:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg-light);
 }
 
 .listItemSelected {
-  background: var(--bg-active);
+  background: var(--glass-bg);
 }
 
 .listItemIcon {
@@ -165,7 +181,7 @@
 }
 
 .tableHeader {
-  background: var(--bg-tertiary);
+  background: var(--glass-bg-light);
 }
 
 .tableHeaderCell {
@@ -173,17 +189,20 @@
   text-align: left;
   font-weight: var(--font-semibold);
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--glass-border);
   white-space: nowrap;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  font-size: 10px;
 }
 
 .tableRow {
-  border-bottom: 1px solid var(--border-subtle);
-  transition: var(--transition-all);
+  border-bottom: 1px solid var(--glass-border);
+  transition: all var(--duration-fast) var(--ease-smooth);
 }
 
 .tableRow:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg-light);
 }
 
 .tableRow:last-child {
@@ -223,13 +242,13 @@
    ============================================================================= */
 
 .accordion {
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
 .accordionItem {
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .accordionItem:last-child {
@@ -242,22 +261,23 @@
   justify-content: space-between;
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  background: var(--bg-secondary);
+  background: var(--glass-bg-heavy);
   border: none;
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--text-primary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
   text-align: left;
 }
 
 .accordionTrigger:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg);
 }
 
 .accordionIcon {
-  transition: transform var(--transition-default);
+  transition: transform var(--duration-fast) var(--ease-spring);
   color: var(--text-secondary);
 }
 
@@ -267,19 +287,19 @@
 
 .accordionContent {
   padding: var(--space-3) var(--space-4);
-  background: var(--bg-tertiary);
+  background: var(--glass-bg-light);
   font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
 /* =============================================================================
    TABS
-   Tab navigation
+   Tab navigation with glow
    ============================================================================= */
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .tab {
@@ -287,15 +307,18 @@
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: all var(--duration-fast) var(--ease-smooth);
+  position: relative;
 }
 
 .tab:hover {
   color: var(--text-primary);
+  background: var(--glass-bg-light);
 }
 
 .tabActive {
@@ -309,17 +332,26 @@
 
 /* =============================================================================
    STAT CARD
-   Single statistic display
+   Single statistic display with glassmorphism
    ============================================================================= */
 
 .statCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-default);
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.statCard:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .statLabel {
@@ -327,13 +359,15 @@
   font-weight: var(--font-medium);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-wider);
 }
 
 .statValue {
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
   color: var(--text-primary);
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
 }
 
 .statChange {

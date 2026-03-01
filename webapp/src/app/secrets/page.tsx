@@ -12,7 +12,7 @@ import {
   Github,
   ExternalLink,
 } from 'lucide-react'
-import { Drawer } from '@/components/ui'
+import { Drawer, Skeleton } from '@/components/ui'
 import styles from './page.module.css'
 
 interface GitHubFinding {
@@ -122,7 +122,7 @@ export default function SecretsPage() {
     setRepoSearch('')
     setClientSeverityFilter(null)
     const params = new URLSearchParams(searchParams.toString())
-    ;['severity', 'findingType', 'secretType', 'provider', 'q'].forEach((k) => params.delete(k))
+      ;['severity', 'findingType', 'secretType', 'provider', 'q'].forEach((k) => params.delete(k))
     const qs = params.toString()
     router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false })
   }, [router, searchParams])
@@ -259,7 +259,28 @@ export default function SecretsPage() {
   if (loading && !stats) {
     return (
       <div className={styles.page}>
-        <div className={styles.loading}>Loading GitHub findings...</div>
+        <div className={styles.header}>
+          <div className={styles.titleSection}>
+            <Skeleton variant="avatar" width={24} height={24} />
+            <Skeleton variant="title" width={240} height={24} />
+          </div>
+          <Skeleton variant="text" width="60%" className="mb-4" />
+          <div className={styles.stats}>
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+            <Skeleton variant="card" height={80} />
+          </div>
+        </div>
+        <div className={styles.content}>
+          <div className={styles.tableWrapper}>
+            <div style={{ padding: '20px' }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} variant="text" height={40} style={{ marginBottom: '12px' }} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -278,8 +299,8 @@ export default function SecretsPage() {
   const displayedFindings =
     clientSeverityFilter === 'critical_high'
       ? findings.filter(
-          (f) => f.severity === 'critical' || f.severity === 'high'
-        )
+        (f) => f.severity === 'critical' || f.severity === 'high'
+      )
       : findings
 
   return (
@@ -418,7 +439,7 @@ export default function SecretsPage() {
             <h2>No GitHub Findings</h2>
             <p>
               {stats?.lastScan || stats?.lastScanTimestamp
-                ? 'No findings match your filters.' 
+                ? 'No findings match your filters.'
                 : 'Run a GitHub secret scan to discover exposed secrets and credentials.'}
             </p>
             <p className={styles.subtitle}>

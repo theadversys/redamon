@@ -38,7 +38,9 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    const baseUrl = process.env.WEBAPP_URL || request.nextUrl.origin || 'http://localhost:3000'
+    // Use internal URL for same-container fetches (Docker: app listens on 3000, not host-mapped port)
+    const port = process.env.PORT || '3000'
+    const baseUrl = process.env.INTERNAL_WEBAPP_URL || `http://127.0.0.1:${port}`
     const [vulnRes, graphRes] = await Promise.all([
       fetch(`${baseUrl.replace(/\/$/, '')}/api/vulnerabilities?projectId=${projectId}`),
       fetch(`${baseUrl.replace(/\/$/, '')}/api/graph?projectId=${projectId}`),

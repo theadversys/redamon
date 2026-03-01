@@ -1,19 +1,19 @@
 /**
  * Dark Theme
- * Default theme - these values are already set in semantic.css
- * This file exists for explicit dark mode application via data-theme="dark"
+ * Default theme - Obsidian depth with glassmorphism support
+ * Applied via data-theme="dark" attribute
  */
 
 [data-theme="dark"] {
-  /* Backgrounds */
+  /* Backgrounds — Obsidian Depth */
   --bg-primary: var(--color-gray-950);
   --bg-secondary: var(--color-gray-900);
   --bg-tertiary: var(--color-gray-850);
   --bg-elevated: var(--color-gray-800);
-  --bg-hover: var(--color-gray-800);
+  --bg-hover: var(--color-gray-750);
   --bg-active: var(--color-gray-700);
   --bg-input: var(--color-gray-900);
-  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --bg-overlay: rgba(5, 5, 9, 0.65);
 
   /* Text */
   --text-primary: var(--color-gray-50);
@@ -26,18 +26,18 @@
   --border-subtle: var(--color-gray-850);
   --border-strong: var(--color-gray-700);
 
-  /* Shadows - darker for dark theme */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.45), 0 1px 2px -1px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.45), 0 4px 6px -4px rgba(0, 0, 0, 0.45);
 
   /* Toggle */
   --toggle-bg: var(--color-gray-700);
   --toggle-knob: var(--color-gray-500);
 
   /* Graph */
-  --graph-bg: var(--color-gray-950);
+  --graph-bg: var(--color-gray-1000);
 
   /* Drawer */
   --drawer-bg: var(--bg-secondary);

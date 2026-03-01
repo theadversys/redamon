@@ -18,6 +18,7 @@ export interface GraphData {
   nodes: GraphNode[]
   links: GraphLink[]
   projectId: string
+  truncated?: boolean
 }
 
 export type GlowLevel = 'critical' | 'high' | false

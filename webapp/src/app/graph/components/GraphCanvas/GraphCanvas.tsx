@@ -63,6 +63,11 @@ export function GraphCanvas({
   if (is3D) {
     return (
       <div className={styles.wrapper}>
+        {data.truncated && (
+          <div className={styles.truncatedBanner}>
+            Showing first {data.nodes.length} nodes for performance. Full graph has more data.
+          </div>
+        )}
         <GraphCanvas3D
           key={themeKey}
           data={data}
@@ -79,6 +84,11 @@ export function GraphCanvas({
 
   return (
     <div className={styles.wrapper}>
+      {data.truncated && (
+        <div className={styles.truncatedBanner}>
+          Showing first {data.nodes.length} nodes for performance. Full graph has more data.
+        </div>
+      )}
       <GraphCanvas2D
         key={themeKey}
         data={data}

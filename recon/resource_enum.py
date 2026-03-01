@@ -22,7 +22,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional
 from urllib.parse import urlparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import sys
 
 # Add project root to path for imports
@@ -97,7 +97,7 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
     KATANA_DEPTH = settings.get('KATANA_DEPTH', 3)
     KATANA_MAX_URLS = settings.get('KATANA_MAX_URLS', 5000)
     KATANA_RATE_LIMIT = settings.get('KATANA_RATE_LIMIT', 100)
-    KATANA_TIMEOUT = settings.get('KATANA_TIMEOUT', 10)
+    KATANA_TIMEOUT = settings.get('KATANA_TIMEOUT', 300)
     KATANA_JS_CRAWL = settings.get('KATANA_JS_CRAWL', True)
     KATANA_PARAMS_ONLY = settings.get('KATANA_PARAMS_ONLY', False)
     KATANA_SCOPE = settings.get('KATANA_SCOPE', 'dn')
@@ -299,17 +299,29 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
         for name, future in futures.items():
             try:
                 if name == 'katana':
-                    katana_urls, _ = future.result(timeout=KATANA_TIMEOUT + 120)
+                    # Allow time for all URLs: (per-run timeout + buffer) * num URLs, cap at 24h
+                    katana_timeout = min(86400, (KATANA_TIMEOUT + 120) * max(1, len(target_urls)))
+                    katana_urls, _ = future.result(timeout=katana_timeout)
                     print(f"\n[+] Katana completed: {len(katana_urls)} URLs")
                 elif name == 'gau':
                     gau_urls, gau_urls_by_domain = future.result(timeout=GAU_TIMEOUT * len(GAU_PROVIDERS) + 180)
                     print(f"[+] GAU completed: {len(gau_urls)} URLs")
+            except FuturesTimeoutError:
+                timeout_s = min(86400, (KATANA_TIMEOUT + 120) * max(1, len(target_urls))) if name == 'katana' else GAU_TIMEOUT * len(GAU_PROVIDERS) + 180
+                print(f"[!] {name} failed: timeout after {timeout_s}s")
+                if name == 'katana':
+                    katana_urls = []
             except Exception as e:
-                print(f"[!] {name} failed: {e}")
+                err_msg = str(e).strip() or type(e).__name__
+                print(f"[!] {name} failed: {err_msg}")
+                if name == 'katana':
+                    katana_urls = []
 
     # Run Kiterunner sequentially for each wordlist
     if KITERUNNER_ENABLED and target_urls and kr_binary_path and KITERUNNER_WORDLISTS:
-        print(f"\n[*] Running Kiterunner API discovery ({len(KITERUNNER_WORDLISTS)} wordlists sequentially)...")
+        # Scale scan timeout with URL count so 230 URLs get enough time (cap 24h)
+        kr_scan_timeout = min(86400, max(KITERUNNER_SCAN_TIMEOUT, len(target_urls) * 180))
+        print(f"\n[*] Running Kiterunner API discovery ({len(KITERUNNER_WORDLISTS)} wordlists, {len(target_urls)} URLs, timeout {kr_scan_timeout}s)...")
         for wordlist_name in KITERUNNER_WORDLISTS:
             print(f"\n    [*] Processing wordlist: {wordlist_name}")
             try:
@@ -326,7 +338,7 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
                     KITERUNNER_RATE_LIMIT,
                     KITERUNNER_CONNECTIONS,
                     KITERUNNER_TIMEOUT,
-                    KITERUNNER_SCAN_TIMEOUT,
+                    kr_scan_timeout,
                     KITERUNNER_THREADS,
                     KITERUNNER_IGNORE_STATUS,
                     KITERUNNER_MATCH_STATUS,

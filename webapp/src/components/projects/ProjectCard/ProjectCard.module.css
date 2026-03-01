@@ -1,5 +1,38 @@
 .projectCard {
-  transition: var(--transition-all);
+  animation: slide-up var(--duration-normal) var(--ease-out-expo) both;
+}
+
+/* Stagger animation for cards in a grid */
+.projectCard:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.projectCard:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.projectCard:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.projectCard:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.projectCard:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.projectCard:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+.projectCard:nth-child(7) {
+  animation-delay: 360ms;
+}
+
+.projectCard:nth-child(8) {
+  animation-delay: 420ms;
 }
 
 .actions {
@@ -25,4 +58,11 @@
 .metaItem svg {
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+
+/* Domain in monospace */
+.metaItem:first-child {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--tracking-wide);
 }

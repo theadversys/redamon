@@ -6,20 +6,23 @@
 
 :root {
   /* ═══════════════════════════════════════════════════════════════════════════
-     NEUTRAL SCALE (Gray)
+     OBSIDIAN DEPTH SCALE
+     Multi-layered blacks with subtle blue undertone for premium depth
      ═══════════════════════════════════════════════════════════════════════════ */
-  --color-gray-50: #fafafa;
-  --color-gray-100: #f4f4f5;
-  --color-gray-200: #e4e4e7;
-  --color-gray-300: #d4d4d8;
-  --color-gray-400: #a1a1aa;
-  --color-gray-500: #71717a;
-  --color-gray-600: #52525b;
-  --color-gray-700: #3f3f46;
-  --color-gray-800: #27272a;
-  --color-gray-850: #1f1f23;
-  --color-gray-900: #18181b;
-  --color-gray-950: #0a0a0a;
+  --color-gray-50: #f5f5f7;
+  --color-gray-100: #e8e8ed;
+  --color-gray-200: #c5c5d0;
+  --color-gray-300: #9595a5;
+  --color-gray-400: #7a7a8e;
+  --color-gray-500: #5e5e72;
+  --color-gray-600: #44445a;
+  --color-gray-700: #32324a;
+  --color-gray-750: #282840;
+  --color-gray-800: #1e1e35;
+  --color-gray-850: #17172a;
+  --color-gray-900: #111120;
+  --color-gray-950: #0a0a16;
+  --color-gray-1000: #050509;
 
   /* ═══════════════════════════════════════════════════════════════════════════
      CRIMSON (Primary / Brand - PandaExploit)
@@ -34,6 +37,12 @@
   --color-crimson-700: #c62828;
   --color-crimson-800: #b71c1c;
   --color-crimson-900: #7f1d1d;
+
+  /* Crimson glow values (for box-shadow / glow effects) */
+  --color-crimson-glow-30: rgba(229, 57, 53, 0.30);
+  --color-crimson-glow-20: rgba(229, 57, 53, 0.20);
+  --color-crimson-glow-10: rgba(229, 57, 53, 0.10);
+  --color-crimson-glow-05: rgba(229, 57, 53, 0.05);
 
   /* ═══════════════════════════════════════════════════════════════════════════
      BLUE (Secondary / Info)
@@ -141,4 +150,15 @@
   /* Vulnerability severity specials */
   --color-vuln-critical: #ff3333;
   --color-cve-critical: #ff3377;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     GLASSMORPHISM COLORS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  --glass-bg: rgba(17, 17, 32, 0.72);
+  --glass-bg-heavy: rgba(17, 17, 32, 0.88);
+  --glass-bg-light: rgba(17, 17, 32, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-border-hover: rgba(255, 255, 255, 0.12);
+  --glass-border-active: rgba(229, 57, 53, 0.30);
+  --glass-shimmer: rgba(255, 255, 255, 0.03);
 }

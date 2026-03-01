@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
+// Fields returned by agent/recon defaults that are NOT in Prisma Project schema
+const EXCLUDED_CREATE_FIELDS = new Set(['agentGithubToolsInfoOnly'])
+
 // GET /api/projects - List projects (optional user_id filter)
 export async function GET(request: NextRequest) {
   try {
@@ -66,9 +69,12 @@ export async function POST(request: NextRequest) {
       ? optionalParams.scanModules 
       : defaultScanModules
 
-    // Filter out undefined values and fields not in schema to prevent Prisma errors
+    // Filter out undefined values, excluded fields, and fields not in schema to prevent Prisma errors
     const validOptionalParams = Object.fromEntries(
-      Object.entries(optionalParams).filter(([_, value]) => value !== undefined)
+      Object.entries(optionalParams).filter(
+        ([key, value]) =>
+          value !== undefined && !EXCLUDED_CREATE_FIELDS.has(key)
+      )
     )
     
     // Create project with required fields and any optional params

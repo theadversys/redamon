@@ -1,93 +1,38 @@
-'use client'
-
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useLocalStorage } from './useLocalStorage'
+import { useMediaQuery } from './useMediaQuery'
 
 export type Theme = 'light' | 'dark' | 'system'
 
 const THEME_STORAGE_KEY = 'pandaexploit-theme'
 
-function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'dark'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'system'
-  const stored = localStorage.getItem(THEME_STORAGE_KEY)
-  if (stored === 'light' || stored === 'dark' || stored === 'system') {
-    return stored
-  }
-  return 'system'
-}
-
-function applyTheme(theme: Theme) {
+function applyTheme(theme: 'light' | 'dark') {
   if (typeof document === 'undefined') return
-
-  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme
-  document.documentElement.setAttribute('data-theme', resolvedTheme)
+  document.documentElement.setAttribute('data-theme', theme)
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('system')
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark')
+  const [theme, setTheme] = useLocalStorage<Theme>(THEME_STORAGE_KEY, 'system')
+  const isDarkQuery = useMediaQuery('(prefers-color-scheme: dark)')
   const [mounted, setMounted] = useState(false)
 
-  // Initialize theme on mount
   useEffect(() => {
-    const storedTheme = getStoredTheme()
-    setThemeState(storedTheme)
-    setResolvedTheme(storedTheme === 'system' ? getSystemTheme() : storedTheme)
-    applyTheme(storedTheme)
     setMounted(true)
   }, [])
 
-  // Listen for system theme changes
+  const systemTheme = isDarkQuery ? 'dark' : 'light'
+  const resolvedTheme = useMemo(() => {
+    if (theme === 'system') return systemTheme
+    return theme
+  }, [theme, systemTheme])
+
+  // Apply theme class to document element
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        const newTheme = e.matches ? 'dark' : 'light'
-        setResolvedTheme(newTheme)
-        applyTheme('system')
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
-
-  // Listen for data-theme attribute changes (sync across components)
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-theme') {
-          const newTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark'
-          if (newTheme && newTheme !== resolvedTheme) {
-            setResolvedTheme(newTheme)
-          }
-        }
-      })
-    })
-
-    observer.observe(document.documentElement, { attributes: true })
-    return () => observer.disconnect()
+    applyTheme(resolvedTheme)
   }, [resolvedTheme])
 
-  const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme)
-    setResolvedTheme(newTheme === 'system' ? getSystemTheme() : newTheme)
-    localStorage.setItem(THEME_STORAGE_KEY, newTheme)
-    applyTheme(newTheme)
-  }, [])
-
   const toggleTheme = useCallback(() => {
-    const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }, [resolvedTheme, setTheme])
 
   return {
