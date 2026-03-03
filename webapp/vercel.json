@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/ai-security/schedules/run",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/recon/schedules/run",
+      "schedule": "* * * * *"
+    }
+  ]
+}

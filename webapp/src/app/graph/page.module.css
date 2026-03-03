@@ -6,6 +6,13 @@
   position: relative;
 }
 
+.killChainRow {
+  flex-shrink: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  min-height: 0;
+  overflow: visible;
+}
+
 .body {
   display: flex;
   flex: 1;

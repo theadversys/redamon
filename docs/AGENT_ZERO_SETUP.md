@@ -87,6 +87,9 @@ Agent Zero connects to MCP servers via `conf/agent-zero-mcp-servers.json`, mount
 | curl | `http://kali-sandbox:8001/sse` | HTTP client |
 | nuclei | `http://kali-sandbox:8002/sse` | Vulnerability scanning |
 | metasploit | `http://kali-sandbox:8003/sse` | Exploitation framework |
+| blackarch | `http://66.228.39.20:8080/sse` | BlackArch security tools (2,800+ tools, Linode) |
+
+**BlackArch MCP** runs on Linode. Tools: `list_blackarch_tools`, `verify_tool_available`, `run_security_tool`, `clear_catalog_cache`. See `docs/skills/BlackArch/SKILL.md`.
 
 **Outside Docker:** If running Agent Zero outside Docker, configure MCP servers in your Agent Zero config to point at your PandaExploit MCP and Kali sandbox URLs (e.g. `http://localhost:8011/mcp` for pandaexploit).
 
@@ -123,7 +126,9 @@ Then paste the tool reference from `docs/skills/PandaExploit/SKILL.md`.
 2. Copy the `docs/skills/PandaExploit` folder into the skills directory
 3. Restart or refresh Agent Zero
 
-**Skill location in repo:** `docs/skills/PandaExploit/SKILL.md`
+**Skill locations in repo:**
+- `docs/skills/PandaExploit/SKILL.md`
+- `docs/skills/BlackArch/SKILL.md` — BlackArch tool oracle (list, verify, run, clear cache)
 
 ## Project Context
 

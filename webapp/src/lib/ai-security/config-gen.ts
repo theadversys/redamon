@@ -1,17 +1,42 @@
 /**
  * Generates a PromptFoo redteam YAML config from scan parameters.
  * Uses the native `redteam` section so `promptfoo redteam run` works correctly.
+ *
+ * Supports both individual plugin IDs and Promptfoo collection shorthand
+ * (e.g. 'harmful', 'bias', 'pii', 'medical', 'toxicity', 'illegal-activity',
+ * 'misinformation') which Promptfoo expands into multiple plugins at runtime.
  */
+
+import { isCollectionId } from './catalog'
+
+export interface CustomPolicy {
+  name: string
+  policyText: string
+  numTests?: number
+}
 
 export interface ScanParams {
   targetUrl: string
-  targetType: 'http' | 'openai' | 'anthropic' | 'custom'
+  targetType: 'http' | 'openai' | 'anthropic' | 'custom' | 'mcp'
   purpose?: string
   systemPrompt?: string
-  plugins: string[]
+  plugins: (string | { id: string; numTests?: number; config?: Record<string, unknown> })[]
   strategies: (string | { id: string; config: Record<string, unknown> })[]
   numTests: number
   responseParser?: string
+  language?: string | string[]
+  customPolicies?: CustomPolicy[]
+  mcpServers?: Array<{ name: string; url?: string; path?: string }>
+  /** Domain-specific attack guidance for test generation */
+  testGenerationInstructions?: string
+  /** Global grading examples applied to all plugins */
+  graderExamples?: Array<{ output: string; pass: boolean; score: number; reason: string }>
+  /** Filter which compliance frameworks appear in reports (e.g. owasp:llm, nist:ai:measure) */
+  frameworks?: string[]
+  /** Attacker model for attack generation (e.g. openai:chat:gpt-4o). Separate from target. */
+  attackProvider?: string
+  /** Custom HTTP body template. Must contain {{prompt}}. Default: { "prompt": "{{prompt}}" } */
+  httpBodyTemplate?: string
 }
 
 export function buildRedteamConfig(params: ScanParams): string {
@@ -24,11 +49,31 @@ export function buildRedteamConfig(params: ScanParams): string {
     strategies,
     numTests,
     responseParser,
+    language,
+    customPolicies,
+    mcpServers,
+    testGenerationInstructions,
+    graderExamples,
+    frameworks,
+    attackProvider,
+    httpBodyTemplate,
   } = params
 
-  const target = buildTarget(targetUrl, targetType, responseParser)
+  const target = buildTarget(targetUrl, targetType, responseParser, mcpServers, httpBodyTemplate)
 
-  const pluginYaml = plugins.map(p => `    - id: '${p}'`).join('\n')
+  const pluginYaml = plugins.map(p => {
+    if (typeof p === 'string') {
+      if (isCollectionId(p)) return `    - '${p}'`
+      return `    - id: '${p}'`
+    }
+    const lines = [`    - id: '${p.id}'`]
+    if (p.numTests !== undefined) lines.push(`      numTests: ${p.numTests}`)
+    if (p.config) {
+      lines.push(`      config:`)
+      lines.push(...formatNestedConfig(p.config, 8))
+    }
+    return lines.join('\n')
+  }).join('\n')
 
   let strategyYaml: string
   if (!strategies || strategies.length === 0) {
@@ -59,7 +104,56 @@ redteam:
     yaml += `  purpose: "${escapeYaml(purpose)}"\n`
   }
 
+  if (testGenerationInstructions) {
+    yaml += `  testGenerationInstructions: |\n`
+    for (const line of testGenerationInstructions.split('\n')) {
+      yaml += `    ${line}\n`
+    }
+  }
+
+  if (graderExamples && graderExamples.length > 0) {
+    yaml += `  graderExamples:\n`
+    for (const ex of graderExamples) {
+      yaml += `    - output: "${escapeYaml(ex.output)}"\n`
+      yaml += `      pass: ${ex.pass}\n`
+      yaml += `      score: ${ex.score}\n`
+      yaml += `      reason: "${escapeYaml(ex.reason)}"\n`
+    }
+  }
+
+  if (frameworks && frameworks.length > 0) {
+    yaml += `  frameworks:\n${frameworks.map(f => `    - '${f}'`).join('\n')}\n`
+  }
+
+  if (attackProvider) {
+    yaml += `  provider: '${attackProvider}'\n`
+  }
+
+  if (language) {
+    if (Array.isArray(language)) {
+      yaml += `  language:\n${language.map(l => `    - '${l}'`).join('\n')}\n`
+    } else {
+      yaml += `  language: '${language}'\n`
+    }
+  }
+
   yaml += `  plugins:\n${pluginYaml}\n`
+
+  if (customPolicies && customPolicies.length > 0) {
+    for (const cp of customPolicies) {
+      const policyLines = [
+        `    - id: 'policy'`,
+        `      numTests: ${cp.numTests || numTests}`,
+        `      config:`,
+        `        policy: |`,
+      ]
+      for (const line of cp.policyText.split('\n')) {
+        policyLines.push(`          ${line}`)
+      }
+      yaml += policyLines.join('\n') + '\n'
+    }
+  }
+
   yaml += `${strategyYaml}\n`
 
   if (systemPrompt) {
@@ -69,7 +163,13 @@ redteam:
   return yaml
 }
 
-function buildTarget(url: string, type: string, responseParser?: string): string {
+function buildTarget(
+  url: string,
+  type: string,
+  responseParser?: string,
+  mcpServers?: Array<{ name: string; url?: string; path?: string }>,
+  httpBodyTemplate?: string
+): string {
   const isDefaultOpenAI = !url || url === 'https://api.openai.com/v1/chat/completions'
   const isDefaultAnthropic = !url || url === 'https://api.anthropic.com/v1/messages'
 
@@ -98,8 +198,38 @@ function buildTarget(url: string, type: string, responseParser?: string): string
       ].join('\n')
     }
 
+    case 'mcp': {
+      const model = url || 'openai:gpt-4o'
+      const lines = [
+        `  - id: '${model}'`,
+        `    config:`,
+        `      mcp:`,
+        `        enabled: true`,
+      ]
+      if (mcpServers && mcpServers.length > 0) {
+        lines.push(`        servers:`)
+        for (const srv of mcpServers) {
+          lines.push(`          - name: '${srv.name}'`)
+          if (srv.url) lines.push(`            url: '${srv.url}'`)
+          if (srv.path) lines.push(`            path: '${srv.path}'`)
+        }
+      }
+      return lines.join('\n')
+    }
+
     case 'http':
-    default:
+    default: {
+      let bodyLines: string[]
+      if (httpBodyTemplate) {
+        try {
+          const parsed = JSON.parse(httpBodyTemplate) as Record<string, unknown>
+          bodyLines = ['      body:', ...formatNestedConfig(parsed, 8)]
+        } catch {
+          bodyLines = [`      body: "${escapeYaml(httpBodyTemplate.replace(/"/g, '\\"'))}"`]
+        }
+      } else {
+        bodyLines = [`      body:`, `        prompt: "{{prompt}}"`]
+      }
       return [
         `  - id: 'http'`,
         `    config:`,
@@ -107,10 +237,10 @@ function buildTarget(url: string, type: string, responseParser?: string): string
         `      method: POST`,
         `      headers:`,
         `        Content-Type: application/json`,
-        `      body:`,
-        `        prompt: "{{prompt}}"`,
+        ...bodyLines,
         `      responseParser: "${responseParser || 'json.response'}"`,
       ].join('\n')
+    }
   }
 }
 

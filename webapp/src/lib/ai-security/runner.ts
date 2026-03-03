@@ -53,10 +53,14 @@ export async function startScan(scanId: string, configYaml: string): Promise<Sta
 
   await fs.writeFile(configPath, configYaml, 'utf-8')
 
+  const remoteGenDisabled = process.env.PROMPTFOO_API_KEY
+    ? 'false'
+    : (process.env.PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION || 'true')
+
   const env = {
     ...process.env,
     PROMPTFOO_CONFIG_DIR: baseDir,
-    PROMPTFOO_DISABLE_REMOTE_GENERATION: 'true',
+    PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION: remoteGenDisabled,
     PROMPTFOO_DISABLE_TELEMETRY: '1',
   }
 
@@ -71,6 +75,8 @@ export async function startScan(scanId: string, configYaml: string): Promise<Sta
   await logStream.write(`[runner] args: ${args.join(' ')}\n`)
   await logStream.write(`[runner] cwd: ${scanDir}\n`)
   await logStream.write(`[runner] OPENAI_API_KEY set: ${!!process.env.OPENAI_API_KEY}\n`)
+  await logStream.write(`[runner] PROMPTFOO_API_KEY set: ${!!process.env.PROMPTFOO_API_KEY}\n`)
+  await logStream.write(`[runner] remote generation: ${remoteGenDisabled === 'true' ? 'DISABLED' : 'ENABLED'}\n`)
   await logStream.write(`[runner] starting at ${new Date().toISOString()}\n---\n`)
 
   const child = spawn(bin, args, {

@@ -32,10 +32,11 @@ model Project {
   subdomainList               String[] @default([]) @map("subdomain_list")
   verifyDomainOwnership       Boolean  @default(false) @map("verify_domain_ownership")
   ownershipToken              String   @default("your-secret-token-here") @map("ownership_token")
-  ownershipTxtPrefix          String   @default("_redamon-verify") @map("ownership_txt_prefix")
+  ownershipTxtPrefix          String   @default("_pandaexploit-verify") @map("ownership_txt_prefix")
 
   // ========== SCAN MODULES ==========
   scanModules                 String[] @default(["domain_discovery", "port_scan", "http_probe", "resource_enum", "vuln_scan"]) @map("scan_modules")
+  passiveReconOnly            Boolean  @default(false) @map("passive_recon_only")
   updateGraphDb               Boolean  @default(true) @map("update_graph_db")
   useTorForRecon              Boolean  @default(false) @map("use_tor_for_recon")
   useBruteforceForSubdomains  Boolean  @default(true) @map("use_bruteforce_for_subdomains")
@@ -278,35 +279,63 @@ model Project {
   agentMultiAgentEnabled                 Boolean  @default(false) @map("agent_multi_agent_enabled")
   agentOperatingMode                     String   @default("guided") @map("agent_operating_mode")
 
+  reconSchedules ReconSchedule[]
+
   @@map("projects")
+}
+
+// ========== RECON SCHEDULES ==========
+
+model ReconSchedule {
+  id         String    @id @default(cuid())
+  projectId  String    @map("project_id")
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name       String
+  cron       String    // e.g. "0 2 * * *" = daily 2 AM
+  enabled    Boolean   @default(true)
+  lastRunAt  DateTime? @map("last_run_at")
+  nextRunAt  DateTime? @map("next_run_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@index([enabled, nextRunAt])
+  @@map("recon_schedules")
 }
 
 // ========== AI SECURITY (PROMPTFOO RED TEAMING) ==========
 
 model AIScan {
-  id           String      @id @default(cuid())
-  projectId    String?     @map("project_id")
-  name         String
-  status       String      @default("queued") // queued | running | completed | failed | cancelled
-  targetUrl    String      @map("target_url")
-  targetType   String      @default("http") @map("target_type") // http | openai | anthropic | custom
-  purpose      String?
-  systemPrompt String?     @map("system_prompt")
-  plugins      Json        // string[] of plugin IDs
-  strategies   Json        // strategy config array
-  profile      String      @default("custom") // quick | owasp | agent-security | full | custom
-  numTests     Int         @default(5) @map("num_tests")
-  configYaml   String?     @map("config_yaml") @db.Text
-  pid          Int?        // OS process ID for background monitoring
-  totalTests   Int?        @map("total_tests")
-  passedTests  Int?        @map("passed_tests")
-  failedTests  Int?        @map("failed_tests")
-  errorMessage String?     @map("error_message") @db.Text
-  startedAt    DateTime?   @map("started_at")
-  completedAt  DateTime?   @map("completed_at")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  findings     AIFinding[]
+  id              String      @id @default(cuid())
+  projectId       String?     @map("project_id")
+  name            String
+  status          String      @default("queued") // queued | running | completed | failed | cancelled
+  targetUrl       String      @map("target_url")
+  targetType      String      @default("http") @map("target_type") // http | openai | anthropic | custom
+  purpose         String?
+  systemPrompt    String?     @map("system_prompt")
+  plugins         Json        // string[] of plugin IDs
+  strategies      Json        // strategy config array
+  profile         String      @default("custom") // quick | owasp | agent-security | full | custom
+  numTests        Int         @default(5) @map("num_tests")
+  configYaml      String?     @map("config_yaml") @db.Text
+  pid             Int?        // OS process ID for background monitoring
+  totalTests      Int?        @map("total_tests")
+  passedTests     Int?        @map("passed_tests")
+  failedTests     Int?        @map("failed_tests")
+  systemRiskScore Float?      @map("system_risk_score") // CVSS-aligned 0-10
+  riskBreakdown   Json?       @map("risk_breakdown") // per-plugin risk breakdown
+  errorMessage    String?     @map("error_message") @db.Text
+  startedAt       DateTime?   @map("started_at")
+  completedAt     DateTime?   @map("completed_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  findings        AIFinding[]
+  scheduleId      String?     @map("schedule_id")
+  schedule        AIScanSchedule? @relation(fields: [scheduleId], references: [id])
 
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
   @@map("ai_scans")
 }
 
@@ -322,8 +351,74 @@ model AIFinding {
   response  String   @db.Text
   assertion String?  @db.Text
   rawResult Json?    @map("raw_result")
+  riskScore Float?   @map("risk_score") // CVSS-aligned 0-10
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([scanId])
+  @@index([severity])
+  @@index([plugin])
   @@map("ai_findings")
+}
+
+// ========== CUSTOM POLICIES ==========
+
+model AIPolicy {
+  id          String   @id @default(cuid())
+  projectId   String?  @map("project_id")
+  name        String
+  description String?  @db.Text
+  policyText  String   @map("policy_text") @db.Text
+  isTemplate  Boolean  @default(false) @map("is_template")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("ai_policies")
+}
+
+// ========== QUALITY GATES ==========
+
+model AIQualityGate {
+  id                  String   @id @default(cuid())
+  projectId           String?  @map("project_id")
+  name                String
+  maxRiskScore        Float    @default(7.0) @map("max_risk_score")
+  maxCriticalFindings Int      @default(0) @map("max_critical_findings")
+  maxHighFindings     Int      @default(5) @map("max_high_findings")
+  requiredFrameworks  Json     @default("[]") @map("required_frameworks") // string[]
+  action              String   @default("warn") // block | warn
+  webhookUrl          String?  @map("webhook_url")
+  enabled             Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("ai_quality_gates")
+}
+
+// ========== SCAN SCHEDULES ==========
+
+model AIScanSchedule {
+  id          String    @id @default(cuid())
+  projectId   String?   @map("project_id")
+  name        String
+  cron        String    // cron expression e.g. "0 2 * * *"
+  targetUrl   String    @map("target_url")
+  targetType  String    @default("http") @map("target_type")
+  profile     String    @default("owasp")
+  plugins     Json      @default("[]")
+  strategies  Json      @default("[]")
+  numTests    Int       @default(5) @map("num_tests")
+  purpose     String?
+  policyIds   Json      @default("[]") @map("policy_ids") // string[]
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime? @map("last_run_at")
+  nextRunAt   DateTime? @map("next_run_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  scans       AIScan[]
+
+  @@index([enabled, nextRunAt])
+  @@map("ai_scan_schedules")
 }
 

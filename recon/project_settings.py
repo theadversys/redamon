@@ -28,10 +28,11 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     'SUBDOMAIN_LIST': [],
     'VERIFY_DOMAIN_OWNERSHIP': False,
     'OWNERSHIP_TOKEN': 'your-secret-token-here',
-    'OWNERSHIP_TXT_PREFIX': '_redamon-verify',
+    'OWNERSHIP_TXT_PREFIX': '_pandaexploit-verify',
 
     # Scan Modules
     'SCAN_MODULES': ['domain_discovery', 'port_scan', 'http_probe', 'resource_enum', 'vuln_scan'],
+    'PASSIVE_RECON_ONLY': False,
     'UPDATE_GRAPH_DB': True,
     'USE_TOR_FOR_RECON': False,
     'USE_BRUTEFORCE_FOR_SUBDOMAINS': True,
@@ -359,6 +360,7 @@ def fetch_project_settings(project_id: str, webapp_url: str) -> dict[str, Any]:
 
     # Scan Modules
     settings['SCAN_MODULES'] = project.get('scanModules', DEFAULT_SETTINGS['SCAN_MODULES'])
+    settings['PASSIVE_RECON_ONLY'] = project.get('passiveReconOnly', DEFAULT_SETTINGS['PASSIVE_RECON_ONLY'])
     settings['UPDATE_GRAPH_DB'] = project.get('updateGraphDb', DEFAULT_SETTINGS['UPDATE_GRAPH_DB'])
     settings['USE_TOR_FOR_RECON'] = project.get('useTorForRecon', DEFAULT_SETTINGS['USE_TOR_FOR_RECON'])
     settings['USE_BRUTEFORCE_FOR_SUBDOMAINS'] = project.get('useBruteforceForSubdomains', DEFAULT_SETTINGS['USE_BRUTEFORCE_FOR_SUBDOMAINS'])

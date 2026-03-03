@@ -20,8 +20,8 @@ from .classification import classify_endpoint
 
 
 def _create_temp_dir(prefix: str = "kr") -> Path:
-    """Create a temp directory under /tmp/redamon for Docker-in-Docker compatibility."""
-    temp_dir = Path(f"/tmp/redamon/.{prefix}_{uuid.uuid4().hex[:8]}")
+    """Create a temp directory under /tmp/pandaexploit for Docker-in-Docker compatibility."""
+    temp_dir = Path(f"/tmp/pandaexploit/.{prefix}_{uuid.uuid4().hex[:8]}")
     temp_dir.mkdir(parents=True, exist_ok=True)
     return temp_dir
 
@@ -48,7 +48,7 @@ def ensure_kiterunner_binary(wordlist_name: str) -> Tuple[Optional[str], Optiona
         Tuple of (binary_path, wordlist_path) or (None, None) if failed
     """
     # Determine paths
-    tools_dir = Path.home() / ".redamon" / "tools"
+    tools_dir = Path.home() / ".pandaexploit" / "tools"
     kr_dir = tools_dir / "kiterunner"
     kr_dir.mkdir(parents=True, exist_ok=True)
 
@@ -240,7 +240,7 @@ def run_kiterunner_discovery(
         print(f"    [!] Kiterunner wordlist not found: {wordlist_path}")
         return discovered_endpoints
 
-    # Create temp directory for targets file (use /tmp/redamon for Docker-in-Docker compatibility)
+    # Create temp directory for targets file (use /tmp/pandaexploit for Docker-in-Docker compatibility)
     temp_path = _create_temp_dir("kr_scan")
     try:
         targets_file = temp_path / "targets.txt"
@@ -598,7 +598,7 @@ def detect_kiterunner_methods(
             if method not in url_methods[url]:
                 url_methods[url].append(method)
 
-    # Use /tmp/redamon for Docker-in-Docker compatibility (avoids paths with spaces)
+    # Use /tmp/pandaexploit for Docker-in-Docker compatibility (avoids paths with spaces)
     temp_path = _create_temp_dir("kr_methods")
     try:
         if mode == "options":

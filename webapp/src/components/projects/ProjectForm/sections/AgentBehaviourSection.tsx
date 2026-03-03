@@ -97,8 +97,9 @@ export function AgentBehaviourSection({ data, updateField }: AgentBehaviourSecti
                     <option value="gpt-4o-mini">gpt-4o-mini — Faster, cost-efficient GPT-4o</option>
                   </optgroup>
                   <optgroup label="Google Gemini">
+                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro — Latest, most capable (recommended)</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro — Previous gen pro model</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash — Fast and efficient</option>
-                    <option value="gemini-3-pro-preview">Gemini 3 Pro Preview — Most capable model</option>
                     <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Experimental — Latest experimental</option>
                     <option value="gemini-1.5-pro">Gemini 1.5 Pro — Previous generation pro model</option>
                     <option value="gemini-1.5-flash">Gemini 1.5 Flash — Fast previous generation</option>

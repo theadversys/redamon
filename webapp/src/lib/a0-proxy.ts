@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const A0_BASE = process.env.AGENT_ZERO_URL || 'http://agent-zero:80'
+const A0_BASE = process.env.AGENT_ZERO_URL || 'http://localhost:50001'
 
 export async function proxyToAgentZero(
   request: NextRequest,

@@ -11,7 +11,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const A0_BASE = process.env.AGENT_ZERO_URL || 'http://agent-zero:80'
+// Docker: AGENT_ZERO_URL=http://agent-zero:80 (internal network)
+// Local dev: AGENT_ZERO_URL=http://localhost:50001 or leave unset
+const A0_BASE = process.env.AGENT_ZERO_URL || 'http://localhost:50001'
 
 async function proxyRequest(request: NextRequest, pathSegments: string[]) {
   const path = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '/'

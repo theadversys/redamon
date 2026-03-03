@@ -150,6 +150,8 @@ services:
       - "${MCP_FFUF_PORT:-8007}:8007"
       - "${MCP_GOBUSTER_PORT:-8008}:8008"
       - "${MCP_HYDRA_PORT:-8009}:8009"
+      - "${MCP_WEAPONIZER_PORT:-8012}:8012"
+      - "${WEAPONIZER_HTTP_PORT:-8014}:8014"
       - "8013:8013"
       - "4444:4444"
     volumes:
@@ -240,22 +242,25 @@ services:
   # ===========================================================================
 
   agent-zero:
-    image: agent0ai/agent-zero:latest
+    build:
+      context: ./agent-zero
+      dockerfile: DockerfileLocal
+      args:
+        BRANCH: local
+    image: pandaexploit-agent-zero:local
     container_name: pandaexploit-agent-zero
     ports:
       - "${A0_PORT:-50001}:80"
     volumes:
       - ./conf/agent-zero-mcp-servers.json:/app/mcp_servers.json:ro
-      # Override A0's conf: pandaexploit uses HTTP at /mcp, not SSE at /sse
       - ./conf/agent-zero-mcp-servers-a0-conf.json:/a0/conf/agent-zero-mcp-servers.json:ro
-      # Experimental: mount PandaExploit skill for auto-load (path may vary by A0 version)
       - ./docs/skills/PandaExploit:/a0/usr/skills/PandaExploit:ro
       - ./docs/skills/AISecurityRedTeam:/a0/usr/skills/AISecurityRedTeam:ro
+      - ./docs/skills/BlackArch:/a0/usr/skills/BlackArch:ro
       - ./docs/skills/SpiderFoot:/a0/usr/skills/SpiderFoot:ro
       - ./docs/skills/AISecurityRedTeam:/a0/skills/AISecurityRedTeam:ro
       - ./docs/skills/SpiderFoot:/a0/skills/SpiderFoot:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      # Shared PromptFoo database — eval results appear live in the AI Security iframe
       - promptfoo_data:/app/promptfoo
     environment:
       PANDAEXPLOIT_WEBAPP_URL: http://webapp:3000
@@ -267,7 +272,7 @@ services:
       SSL_VERIFY: ${A0_SSL_VERIFY:-false}
       # PromptFoo writes to shared database so results show live in UI
       PROMPTFOO_CONFIG_DIR: /app/promptfoo
-      PROMPTFOO_DISABLE_REMOTE_GENERATION: "true"
+      PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION: ${PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION:-true}
       PROMPTFOO_DISABLE_TELEMETRY: "1"
     depends_on:
       - pandaexploit-mcp
@@ -282,18 +287,22 @@ services:
   promptfoo:
     image: node:22-alpine
     container_name: pandaexploit-promptfoo
-    command: >
-      sh -c "chown -R 1001:1001 /app/promptfoo && npm install -g promptfoo@latest && promptfoo redteam report -p 15500"
+    command: ["sh", "/app/conf/promptfoo-entrypoint.sh"]
     ports:
       - "15500:15500"
     environment:
       PROMPTFOO_CONFIG_DIR: /app/promptfoo
-      PROMPTFOO_DISABLE_REMOTE_GENERATION: "true"
+      PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION: ${PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION:-true}
       PROMPTFOO_DISABLE_TELEMETRY: "1"
+      PROMPTFOO_INTERNAL_PORT: "15501"
+      PROMPTFOO_PORT: "15500"
+      PROMPTFOO_API_KEY: ${PROMPTFOO_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - promptfoo_data:/app/promptfoo
+      - ./conf/promptfoo-proxy.js:/app/conf/promptfoo-proxy.js:ro
+      - ./conf/promptfoo-entrypoint.sh:/app/conf/promptfoo-entrypoint.sh:ro
     working_dir: /app/promptfoo
     networks:
       - pandaexploit
@@ -360,7 +369,7 @@ services:
       - promptfoo_data:/app/promptfoo
     environment:
       # PostgreSQL (Prisma)
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-redamon}:${POSTGRES_PASSWORD:-redamon_secret}@postgres:5432/${POSTGRES_DB:-redamon}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-pandaexploit}:${POSTGRES_PASSWORD:-pandaexploit_secret}@postgres:5432/${POSTGRES_DB:-pandaexploit}"
       # Neo4j (server-side graph queries)
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
@@ -375,11 +384,13 @@ services:
       WEBAPP_URL: http://localhost:${WEBAPP_PORT:-3000}
       # Recon output path (mounted volume)
       RECON_OUTPUT_PATH: /app/recon/output
+      # Weaponizer (Kali) for payload generation (Kill Chain Stage 2)
+      WEAPONIZER_URL: http://kali-sandbox:8014
       # AI Security (Promptfoo)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       PROMPTFOO_CONFIG_DIR: /app/promptfoo
-      PROMPTFOO_DISABLE_REMOTE_GENERATION: "true"
+      PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION: ${PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -405,6 +416,27 @@ services:
       - "${SPIDERFOOT_PORT:-5001}:5001"
     volumes:
       - spiderfoot_data:/var/lib/spiderfoot
+    restart: unless-stopped
+    networks:
+      - pandaexploit
+
+  # ===========================================================================
+  # Phishing Infrastructure (Cyber Kill Chain Stage 3 - Delivery)
+  # Optional: docker compose --profile phishing up
+  # ===========================================================================
+  gophish:
+    image: gophish/gophish:latest
+    container_name: pandaexploit-gophish
+    profiles:
+      - phishing
+    ports:
+      - "${GOPHISH_ADMIN_PORT:-3333}:3333"   # Admin UI
+      - "${GOPHISH_PHISH_PORT:-8080}:8080"   # Phishing server
+    volumes:
+      - gophish_data:/opt/gophish
+    environment:
+      GOPHISH_ADMIN_SERVER_LISTEN_ADDRESS: "0.0.0.0:3333"
+      GOPHISH_PHISH_SERVER_LISTEN_ADDRESS: "0.0.0.0:8080"
     restart: unless-stopped
     networks:
       - pandaexploit
@@ -435,4 +467,5 @@ volumes:
   neo4j_plugins:
   webapp_prisma_cache:
   spiderfoot_data:
+  gophish_data:
   promptfoo_data:

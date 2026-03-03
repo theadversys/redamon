@@ -155,7 +155,7 @@ export function ReconLogsDrawer({
       <div className={styles.header}>
         <div className={styles.titleContainer}>
           <Terminal size={16} />
-          <span>Reconnaissance Logs</span>
+          <span>Recon Logs (Stage 1)</span>
         </div>
         <button
           className={styles.closeButton}
@@ -193,13 +193,13 @@ export function ReconLogsDrawer({
           <button
             className={styles.iconButton}
             onClick={() => {
-              if ((status === 'running' || status === 'starting') && onStopRecon) {
+              if ((status === 'running' || status === 'starting' || status === 'paused') && onStopRecon) {
                 onStopRecon()
               }
               onClearLogs()
             }}
-            title={(status === 'running' || status === 'starting') && onStopRecon
-              ? 'Stop recon and clear logs'
+            title={(status === 'running' || status === 'starting' || status === 'paused') && onStopRecon
+              ? 'Stop test and clear logs'
               : 'Clear logs'}
           >
             <Trash2 size={14} />

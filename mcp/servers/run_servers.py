@@ -102,6 +102,11 @@ SERVERS = {
         "module": "hydra_server",
         "port": 8009,
         "description": "Credential Cracker"
+    },
+    "weaponizer": {
+        "module": "weaponizer_server",
+        "port": 8012,
+        "description": "Payload Generator (msfvenom)"
     }
 }
 
@@ -135,6 +140,12 @@ def run_server(name: str, config: dict, transport: str = "sse"):
                 progress_port = int(os.getenv("MSF_PROGRESS_PORT", "8013"))
                 module.start_progress_server(progress_port)
                 logger.info(f"Started metasploit progress server on port {progress_port}")
+
+            # Start REST API for weaponizer (payload generation)
+            if name == "weaponizer" and hasattr(module, 'start_weaponizer_http'):
+                http_port = int(os.getenv("WEAPONIZER_HTTP_PORT", "8014"))
+                module.start_weaponizer_http(http_port)
+                logger.info(f"Started weaponizer REST API on port {http_port}")
 
             module.mcp.run(
                 transport="sse",

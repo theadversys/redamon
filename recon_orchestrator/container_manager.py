@@ -72,6 +72,9 @@ class ContainerManager:
             if state.container_id:
                 try:
                     container = self.client.containers.get(state.container_id)
+                    if container.status == "paused":
+                        state.status = ReconStatus.PAUSED
+                        return state
                     if container.status != "running":
                         # Container stopped - check exit code
                         exit_code = container.attrs.get("State", {}).get("ExitCode", -1)
@@ -102,6 +105,12 @@ class ContainerManager:
         container_name = self._get_container_name(project_id)
         try:
             container = self.client.containers.get(container_name)
+            if container.status == "paused":
+                return ReconState(
+                    project_id=project_id,
+                    status=ReconStatus.PAUSED,
+                    container_id=container.id,
+                )
             if container.status == "running":
                 return ReconState(
                     project_id=project_id,
@@ -126,10 +135,12 @@ class ContainerManager:
     ) -> ReconState:
         """Start a recon container for a project"""
 
-        # Check if already running
+        # Check if already running or paused
         current_state = await self.get_status(project_id)
         if current_state.status == ReconStatus.RUNNING:
             raise ValueError(f"Recon already running for project {project_id}")
+        if current_state.status == ReconStatus.PAUSED:
+            raise ValueError(f"Recon is paused for project {project_id}. Use resume instead.")
 
         # Clean up any existing container
         container_name = self._get_container_name(project_id)
@@ -363,6 +374,50 @@ class ContainerManager:
         # Clean up state
         if project_id in self.running_states:
             del self.running_states[project_id]
+
+        return state
+
+    async def pause_recon(self, project_id: str) -> ReconState:
+        """Pause a running recon process (freeze container)"""
+        state = await self.get_status(project_id)
+
+        if state.status != ReconStatus.RUNNING:
+            return state
+
+        if state.container_id:
+            try:
+                container = self.client.containers.get(state.container_id)
+                container.pause()
+                state.status = ReconStatus.PAUSED
+                self.running_states[project_id] = state
+                logger.info(f"Paused recon container for project {project_id}")
+            except NotFound:
+                state.status = ReconStatus.IDLE
+            except Exception as e:
+                state.status = ReconStatus.ERROR
+                state.error = f"Failed to pause: {e}"
+
+        return state
+
+    async def resume_recon(self, project_id: str) -> ReconState:
+        """Resume a paused recon process"""
+        state = await self.get_status(project_id)
+
+        if state.status != ReconStatus.PAUSED:
+            return state
+
+        if state.container_id:
+            try:
+                container = self.client.containers.get(state.container_id)
+                container.unpause()
+                state.status = ReconStatus.RUNNING
+                self.running_states[project_id] = state
+                logger.info(f"Resumed recon container for project {project_id}")
+            except NotFound:
+                state.status = ReconStatus.IDLE
+            except Exception as e:
+                state.status = ReconStatus.ERROR
+                state.error = f"Failed to resume: {e}"
 
         return state
 

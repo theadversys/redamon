@@ -39,7 +39,6 @@
 
 .navItemActive {
   color: var(--accent-primary);
-  border-bottom-color: var(--accent-primary);
   background: linear-gradient(180deg, var(--color-crimson-glow-05) 0%, transparent 100%);
 }
 

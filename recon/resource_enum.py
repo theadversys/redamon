@@ -63,7 +63,12 @@ from recon.helpers.resource_enum import (
 # Main Function
 # =============================================================================
 
-def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, settings: dict = None) -> dict:
+def run_resource_enum(
+    recon_data: dict,
+    output_file: Optional[Path] = None,
+    settings: dict = None,
+    passive_only: bool = False,
+) -> dict:
     """
     Run resource enumeration to discover and classify all endpoints.
 
@@ -73,10 +78,14 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
 
     Both tools run in parallel for efficiency, then results are merged and deduplicated.
 
+    When passive_only=True: runs only GAU without URL verification (no Katana, no Kiterunner).
+    Used for passive recon mode to avoid probing targets.
+
     Args:
         recon_data: Reconnaissance data from previous modules
         output_file: Optional path to save incremental results
         settings: Settings dictionary from main.py
+        passive_only: If True, run only GAU without verification; skip Katana and Kiterunner
 
     Returns:
         Updated recon_data with resource_enum results
@@ -90,9 +99,16 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
     if settings is None:
         settings = {}
 
+    # Passive mode: GAU only, no verification; skip Katana and Kiterunner
+    if passive_only:
+        KATANA_ENABLED = False
+        KITERUNNER_ENABLED = False
+    else:
+        KATANA_ENABLED = settings.get('KATANA_ENABLED', True)
+        KITERUNNER_ENABLED = settings.get('KITERUNNER_ENABLED', False)
+
     # Extract settings from passed dict
-    # Katana settings
-    KATANA_ENABLED = settings.get('KATANA_ENABLED', True)
+    # Katana settings (already set above when passive_only)
     KATANA_DOCKER_IMAGE = settings.get('KATANA_DOCKER_IMAGE', 'projectdiscovery/katana:latest')
     KATANA_DEPTH = settings.get('KATANA_DEPTH', 3)
     KATANA_MAX_URLS = settings.get('KATANA_MAX_URLS', 5000)
@@ -114,7 +130,7 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
     GAU_MAX_URLS = settings.get('GAU_MAX_URLS', 10000)
     GAU_YEAR_RANGE = settings.get('GAU_YEAR_RANGE', None)
     GAU_VERBOSE = settings.get('GAU_VERBOSE', False)
-    GAU_VERIFY_URLS = settings.get('GAU_VERIFY_URLS', True)
+    GAU_VERIFY_URLS = False if passive_only else settings.get('GAU_VERIFY_URLS', True)
     GAU_VERIFY_DOCKER_IMAGE = settings.get('GAU_VERIFY_DOCKER_IMAGE', 'projectdiscovery/httpx:latest')
     GAU_VERIFY_TIMEOUT = settings.get('GAU_VERIFY_TIMEOUT', 5)
     GAU_VERIFY_RATE_LIMIT = settings.get('GAU_VERIFY_RATE_LIMIT', 50)
@@ -126,8 +142,7 @@ def run_resource_enum(recon_data: dict, output_file: Optional[Path] = None, sett
     GAU_METHOD_DETECT_RATE_LIMIT = settings.get('GAU_METHOD_DETECT_RATE_LIMIT', 30)
     GAU_FILTER_DEAD_ENDPOINTS = settings.get('GAU_FILTER_DEAD_ENDPOINTS', True)
 
-    # Kiterunner settings
-    KITERUNNER_ENABLED = settings.get('KITERUNNER_ENABLED', False)
+    # Kiterunner settings (KITERUNNER_ENABLED set above when not passive_only)
     KITERUNNER_WORDLISTS = settings.get('KITERUNNER_WORDLISTS', ['apiroutes-210228'])
     KITERUNNER_RATE_LIMIT = settings.get('KITERUNNER_RATE_LIMIT', 100)
     KITERUNNER_CONNECTIONS = settings.get('KITERUNNER_CONNECTIONS', 50)

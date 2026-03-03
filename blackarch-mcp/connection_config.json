@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "blackarch": {
+      "url": "http://66.228.39.20:8080/sse",
+      "transport": "sse",
+      "headers": {
+        "Authorization": "Bearer <SUBSCRIBER_KEY>"
+      }
+    }
+  }
+}

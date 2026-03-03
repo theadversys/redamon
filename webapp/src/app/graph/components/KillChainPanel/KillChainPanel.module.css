@@ -1,0 +1,111 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.stages {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-1-5);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.stageWithTooltip {
+  position: relative;
+  cursor: default;
+}
+
+.stageTooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--duration-fast) var(--ease-smooth),
+    visibility var(--duration-fast) var(--ease-smooth);
+  pointer-events: none;
+}
+
+.stageWithTooltip:hover .stageTooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.stageIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.stageLabel {
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  font-family: var(--font-mono);
+}
+
+.stageCompleted {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-emerald-500);
+}
+
+.stageCurrent {
+  background: linear-gradient(135deg, rgba(229, 57, 53, 0.15) 0%, rgba(185, 28, 28, 0.12) 100%);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(229, 57, 53, 0.2);
+}
+
+.hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: var(--leading-snug);
+}

@@ -12,6 +12,7 @@ class ReconStatus(str, Enum):
     IDLE = "idle"
     STARTING = "starting"
     RUNNING = "running"
+    PAUSED = "paused"
     COMPLETED = "completed"
     ERROR = "error"
     STOPPING = "stopping"

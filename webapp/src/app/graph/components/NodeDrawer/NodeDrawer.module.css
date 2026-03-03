@@ -137,6 +137,12 @@
   color: var(--text-on-accent);
 }
 
+.killChainBadge {
+  margin-left: var(--space-1);
+  opacity: 0.9;
+  font-weight: var(--font-normal);
+}
+
 .emptyProperties {
   color: var(--text-tertiary);
   font-size: var(--text-xs);

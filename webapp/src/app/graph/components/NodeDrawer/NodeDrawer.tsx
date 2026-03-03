@@ -109,6 +109,11 @@ export function NodeDrawer({ node, isOpen, onClose, onDeleteNode, projectId }: N
                 style={{ backgroundColor: getNodeColor(node) }}
               >
                 {node.type}
+                {(node.type === 'Persistence' || node.type === 'Action') && (
+                  <span className={styles.killChainBadge}>
+                    {node.type === 'Persistence' ? ' (Stage 5)' : ' (Stage 7)'}
+                  </span>
+                )}
               </span>
             </div>
             <div className={styles.propertyRow}>

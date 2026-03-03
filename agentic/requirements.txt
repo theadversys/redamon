@@ -1,4 +1,4 @@
-# RedAmon Agent Dependencies
+# PandaExploit Agent Dependencies
 
 # LangChain core
 langchain>=0.3.0

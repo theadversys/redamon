@@ -25,12 +25,34 @@ export const NODE_COLORS: Record<string, string> = {
   // EXPLOITATION RESULTS (Amber) - Confirmed compromises
   Exploit: '#f59e0b',        // Amber - Confirmed compromise
 
+  // KILL CHAIN STAGES 5 & 7 - Persistence and actions
+  Persistence: '#10b981',    // Emerald - Installed backdoors
+  Action: '#8b5cf6',        // Purple - Actions on objectives
+
+  // SECRETS & EVIDENCE - Supporting findings
+  GitHubSecret: '#ec4899',  // Pink - Exposed secrets
+  Evidence: '#64748b',      // Slate - Supporting evidence
+
   // CONTEXT & METADATA (Neutral family) - Supporting information
   Technology: '#22c55e',     // Green - Tech stack (good to know)
   Certificate: '#d97706',    // Amber - TLS/security context
   Header: '#78716c',         // Stone gray - HTTP metadata
 
   Default: '#6b7280',        // Gray - Fallback
+}
+
+// Node type order for consistent display (legend, filter)
+export const NODE_TYPE_ORDER = Object.keys(NODE_COLORS).filter((k) => k !== 'Default')
+
+// Node type groups for filter dropdown (category labels)
+export const NODE_TYPE_GROUPS: Record<string, string[]> = {
+  'Critical Security': ['Vulnerability', 'CVE'],
+  'Threat Intelligence': ['MitreData', 'Capec'],
+  'Domain Hierarchy': ['Domain', 'Subdomain'],
+  'Network Layer': ['IP', 'Port', 'Service'],
+  'Web Application': ['BaseURL', 'Endpoint', 'Parameter'],
+  'Exploitation': ['Exploit', 'Persistence', 'Action'],
+  'Other': ['GitHubSecret', 'Evidence', 'Technology', 'Certificate', 'Header'],
 }
 
 // Severity-based colors for Vulnerability nodes (pure red tonality)

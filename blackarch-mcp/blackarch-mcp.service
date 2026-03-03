@@ -1,0 +1,19 @@
+[Unit]
+Description=BlackArch MCP Server
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/blackarch-mcp
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+RestartSec=10
+Environment=MCP_HOST=0.0.0.0
+Environment=MCP_PORT=8080
+Environment=BLACKARCH_AUDIT_DB=/var/lib/blackarch-mcp/audit.db
+Environment=BLACKARCH_TOOL_TIMEOUT=1800
+
+[Install]
+WantedBy=multi-user.target

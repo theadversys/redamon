@@ -44,6 +44,7 @@ GITHUB_TARGET_ORG = _settings['GITHUB_TARGET_ORG']
 UPDATE_GRAPH_DB = _settings['UPDATE_GRAPH_DB']
 USER_ID = _settings['USER_ID']
 PROJECT_ID = _settings['PROJECT_ID']
+PASSIVE_RECON_ONLY = _settings.get('PASSIVE_RECON_ONLY', False)
 VERIFY_DOMAIN_OWNERSHIP = _settings['VERIFY_DOMAIN_OWNERSHIP']
 OWNERSHIP_TOKEN = _settings['OWNERSHIP_TOKEN']
 OWNERSHIP_TXT_PREFIX = _settings['OWNERSHIP_TXT_PREFIX']
@@ -223,6 +224,7 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
     combined_result = {
         "metadata": {
             "scan_type": build_scan_type(),
+            "passive_recon_only": PASSIVE_RECON_ONLY,
             "scan_timestamp": datetime.now().isoformat(),
             "target": root_domain,
             "root_domain": root_domain,
@@ -356,8 +358,8 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
 
         save_recon_file(combined_result, output_file)
 
-    # Step 3: Port scanning (fast port discovery)
-    if "port_scan" in SCAN_MODULES:
+    # Step 3: Port scanning (fast port discovery) - skipped in passive recon mode
+    if "port_scan" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
         combined_result = run_port_scan(combined_result, output_file=output_file, settings=_settings)
         combined_result["metadata"]["modules_executed"].append("port_scan")
         save_recon_file(combined_result, output_file)
@@ -387,8 +389,8 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
 
             save_recon_file(combined_result, output_file)
 
-    # Step 4: HTTP probing (technology detection, live URL discovery)
-    if "http_probe" in SCAN_MODULES:
+    # Step 4: HTTP probing (technology detection, live URL discovery) - skipped in passive recon mode
+    if "http_probe" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
         combined_result = run_http_probe(combined_result, output_file=output_file, settings=_settings)
         combined_result["metadata"]["modules_executed"].append("http_probe")
         save_recon_file(combined_result, output_file)
@@ -419,10 +421,11 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
             save_recon_file(combined_result, output_file)
 
     # Check if we should skip active scanning modules (resource_enum, vuln_scan)
-    # These require live targets from http_probe to work
+    # These require live targets from http_probe to work (except passive mode: GAU-only resource_enum)
     skip_active_scans, skip_reason = should_skip_active_scans(combined_result)
-    
-    if skip_active_scans:
+    run_passive_resource_enum = PASSIVE_RECON_ONLY and "resource_enum" in SCAN_MODULES
+
+    if skip_active_scans and not run_passive_resource_enum:
         print(f"\n{'=' * 70}")
         print(f"[!] SKIPPING ACTIVE SCANS: {skip_reason}")
         print(f"[!] Modules skipped: resource_enum, vuln_scan")
@@ -430,10 +433,56 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
         combined_result["metadata"]["active_scans_skipped"] = True
         combined_result["metadata"]["active_scans_skip_reason"] = skip_reason
         save_recon_file(combined_result, output_file)
+    elif run_passive_resource_enum:
+        # Passive mode: run GAU-only resource enum (no Katana, Kiterunner, no URL verification)
+        print(f"\n{'=' * 70}")
+        print(f"[*] PASSIVE RECON MODE: Running GAU-only resource enumeration (no target probing)")
+        print(f"{'=' * 70}")
+        if "resource_enum" in SCAN_MODULES:
+            combined_result = run_resource_enum(
+                combined_result,
+                output_file=output_file,
+                settings=_settings,
+                passive_only=PASSIVE_RECON_ONLY,
+            )
+            combined_result["metadata"]["modules_executed"].append("resource_enum")
+            save_recon_file(combined_result, output_file)
+
+            # Update Graph DB with resource enumeration data
+            if UPDATE_GRAPH_DB:
+                print(f"\n[GRAPH UPDATE] Resource Enumeration Data")
+                print("-" * 40)
+                try:
+                    from graph_db import Neo4jClient
+                    with Neo4jClient() as graph_client:
+                        if graph_client.verify_connection():
+                            resource_stats = graph_client.update_graph_from_resource_enum(combined_result, USER_ID, PROJECT_ID)
+                            combined_result["metadata"]["graph_db_resource_enum_updated"] = True
+                            combined_result["metadata"]["graph_db_resource_enum_stats"] = resource_stats
+                            print(f"[+] Graph database updated with resource enumeration data")
+                        else:
+                            print(f"[!] Could not connect to Neo4j - skipping resource enum graph update")
+                            combined_result["metadata"]["graph_db_resource_enum_updated"] = False
+                except ImportError:
+                    print(f"[!] Neo4j client not available - skipping resource enum graph update")
+                    combined_result["metadata"]["graph_db_resource_enum_updated"] = False
+                except Exception as e:
+                    print(f"[!] Resource enum graph update failed: {e}")
+                    combined_result["metadata"]["graph_db_resource_enum_updated"] = False
+                    combined_result["metadata"]["graph_db_resource_enum_error"] = str(e)
+
+                save_recon_file(combined_result, output_file)
+        # vuln_scan always skipped in passive mode
     else:
         # Step 5: Resource enumeration (endpoint discovery & classification)
+        # In passive mode: GAU only, no URL verification; otherwise full Katana+GAU+Kiterunner
         if "resource_enum" in SCAN_MODULES:
-            combined_result = run_resource_enum(combined_result, output_file=output_file, settings=_settings)
+            combined_result = run_resource_enum(
+                combined_result,
+                output_file=output_file,
+                settings=_settings,
+                passive_only=PASSIVE_RECON_ONLY,
+            )
             combined_result["metadata"]["modules_executed"].append("resource_enum")
             save_recon_file(combined_result, output_file)
 
@@ -462,8 +511,8 @@ def run_domain_recon(target: str, anonymous: bool = False, bruteforce: bool = Fa
 
                 save_recon_file(combined_result, output_file)
 
-        # Step 6: Vulnerability scanning (web application vulns) + MITRE enrichment
-        if "vuln_scan" in SCAN_MODULES:
+        # Step 6: Vulnerability scanning (web application vulns) + MITRE enrichment - skipped in passive recon mode
+        if "vuln_scan" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
             combined_result = run_vuln_scan(combined_result, output_file=output_file, settings=_settings)
             combined_result["metadata"]["modules_executed"].append("vuln_scan")
             save_recon_file(combined_result, output_file)
@@ -741,8 +790,8 @@ def main():
             print(f"[!] Add 'domain_discovery' to SCAN_MODULES to create it first")
             return 1
         
-        # Run port_scan if in SCAN_MODULES (when domain_discovery is skipped)
-        if "port_scan" in SCAN_MODULES:
+        # Run port_scan if in SCAN_MODULES (when domain_discovery is skipped) - skipped in passive mode
+        if "port_scan" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
             domain_result = run_port_scan(domain_result, output_file=output_file, settings=_settings)
             if "metadata" in domain_result and "modules_executed" in domain_result["metadata"]:
                 if "port_scan" not in domain_result["metadata"]["modules_executed"]:
@@ -776,8 +825,8 @@ def main():
                 with open(output_file, 'w') as f:
                     json.dump(domain_result, f, indent=2)
         
-        # Run http_probe if in SCAN_MODULES (when domain_discovery is skipped)
-        if "http_probe" in SCAN_MODULES:
+        # Run http_probe if in SCAN_MODULES (when domain_discovery is skipped) - skipped in passive mode
+        if "http_probe" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
             domain_result = run_http_probe(domain_result, output_file=output_file, settings=_settings)
             if "metadata" in domain_result and "modules_executed" in domain_result["metadata"]:
                 if "http_probe" not in domain_result["metadata"]["modules_executed"]:
@@ -812,10 +861,11 @@ def main():
                     json.dump(domain_result, f, indent=2)
 
         # Check if we should skip active scanning modules (resource_enum, vuln_scan)
-        # These require live targets from http_probe to work
+        # These require live targets from http_probe to work (except passive mode: GAU-only resource_enum)
         skip_active_scans, skip_reason = should_skip_active_scans(domain_result)
-        
-        if skip_active_scans:
+        run_passive_resource_enum = PASSIVE_RECON_ONLY and "resource_enum" in SCAN_MODULES
+
+        if skip_active_scans and not run_passive_resource_enum:
             print(f"\n{'=' * 70}")
             print(f"[!] SKIPPING ACTIVE SCANS: {skip_reason}")
             print(f"[!] Modules skipped: resource_enum, vuln_scan")
@@ -825,10 +875,51 @@ def main():
                 domain_result["metadata"]["active_scans_skip_reason"] = skip_reason
             with open(output_file, 'w') as f:
                 json.dump(domain_result, f, indent=2)
+        elif run_passive_resource_enum:
+            # Passive mode: run GAU-only resource enum
+            print(f"\n{'=' * 70}")
+            print(f"[*] PASSIVE RECON MODE: Running GAU-only resource enumeration (no target probing)")
+            print(f"{'=' * 70}")
+            if "resource_enum" in SCAN_MODULES:
+                domain_result = run_resource_enum(
+                    domain_result,
+                    output_file=output_file,
+                    settings=_settings,
+                    passive_only=True,
+                )
+                if "metadata" in domain_result and "modules_executed" in domain_result["metadata"]:
+                    if "resource_enum" not in domain_result["metadata"]["modules_executed"]:
+                        domain_result["metadata"]["modules_executed"].append("resource_enum")
+                with open(output_file, 'w') as f:
+                    json.dump(domain_result, f, indent=2)
+
+                if UPDATE_GRAPH_DB:
+                    print(f"\n[GRAPH UPDATE] Resource Enumeration Data")
+                    print("-" * 40)
+                    try:
+                        from graph_db import Neo4jClient
+                        with Neo4jClient() as graph_client:
+                            if graph_client.verify_connection():
+                                resource_stats = graph_client.update_graph_from_resource_enum(domain_result, USER_ID, PROJECT_ID)
+                                domain_result["metadata"]["graph_db_resource_enum_updated"] = True
+                                domain_result["metadata"]["graph_db_resource_enum_stats"] = resource_stats
+                                print(f"[+] Graph database updated with resource enumeration data")
+                            else:
+                                domain_result["metadata"]["graph_db_resource_enum_updated"] = False
+                    except Exception as e:
+                        domain_result["metadata"]["graph_db_resource_enum_updated"] = False
+                        domain_result["metadata"]["graph_db_resource_enum_error"] = str(e)
+                    with open(output_file, 'w') as f:
+                        json.dump(domain_result, f, indent=2)
         else:
             # Run resource_enum if in SCAN_MODULES (when domain_discovery is skipped)
             if "resource_enum" in SCAN_MODULES:
-                domain_result = run_resource_enum(domain_result, output_file=output_file, settings=_settings)
+                domain_result = run_resource_enum(
+                    domain_result,
+                    output_file=output_file,
+                    settings=_settings,
+                    passive_only=PASSIVE_RECON_ONLY,
+                )
                 if "metadata" in domain_result and "modules_executed" in domain_result["metadata"]:
                     if "resource_enum" not in domain_result["metadata"]["modules_executed"]:
                         domain_result["metadata"]["modules_executed"].append("resource_enum")
@@ -861,9 +952,9 @@ def main():
                     with open(output_file, 'w') as f:
                         json.dump(domain_result, f, indent=2)
 
-            # Run vuln_scan if in SCAN_MODULES (when domain_discovery is skipped)
+            # Run vuln_scan if in SCAN_MODULES (when domain_discovery is skipped) - skipped in passive mode
             # vuln_scan automatically includes MITRE CWE/CAPEC enrichment
-            if "vuln_scan" in SCAN_MODULES:
+            if "vuln_scan" in SCAN_MODULES and not PASSIVE_RECON_ONLY:
                 domain_result = run_vuln_scan(domain_result, output_file=output_file, settings=_settings)
                 if "metadata" in domain_result and "modules_executed" in domain_result["metadata"]:
                     if "vuln_scan" not in domain_result["metadata"]["modules_executed"]:

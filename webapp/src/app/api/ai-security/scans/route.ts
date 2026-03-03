@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { buildRedteamConfig } from '@/lib/ai-security/config-gen'
 import { startScan } from '@/lib/ai-security/runner'
+import { getProfileById } from '@/lib/ai-security/catalog'
 
 export async function POST(req: Request) {
   try {
@@ -12,19 +13,54 @@ export async function POST(req: Request) {
       targetType = 'http',
       purpose,
       systemPrompt,
-      plugins = ['prompt-injection'],
-      strategies = ['jailbreak:meta'],
+      plugins: bodyPlugins,
+      strategies: bodyStrategies,
       profile = 'custom',
-      numTests = 5,
+      numTests: bodyNumTests,
       projectId,
       responseParser,
+      policyIds,
+      customPolicy,
+      language,
+      mcpServers,
+      testGenerationInstructions,
+      httpBodyTemplate,
     } = body
 
     if (!targetUrl) {
       return NextResponse.json({ error: 'targetUrl is required' }, { status: 400 })
     }
-    if (!plugins.length) {
+
+    // Resolve plugins, strategies, numTests from profile when not explicitly provided
+    const resolvedProfile = getProfileById(profile)
+    const resolvedPlugins =
+      Array.isArray(bodyPlugins) && bodyPlugins.length > 0
+        ? bodyPlugins
+        : (resolvedProfile?.plugins ?? ['prompt-extraction'])
+    const resolvedStrategies =
+      Array.isArray(bodyStrategies) && bodyStrategies.length > 0
+        ? bodyStrategies
+        : (resolvedProfile?.strategies ?? ['jailbreak', 'base64'])
+    const resolvedNumTests =
+      bodyNumTests ?? resolvedProfile?.numTests ?? 5
+
+    if (!resolvedPlugins.length) {
       return NextResponse.json({ error: 'At least one plugin is required' }, { status: 400 })
+    }
+
+    // Resolve custom policies from DB if policyIds provided
+    let customPolicies: Array<{ name: string; policyText: string; numTests?: number }> = []
+    if (policyIds && Array.isArray(policyIds) && policyIds.length > 0) {
+      const policies = await prisma.aIPolicy.findMany({
+        where: { id: { in: policyIds } },
+      })
+      customPolicies = policies.map(p => ({
+        name: p.name,
+        policyText: p.policyText,
+      }))
+    }
+    if (customPolicy && typeof customPolicy === 'string') {
+      customPolicies.push({ name: 'Inline Policy', policyText: customPolicy })
     }
 
     const configYaml = buildRedteamConfig({
@@ -32,10 +68,15 @@ export async function POST(req: Request) {
       targetType,
       purpose,
       systemPrompt,
-      plugins,
-      strategies,
-      numTests,
+      plugins: resolvedPlugins,
+      strategies: resolvedStrategies,
+      numTests: resolvedNumTests,
       responseParser,
+      language,
+      customPolicies: customPolicies.length > 0 ? customPolicies : undefined,
+      mcpServers,
+      testGenerationInstructions: testGenerationInstructions || undefined,
+      httpBodyTemplate: httpBodyTemplate || undefined,
     })
 
     const scan = await prisma.aIScan.create({
@@ -47,10 +88,10 @@ export async function POST(req: Request) {
         targetType,
         purpose: purpose || null,
         systemPrompt: systemPrompt || null,
-        plugins,
-        strategies,
+        plugins: resolvedPlugins,
+        strategies: resolvedStrategies,
         profile,
-        numTests,
+        numTests: resolvedNumTests,
         configYaml,
       },
     })

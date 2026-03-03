@@ -20,10 +20,10 @@ def get_host_path(container_path: str) -> str:
     When running inside a container with mounted volumes, sibling containers
     need host paths, not container paths.
 
-    /tmp/redamon is mounted to the same path inside and outside, so no translation needed.
+    /tmp/pandaexploit is mounted to the same path inside and outside, so no translation needed.
     """
-    # /tmp/redamon paths are the same inside and outside the container
-    if container_path.startswith("/tmp/redamon"):
+    # /tmp/pandaexploit paths are the same inside and outside the container
+    if container_path.startswith("/tmp/pandaexploit"):
         return container_path
 
     host_output_path = os.environ.get("HOST_RECON_OUTPUT_PATH", "")

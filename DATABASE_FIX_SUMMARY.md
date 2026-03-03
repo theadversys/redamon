@@ -7,13 +7,13 @@ The 500 errors for `/api/projects` and `/api/users` were caused by **incorrect d
 ## 🔴 Root Cause
 
 1. **PostgreSQL container** uses:
-   - User: `redamon`
-   - Database: `redamon`
-   - Password: `redamon_secret`
+   - User: `pandaexploit`
+   - Database: `pandaexploit`
+   - Password: `pandaexploit_secret`
 
 2. **Webapp container** was trying to connect with:
-   - User: `pandaexploit` ❌ (wrong)
-   - Database: `pandaexploit` ❌ (wrong)
+   - User: `redamon` ❌ (wrong)
+   - Database: `redamon` ❌ (wrong)
    - Host: `host.docker.internal` ❌ (should be `postgres` service name)
 
 3. **Error**: `PrismaClientInitializationError: Authentication failed against database server`
@@ -52,8 +52,8 @@ DATABASE_URL: "postgresql://${POSTGRES_USER:-redamon}:${POSTGRES_PASSWORD:-redam
 
 ## 📝 Notes
 
-- The `.env` file already had correct values (`POSTGRES_USER=redamon`, etc.)
-- But `docker-compose.yml` was using different defaults (`:-pandaexploit`)
+- The `.env` file already had correct values (`POSTGRES_USER=pandaexploit`, etc.)
+- But `docker-compose.yml` was using different defaults (`:-redamon`)
 - When `.env` variables aren't set, Docker Compose uses the defaults after `:-`
 - Fixed by updating defaults to match actual database configuration
 

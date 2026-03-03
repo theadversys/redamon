@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { GraphToolbar } from './components/GraphToolbar'
 import { GraphCanvas } from './components/GraphCanvas'
@@ -9,11 +9,35 @@ import { AIPanel } from './components/AIPanel/AIPanel'
 import { A0Panel } from './components/A0Panel/A0Panel'
 import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
+import { KillChainPanel } from './components/KillChainPanel/KillChainPanel'
+import { AttackPathsDrawer } from './components/AttackPathsDrawer/AttackPathsDrawer'
+import { PayloadGeneratorModal } from './components/PayloadGeneratorModal/PayloadGeneratorModal'
+import { RecordPersistenceModal } from './components/RecordPersistenceModal/RecordPersistenceModal'
+import { RecordActionModal } from './components/RecordActionModal/RecordActionModal'
 import { PanelLayout } from './components/PanelLayout/PanelLayout'
 import { useGraphData, useNodeSelection } from './hooks'
 import { useTheme, useSession, useReconStatus, useReconSSE, useProjectById, usePanelLayout } from '@/hooks'
 import { useProject } from '@/providers/ProjectProvider'
+import { NODE_COLORS } from './config'
+import { getNodeId } from './utils/linkHelpers'
+import { GraphData } from './types'
 import styles from './page.module.css'
+
+const ALL_NODE_TYPES = Object.keys(NODE_COLORS).filter((k) => k !== 'Default')
+
+function filterGraphData(data: GraphData | undefined, visibleTypes: Set<string>): GraphData | undefined {
+  if (!data?.nodes) return data
+  const filteredNodes = data.nodes.filter((n) => visibleTypes.has(n.type))
+  const visibleIds = new Set(filteredNodes.map((n) => n.id))
+  const filteredLinks = data.links.filter(
+    (l) => visibleIds.has(getNodeId(l.source)) && visibleIds.has(getNodeId(l.target))
+  )
+  return {
+    ...data,
+    nodes: filteredNodes,
+    links: filteredLinks,
+  }
+}
 
 export default function GraphPage() {
   const router = useRouter()
@@ -23,8 +47,15 @@ export default function GraphPage() {
   const [is3D, setIs3D] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
   const [isReconModalOpen, setIsReconModalOpen] = useState(false)
+  const [isAttackPathsOpen, setIsAttackPathsOpen] = useState(false)
+  const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false)
+  const [isPersistenceModalOpen, setIsPersistenceModalOpen] = useState(false)
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false)
   const [hasReconData, setHasReconData] = useState(false)
   const [graphStats, setGraphStats] = useState<{ totalNodes: number; nodesByType: Record<string, number> } | null>(null)
+  const [visibleNodeTypes, setVisibleNodeTypes] = useState<Set<string>>(
+    () => new Set(ALL_NODE_TYPES)
+  )
 
   const { selectedNode, drawerOpen, selectNode, clearSelection } = useNodeSelection()
   const { isDark } = useTheme()
@@ -50,6 +81,8 @@ export default function GraphPage() {
     isLoading: isReconLoading,
     startRecon,
     stopRecon,
+    pauseRecon,
+    resumeRecon,
   } = useReconStatus({
     projectId,
     enabled: !!projectId,
@@ -71,7 +104,7 @@ export default function GraphPage() {
     clearLogs,
   } = useReconSSE({
     projectId,
-    enabled: reconState?.status === 'running' || reconState?.status === 'starting',
+    enabled: reconState?.status === 'running' || reconState?.status === 'starting' || reconState?.status === 'paused',
   })
 
   // Check if recon data exists
@@ -85,7 +118,34 @@ export default function GraphPage() {
     }
   }, [projectId])
 
-  // Calculate graph stats when data changes
+  // Sync visible types when new node types appear in data (e.g. DNSRecord from API)
+  useEffect(() => {
+    if (!data?.nodes) return
+    const typesInData = new Set(data.nodes.map((n) => n.type).filter(Boolean))
+    setVisibleNodeTypes((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      typesInData.forEach((t) => {
+        if (!next.has(t)) {
+          next.add(t)
+          changed = true
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [data?.nodes])
+
+  // Filtered graph data based on visible node types
+  const filteredData = useMemo(
+    () => filterGraphData(data, visibleNodeTypes),
+    [data, visibleNodeTypes]
+  )
+
+  const handleVisibleTypesChange = useCallback((newSet: Set<string>) => {
+    setVisibleNodeTypes(new Set(newSet))
+  }, [])
+
+  // Calculate graph stats when data changes (from raw data for filter counts)
   useEffect(() => {
     if (data?.nodes) {
       const nodesByType: Record<string, number> = {}
@@ -206,10 +266,27 @@ export default function GraphPage() {
         subdomainList={currentProject?.subdomainList}
         // Recon props
         onStartRecon={handleStartRecon}
+        onStopRecon={handleStopRecon}
+        onPauseRecon={pauseRecon}
+        onResumeRecon={resumeRecon}
         onDownloadJSON={handleDownloadJSON}
         reconStatus={reconState?.status || 'idle'}
         hasReconData={hasReconData}
+        onViewAttackPaths={() => setIsAttackPathsOpen(true)}
+        onGeneratePayload={() => setIsPayloadModalOpen(true)}
+        onRecordPersistence={() => setIsPersistenceModalOpen(true)}
+        onRecordAction={() => setIsActionModalOpen(true)}
       />
+
+      {projectId && (
+        <div className={styles.killChainRow}>
+          <KillChainPanel
+            projectId={projectId}
+            reconStatus={reconState?.status || 'idle'}
+            data={data}
+          />
+        </div>
+      )}
 
       <div className={styles.body}>
         <NodeDrawer
@@ -222,7 +299,7 @@ export default function GraphPage() {
         <PanelLayout
           graphContent={(dimensions) => (
             <GraphCanvas
-              data={data}
+              data={filteredData}
               isLoading={isLoading}
               error={error}
               projectId={projectId || ''}
@@ -315,7 +392,43 @@ export default function GraphPage() {
         githubTargetOrg={fullProject?.githubTargetOrg}
       />
 
-      <PageBottomBar data={data} is3D={is3D} showLabels={showLabels} />
+      <AttackPathsDrawer
+        isOpen={isAttackPathsOpen}
+        onClose={() => setIsAttackPathsOpen(false)}
+        projectId={projectId || ''}
+      />
+
+      <PayloadGeneratorModal
+        isOpen={isPayloadModalOpen}
+        onClose={() => setIsPayloadModalOpen(false)}
+      />
+
+      <RecordPersistenceModal
+        isOpen={isPersistenceModalOpen}
+        onClose={() => setIsPersistenceModalOpen(false)}
+        projectId={projectId || ''}
+        userId={userId || ''}
+        sessionId={sessionId && !isNaN(parseInt(sessionId, 10)) ? parseInt(sessionId, 10) : undefined}
+        onSuccess={refetchGraph}
+      />
+
+      <RecordActionModal
+        isOpen={isActionModalOpen}
+        onClose={() => setIsActionModalOpen(false)}
+        projectId={projectId || ''}
+        userId={userId || ''}
+        sessionId={sessionId && !isNaN(parseInt(sessionId, 10)) ? parseInt(sessionId, 10) : undefined}
+        onSuccess={refetchGraph}
+      />
+
+      <PageBottomBar
+        data={filteredData}
+        is3D={is3D}
+        showLabels={showLabels}
+        visibleNodeTypes={visibleNodeTypes}
+        onVisibleTypesChange={handleVisibleTypesChange}
+        nodesByType={graphStats?.nodesByType}
+      />
     </div>
   )
 }

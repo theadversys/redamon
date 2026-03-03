@@ -48,7 +48,7 @@ export function ReconConfirmModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Start Reconnaissance"
+      title="Start Assessment"
       size="default"
     >
       <div className={styles.content}>
@@ -95,7 +95,7 @@ export function ReconConfirmModal({
               <p className={styles.warningTitle}>Existing Data Found</p>
               <p className={styles.warningText}>
                 This project has <strong>{stats.totalNodes}</strong> nodes in the graph database.
-                Starting a new reconnaissance will <strong>delete all existing data</strong> and
+                Starting a new assessment will <strong>delete all existing data</strong> and
                 replace it with fresh scan results.
               </p>
               <div className={styles.stats}>
@@ -109,7 +109,7 @@ export function ReconConfirmModal({
           </div>
         ) : (
           <div className={styles.ready}>
-            <p>No existing data found. Ready to start reconnaissance.</p>
+            <p>No existing data found. Ready to start assessment (Stage 1: Reconnaissance).</p>
             <p className={styles.readyNote}>
               This will scan <strong>{targetDomain}</strong> and populate the graph database
               with discovered subdomains, ports, services, and vulnerabilities.
@@ -138,7 +138,7 @@ export function ReconConfirmModal({
             ) : (
               <>
                 <Play size={14} />
-                <span>{hasExistingData ? 'Delete & Start' : 'Start Recon'}</span>
+                <span>{hasExistingData ? 'Delete & Start' : 'Start Assessment'}</span>
               </>
             )}
           </button>

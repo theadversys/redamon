@@ -169,6 +169,18 @@ export function ScanModulesSection({ data, updateField, onNavigateToIntegrations
             </div>
             <div className={styles.toggleRow}>
               <div>
+                <span className={styles.toggleLabel}>Passive Recon Only</span>
+                <p className={styles.toggleDescription}>
+                  Skip active scans (port scan, HTTP probe, vuln scan); use only WHOIS, passive DNS, GAU without verification
+                </p>
+              </div>
+              <Toggle
+                checked={data.passiveReconOnly}
+                onChange={(checked) => updateField('passiveReconOnly', checked)}
+              />
+            </div>
+            <div className={styles.toggleRow}>
+              <div>
                 <span className={styles.toggleLabel}>Use Tor for Recon</span>
                 <p className={styles.toggleDescription}>
                   Route reconnaissance traffic through Tor network

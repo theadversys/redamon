@@ -229,7 +229,7 @@ def run_vuln_scan(recon_data: dict, output_file: Path = None, settings: dict = N
     if output_file:
         nuclei_temp_dir = Path(output_file).parent / ".nuclei_temp"
     else:
-        nuclei_temp_dir = Path("/tmp/redamon/.nuclei_temp")
+        nuclei_temp_dir = Path("/tmp/pandaexploit/.nuclei_temp")
     nuclei_temp_dir.mkdir(parents=True, exist_ok=True)
     
     # Create targets file

@@ -1,0 +1,18 @@
+[Unit]
+Description=BlackArch MCP Server - Cybersecurity Oracle
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/blackarch-mcp
+ExecStart=/opt/blackarch-mcp/.venv/bin/python main.py
+Restart=always
+RestartSec=5
+Environment=MCP_HOST=0.0.0.0
+Environment=MCP_PORT=8080
+StandardOutput=append:/var/log/blackarch-mcp.log
+StandardError=append:/var/log/blackarch-mcp.log
+
+[Install]
+WantedBy=multi-user.target

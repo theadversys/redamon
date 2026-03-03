@@ -202,6 +202,26 @@ async def stop_recon(project_id: str):
     return state
 
 
+@app.post("/recon/{project_id}/pause", response_model=ReconState)
+async def pause_recon(project_id: str):
+    """Pause a running recon process (freeze container)"""
+    if not container_manager:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    state = await container_manager.pause_recon(project_id)
+    return state
+
+
+@app.post("/recon/{project_id}/resume", response_model=ReconState)
+async def resume_recon(project_id: str):
+    """Resume a paused recon process"""
+    if not container_manager:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    state = await container_manager.resume_recon(project_id)
+    return state
+
+
 @app.get("/recon/{project_id}/logs")
 async def stream_logs(project_id: str):
     """

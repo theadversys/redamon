@@ -170,10 +170,10 @@ def get_host_path(container_path: str) -> str:
     The recon container mounts: ./output:/app/recon/output
     So /app/recon/output/* inside the container maps to <host>/recon/output/* on host.
 
-    /tmp/redamon is mounted to the same path inside and outside, so no translation needed.
+    /tmp/pandaexploit is mounted to the same path inside and outside, so no translation needed.
     """
-    # /tmp/redamon paths are the same inside and outside the container
-    if container_path.startswith("/tmp/redamon"):
+    # /tmp/pandaexploit paths are the same inside and outside the container
+    if container_path.startswith("/tmp/pandaexploit"):
         return container_path
 
     host_output_path = os.environ.get("HOST_RECON_OUTPUT_PATH", "")
@@ -519,7 +519,7 @@ def run_port_scan(recon_data: dict, output_file: Path = None, settings: dict = N
     if output_file:
         scan_temp_dir = Path(output_file).parent / ".naabu_temp"
     else:
-        scan_temp_dir = Path("/tmp/redamon/.naabu_temp")
+        scan_temp_dir = Path("/tmp/pandaexploit/.naabu_temp")
     scan_temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:

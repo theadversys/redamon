@@ -460,6 +460,7 @@ Discovered vulnerabilities from active scanning.
     raw_response: "HTTP/1.1 200 OK\nConnection: close\n...",
     
     // Metadata
+    kill_chain_stage: "reconnaissance",     // Stage 1
     discovered_at: datetime
 })
 ```
@@ -667,6 +668,7 @@ HTTP response headers (all captured headers).
 | `report` | String | Structured exploitation report |
 | `evidence` | String | LLM-provided evidence of success |
 | `commands_used` | String[] | Metasploit commands used |
+| `kill_chain_stage` | String | `"exploitation"` (Stage 4) |
 | `created_at` | DateTime | Node creation timestamp |
 
 **Relationships:**
@@ -681,6 +683,60 @@ HTTP response headers (all captured headers).
 ```
 
 **Visual:** Diamond shape (2D) / Octahedron (3D), amber color (#f59e0b), always-on glow, lightning bolt icon.
+
+---
+
+### 20. Persistence (Installation - Kill Chain Stage 5)
+
+**Label:** `Persistence`
+**Created by:** Agent when persistence is established (via `record_persistence` tool)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | String | Unique ID (e.g. persistence-{session_id}-{method}-{timestamp}) |
+| `user_id` | String | Tenant user ID |
+| `project_id` | String | Tenant project ID |
+| `session_id` | Integer | Metasploit session ID |
+| `method` | String | e.g. `registry`, `scheduled_task`, `cron`, `ssh_key`, `service` |
+| `module` | String | Metasploit module used (e.g. post/windows/manage/persistence_exe) |
+| `path` | String | Path/trigger (e.g. executable path, cron schedule) |
+| `trigger` | String | How persistence is triggered (e.g. user logon, reboot) |
+| `target_ip` | String | IP of compromised host |
+| `report` | String | Human-readable summary |
+| `kill_chain_stage` | String | `"installation"` (Stage 5) |
+| `created_at` | DateTime | Node creation timestamp |
+
+**Relationships:**
+```cypher
+(Persistence)-[:INSTALLED_ON]->(IP)
+(Persistence)-[:FROM_SESSION]->(Exploit)  // Optional: link to Exploit that established session
+```
+
+---
+
+### 21. Action (Actions on Objectives - Kill Chain Stage 7)
+
+**Label:** `Action`
+**Created by:** Agent when recording exfil, lateral movement, or objective completion
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | String | Unique ID |
+| `user_id` | String | Tenant user ID |
+| `project_id` | String | Tenant project ID |
+| `action_type` | String | `exfil`, `lateral_movement`, `objective` |
+| `session_id` | Integer | Metasploit session ID |
+| `target_ip` | String | Target/host IP |
+| `description` | String | Human-readable description |
+| `evidence` | String | Optional evidence (path, file, etc.) |
+| `kill_chain_stage` | String | `"actions_on_objectives"` (Stage 7) |
+| `created_at` | DateTime | Node creation timestamp |
+
+**Relationships:**
+```cypher
+(Action)-[:FROM_SESSION]->(Exploit)
+(Action)-[:TARGETED]->(IP)   // For lateral movement: pivoted-to IP
+```
 
 ---
 

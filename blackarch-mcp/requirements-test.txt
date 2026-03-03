@@ -1,0 +1,5 @@
+# Test script dependencies (scripts/test_tools.py)
+# Install: pip install -r requirements-test.txt
+-r requirements.txt
+mcp>=1.0.0
+httpx-sse>=0.4.0

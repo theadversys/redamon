@@ -124,6 +124,30 @@ export async function GET(request: NextRequest) {
       // Get Exploit nodes linked to Ports (brute force)
       MATCH (e:Exploit {project_id: $projectId})-[r15:VIA_PORT]->(p:Port)
       RETURN e as n, r15 as r, p as m
+
+      UNION
+
+      // Get Persistence nodes (Kill Chain Stage 5)
+      MATCH (p:Persistence {project_id: $projectId})-[r16:INSTALLED_ON]->(ip:IP)
+      RETURN p as n, r16 as r, ip as m
+
+      UNION
+
+      // Get Action nodes (Kill Chain Stage 7)
+      MATCH (a:Action {project_id: $projectId})-[r17:TARGETED]->(ip:IP)
+      RETURN a as n, r17 as r, ip as m
+
+      UNION
+
+      // Get GitHubSecret nodes (exposed secrets from recon)
+      MATCH (g:GitHubSecret {project_id: $projectId})
+      RETURN g as n, null as r, g as m
+
+      UNION
+
+      // Get Evidence linked to Vulnerabilities
+      MATCH (v:Vulnerability {project_id: $projectId})-[r18:HAS_EVIDENCE]->(e:Evidence)
+      RETURN v as n, r18 as r, e as m
       `,
       { projectId }
     )
@@ -158,11 +182,13 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      links.push({
-        source: sourceId,
-        target: targetId,
-        type: relationship.type,
-      })
+      if (relationship) {
+        links.push({
+          source: sourceId,
+          target: targetId,
+          type: relationship.type,
+        })
+      }
     })
 
     const nodes = Array.from(nodesMap.values())
@@ -419,6 +445,48 @@ function getNodeName(node: Neo4jNode): string {
     }
     const shortLabel = attackLabels[attackType] || attackType || 'EXPL'
     return `EXPLOITED\n${shortLabel}\n${targetIp}`
+  }
+
+  // Special handling for Evidence nodes
+  if (label === 'Evidence') {
+    const summary = props.summary as string || ''
+    const tool = props.tool as string || ''
+    if (summary) return summary.length > 50 ? summary.substring(0, 50) + '...' : summary
+    if (tool) return `Evidence: ${tool}`
+  }
+
+  // Special handling for GitHubSecret nodes
+  if (label === 'GitHubSecret') {
+    const findingType = props.finding_type as string || ''
+    const repo = props.repository as string || ''
+    const path = props.path as string || ''
+    if (findingType && repo) return `${findingType}\n${repo}${path ? '/' + path : ''}`
+    if (findingType) return findingType
+    if (repo) return repo
+  }
+
+  // Special handling for Persistence nodes (Kill Chain Stage 5)
+  if (label === 'Persistence') {
+    const method = props.method as string || ''
+    const targetIp = props.target_ip as string || ''
+    if (method && targetIp) {
+      return `${method}\n${targetIp}`
+    }
+    if (method) return method
+    if (targetIp) return targetIp
+  }
+
+  // Special handling for Action nodes (Kill Chain Stage 7)
+  if (label === 'Action') {
+    const actionType = props.action_type as string || ''
+    const targetIp = props.target_ip as string || ''
+    const desc = props.description as string || ''
+    if (actionType && targetIp) {
+      return `${actionType}\n${targetIp}`
+    }
+    if (desc) return desc.length > 40 ? desc.substring(0, 40) + '...' : desc
+    if (actionType) return actionType
+    if (targetIp) return targetIp
   }
 
   // Special handling for Vulnerability nodes - show name and severity

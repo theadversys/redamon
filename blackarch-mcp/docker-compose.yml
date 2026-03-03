@@ -1,0 +1,20 @@
+# BlackArch MCP - Local/Docker deployment
+# For Linode: deploy main.py via systemd; this composes the gateway.
+
+services:
+  blackarch-mcp:
+    build: .
+    container_name: blackarch-mcp-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8080
+      - BLACKARCH_TOOL_TIMEOUT=1800
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - blackarch_audit:/var/lib/blackarch-mcp
+    restart: unless-stopped
+
+volumes:
+  blackarch_audit: {}

@@ -19,6 +19,8 @@ interface UseReconStatusReturn {
   refetch: () => Promise<void>
   startRecon: () => Promise<ReconState | null>
   stopRecon: () => Promise<ReconState | null>
+  pauseRecon: () => Promise<ReconState | null>
+  resumeRecon: () => Promise<ReconState | null>
 }
 
 const DEFAULT_POLLING_INTERVAL = 5000 // 5 seconds when running
@@ -144,6 +146,66 @@ export function useReconStatus({
     }
   }, [projectId])
 
+  const pauseRecon = useCallback(async (): Promise<ReconState | null> => {
+    if (!projectId) return null
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`/api/recon/${projectId}/pause`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to pause recon')
+      }
+
+      const data: ReconState = await response.json()
+      setState(data)
+      previousStatusRef.current = data.status
+      return data
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      return null
+
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  const resumeRecon = useCallback(async (): Promise<ReconState | null> => {
+    if (!projectId) return null
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`/api/recon/${projectId}/resume`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to resume recon')
+      }
+
+      const data: ReconState = await response.json()
+      setState(data)
+      previousStatusRef.current = data.status
+      return data
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      return null
+
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
   // Initial fetch on mount
   useEffect(() => {
     if (!projectId || !enabled) {
@@ -166,9 +228,10 @@ export function useReconStatus({
     }
 
     const isRunning = state?.status === 'running' || state?.status === 'starting'
+    const isPaused = state?.status === 'paused'
 
-    // Use shorter interval when running, longer when idle
-    const interval = isRunning ? pollingInterval : IDLE_POLLING_INTERVAL
+    // Use shorter interval when running or paused, longer when idle
+    const interval = (isRunning || isPaused) ? pollingInterval : IDLE_POLLING_INTERVAL
 
     pollingRef.current = setInterval(fetchStatus, interval)
 
@@ -187,6 +250,8 @@ export function useReconStatus({
     refetch: fetchStatus,
     startRecon,
     stopRecon,
+    pauseRecon,
+    resumeRecon,
   }
 }
 

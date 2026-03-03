@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid, Bot } from 'lucide-react'
-import { Toggle } from '@/components/ui'
+import { Sparkles, Play, Download, Loader2, Terminal, Settings, X, PanelLeft, Layout, LayoutGrid, Bot, ChevronDown, Swords, Crosshair, HardDrive, Flag, Square, Pause, PlayCircle } from 'lucide-react'
+import { Toggle, Menu, MenuItem } from '@/components/ui'
 import type { ReconStatus } from '@/lib/recon-types'
 import type { ViewMode, LayoutMode } from '@/hooks/usePanelLayout'
 import styles from './GraphToolbar.module.css'
@@ -25,9 +25,17 @@ interface GraphToolbarProps {
   subdomainList?: string[]
   // Recon props
   onStartRecon?: () => void
+  onStopRecon?: () => void
+  onPauseRecon?: () => void
+  onResumeRecon?: () => void
   onDownloadJSON?: () => void
   reconStatus?: ReconStatus
   hasReconData?: boolean
+  // Kill Chain actions
+  onViewAttackPaths?: () => void
+  onGeneratePayload?: () => void
+  onRecordPersistence?: () => void
+  onRecordAction?: () => void
 }
 
 export function GraphToolbar({
@@ -48,12 +56,22 @@ export function GraphToolbar({
   subdomainList = [],
   // Recon props
   onStartRecon,
+  onStopRecon,
+  onPauseRecon,
+  onResumeRecon,
   onDownloadJSON,
   reconStatus = 'idle',
   hasReconData = false,
+  // Kill Chain actions
+  onViewAttackPaths,
+  onGeneratePayload,
+  onRecordPersistence,
+  onRecordAction,
 }: GraphToolbarProps) {
   const router = useRouter()
-  const isReconRunning = reconStatus === 'running' || reconStatus === 'starting'
+  const isTestRunning = reconStatus === 'running' || reconStatus === 'starting'
+  const isTestPaused = reconStatus === 'paused'
+  const isTestActive = isTestRunning || isTestPaused
 
   const handleOpenSettings = () => {
     if (projectId) {
@@ -134,31 +152,112 @@ export function GraphToolbar({
 
       <div className={styles.spacer} />
 
-      {/* Recon Actions */}
+      {/* Launch Test & Controls */}
       {projectId && (
         <>
-          <button
-            className={`${styles.reconButton} ${isReconRunning ? styles.reconButtonActive : ''}`}
-            onClick={onStartRecon}
-            disabled={isReconRunning}
-            title={isReconRunning ? 'Recon in progress...' : 'Start Reconnaissance'}
-          >
-            {isReconRunning ? (
-              <Loader2 size={14} className={styles.spinner} />
-            ) : (
+          {isTestActive ? (
+            <div className={styles.testControlStrip}>
+              <div className={styles.testStatus}>
+                <span className={styles.testPulse} aria-hidden />
+                {isTestPaused ? (
+                  <>
+                    <Pause size={14} />
+                    <span>Test paused</span>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 size={14} className={styles.spinner} />
+                    <span>Test running…</span>
+                  </>
+                )}
+              </div>
+              <div className={styles.testActions}>
+                {isTestPaused && onResumeRecon && (
+                  <button
+                    type="button"
+                    className={styles.controlButton}
+                    onClick={onResumeRecon}
+                    title="Resume test"
+                    aria-label="Resume test"
+                  >
+                    <PlayCircle size={12} />
+                    <span>Resume</span>
+                  </button>
+                )}
+                {isTestRunning && onPauseRecon && (
+                  <button
+                    type="button"
+                    className={styles.controlButton}
+                    onClick={onPauseRecon}
+                    title="Pause test"
+                    aria-label="Pause test"
+                  >
+                    <Pause size={12} />
+                    <span>Pause</span>
+                  </button>
+                )}
+                {onStopRecon && (
+                  <button
+                    type="button"
+                    className={`${styles.controlButton} ${styles.controlButtonStop}`}
+                    onClick={onStopRecon}
+                    title="Stop test completely"
+                    aria-label="Stop test"
+                  >
+                    <Square size={12} />
+                    <span>Stop</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              className={styles.reconButton}
+              onClick={onStartRecon}
+              disabled={false}
+              title="Launch full cyber kill chain test (Stage 1: Reconnaissance)"
+            >
               <Play size={14} />
-            )}
-            <span>{isReconRunning ? 'Running...' : 'Start Recon'}</span>
-          </button>
+              <span>Launch Test</span>
+            </button>
+          )}
 
           <button
             className={styles.downloadButton}
             onClick={onDownloadJSON}
-            disabled={!hasReconData || isReconRunning}
+            disabled={!hasReconData || isTestActive}
             title={hasReconData ? 'Download Recon JSON' : 'No data available'}
           >
             <Download size={14} />
           </button>
+
+          <Menu
+            trigger={
+              <button
+                className={styles.actionsButton}
+                title="Kill Chain actions"
+                aria-label="Kill Chain actions"
+              >
+                <Swords size={14} />
+                <span>Actions</span>
+                <ChevronDown size={12} />
+              </button>
+            }
+            align="right"
+          >
+            <MenuItem icon={<Swords size={14} />} onClick={onViewAttackPaths}>
+              View Attack Paths
+            </MenuItem>
+            <MenuItem icon={<Crosshair size={14} />} onClick={onGeneratePayload}>
+              Generate Payload
+            </MenuItem>
+            <MenuItem icon={<HardDrive size={14} />} onClick={onRecordPersistence}>
+              Record Persistence
+            </MenuItem>
+            <MenuItem icon={<Flag size={14} />} onClick={onRecordAction}>
+              Record Action
+            </MenuItem>
+          </Menu>
 
           <div className={styles.divider} />
         </>

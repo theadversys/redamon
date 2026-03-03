@@ -207,16 +207,16 @@ def dns_lookup(hostname: str, max_retries: int = 3) -> dict:
     }
 
 
-def verify_domain_ownership(domain: str, token: str, txt_prefix: str = "_redamon-verify") -> dict:
+def verify_domain_ownership(domain: str, token: str, txt_prefix: str = "_pandaexploit-verify") -> dict:
     """
     Verify domain ownership via DNS TXT record.
 
-    Checks for a TXT record at {txt_prefix}.{domain} containing "redamon-verify={token}".
+    Checks for a TXT record at {txt_prefix}.{domain} containing "pandaexploit-verify={token}".
 
     Args:
         domain: Root domain to verify (e.g., "example.com")
         token: Expected ownership token
-        txt_prefix: DNS record prefix (default: "_redamon-verify")
+        txt_prefix: DNS record prefix (default: "_pandaexploit-verify")
 
     Returns:
         Dictionary with:
@@ -227,7 +227,7 @@ def verify_domain_ownership(domain: str, token: str, txt_prefix: str = "_redamon
         - error: Error message if verification failed
     """
     record_name = f"{txt_prefix}.{domain}"
-    expected_value = f"redamon-verify={token}"
+    expected_value = f"pandaexploit-verify={token}"
 
     result = {
         "verified": False,

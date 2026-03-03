@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { parseOutput } from '@/lib/ai-security/result-parser'
 import { getOutputPath } from '@/lib/ai-security/runner'
+import { scoreFinding, scoreSystem, aggregateByPlugin } from '@/lib/ai-security/risk-scoring'
 import neo4j from 'neo4j-driver'
 
 const driver = neo4j.driver(
@@ -34,7 +35,23 @@ export async function POST(_req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: `Failed to parse output: ${msg}` }, { status: 500 })
     }
 
-    // Save findings to Postgres
+    // Compute per-plugin aggregations for risk scoring
+    const pluginAggs = aggregateByPlugin(parsed.findings, parsed.totalTests)
+    const pluginScoreMap = new Map<string, number>()
+    for (const agg of pluginAggs) {
+      const rs = scoreFinding({
+        plugin: agg.pluginId,
+        severity: agg.severity,
+        totalTestsForPlugin: agg.totalTests,
+        failedTestsForPlugin: agg.failedTests,
+      })
+      pluginScoreMap.set(agg.pluginId, rs.total)
+    }
+
+    // System-level risk score
+    const systemScore = scoreSystem(pluginAggs)
+
+    // Save findings to Postgres with per-finding risk scores
     if (parsed.findings.length > 0) {
       await prisma.aIFinding.createMany({
         data: parsed.findings.map(f => ({
@@ -47,11 +64,12 @@ export async function POST(_req: Request, { params }: RouteParams) {
           response: f.response.slice(0, 10000),
           assertion: f.assertion,
           rawResult: f.rawResult as unknown as Prisma.InputJsonValue,
+          riskScore: pluginScoreMap.get(f.plugin) ?? null,
         })),
       })
     }
 
-    // Update scan record
+    // Update scan record with risk scores
     await prisma.aIScan.update({
       where: { id },
       data: {
@@ -59,17 +77,21 @@ export async function POST(_req: Request, { params }: RouteParams) {
         totalTests: parsed.totalTests,
         passedTests: parsed.passedTests,
         failedTests: parsed.failedTests,
+        systemRiskScore: systemScore.total,
+        riskBreakdown: systemScore as unknown as Prisma.InputJsonValue,
         completedAt: new Date(),
       },
     })
 
-    // Ingest into Neo4j
+    // Ingest into Neo4j (optional; ingest succeeds even if Neo4j is down)
+    let neo4jIngested = false
     if (parsed.findings.length > 0) {
-      const session = driver.session()
       try {
-        for (const f of parsed.findings) {
-          await session.run(
-            `
+        const session = driver.session()
+        try {
+          for (const f of parsed.findings) {
+            await session.run(
+              `
             MERGE (target:LLMTarget {url: $targetUrl})
             SET target.purpose = $purpose
 
@@ -81,6 +103,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
                 finding.severity = $severity,
                 finding.strategy = $strategy,
                 finding.category = $category,
+                finding.riskScore = $riskScore,
                 finding.prompt = $prompt
 
             MERGE (target)-[:SCANNED_BY]->(scan)
@@ -100,22 +123,27 @@ export async function POST(_req: Request, { params }: RouteParams) {
               MERGE (finding)-[:MAPS_TO]->(owasp)
             )
             `,
-            {
-              targetUrl: scan.targetUrl,
-              purpose: scan.purpose || '',
-              scanId: scan.id,
-              scanName: scan.name,
-              findingId: `${scan.id}-${f.plugin}-${parsed.findings.indexOf(f)}`,
-              plugin: f.plugin,
-              severity: f.severity,
-              strategy: f.strategy,
-              category: f.category,
-              prompt: f.prompt.slice(0, 2000),
-            },
-          )
+              {
+                targetUrl: scan.targetUrl,
+                purpose: scan.purpose || '',
+                scanId: scan.id,
+                scanName: scan.name,
+                findingId: `${scan.id}-${f.plugin}-${parsed.findings.indexOf(f)}`,
+                plugin: f.plugin,
+                severity: f.severity,
+                strategy: f.strategy,
+                category: f.category,
+                prompt: f.prompt.slice(0, 2000),
+                riskScore: pluginScoreMap.get(f.plugin) ?? 0,
+              },
+            )
+          }
+          neo4jIngested = true
+        } finally {
+          await session.close()
         }
-      } finally {
-        await session.close()
+      } catch (err) {
+        console.error('[ingest] Neo4j write failed:', err)
       }
     }
 
@@ -126,6 +154,9 @@ export async function POST(_req: Request, { params }: RouteParams) {
       passedTests: parsed.passedTests,
       failedTests: parsed.failedTests,
       findingsCount: parsed.findings.length,
+      systemRiskScore: systemScore.total,
+      riskLabel: systemScore.label,
+      neo4jIngested,
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
