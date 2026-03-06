@@ -13,6 +13,7 @@ export function ProjectSelector() {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { currentProject, setCurrentProject, userId } = useProject()
+  // Fetch all projects when userId is null (fallback so user can always select a project)
   const { data: projects } = useProjects(userId || undefined)
 
   // Close dropdown when clicking outside
@@ -92,11 +93,7 @@ export function ProjectSelector() {
           </div>
 
           <div className={styles.list}>
-            {!userId ? (
-              <div className={styles.empty}>
-                Select a user to view projects
-              </div>
-            ) : projects && projects.length > 0 ? (
+            {projects && projects.length > 0 ? (
               projects.map((project) => (
                 <button
                   key={project.id}
@@ -109,6 +106,10 @@ export function ProjectSelector() {
                   </div>
                 </button>
               ))
+            ) : !userId ? (
+              <div className={styles.empty}>
+                Select a user to view projects
+              </div>
             ) : (
               <div className={styles.empty}>
                 No projects yet

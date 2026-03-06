@@ -16,6 +16,37 @@
   padding: 0;
 }
 
+.navLi {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Group divider ── */
+.groupDivider {
+  display: flex;
+  align-items: center;
+  margin: 0 var(--space-2);
+  height: 32px;
+  position: relative;
+}
+.groupDivider::before {
+  content: '';
+  width: 1px;
+  height: 20px;
+  background: var(--glass-border);
+}
+.groupLabel {
+  position: absolute;
+  left: 6px;
+  bottom: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .navItem {
   display: flex;
   align-items: center;
@@ -30,6 +61,7 @@
   transition: all var(--duration-fast) var(--ease-smooth);
   cursor: pointer;
   position: relative;
+  white-space: nowrap;
 }
 
 .navItem:hover:not(.navItemDisabled) {
@@ -89,4 +121,13 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
+}
+
+/* Operations item always has a hint of crimson */
+.navLi:first-child .navItem:not(.navItemActive) {
+  color: rgba(229, 57, 53, 0.65);
+}
+.navLi:first-child .navItem:not(.navItemActive):hover {
+  color: var(--accent-primary);
+  background: rgba(229, 57, 53, 0.06);
 }

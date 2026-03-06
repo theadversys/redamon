@@ -34,6 +34,11 @@ model Project {
   ownershipToken              String   @default("your-secret-token-here") @map("ownership_token")
   ownershipTxtPrefix          String   @default("_pandaexploit-verify") @map("ownership_txt_prefix")
 
+  // ========== SCOPE MANAGEMENT ==========
+  scopeIpRanges               String[] @default([]) @map("scope_ip_ranges")        // CIDR blocks in scope e.g. ["10.0.0.0/8","192.168.1.0/24"]
+  excludedHosts               String[] @default([]) @map("excluded_hosts")          // Explicit exclusions (hostnames or IPs)
+  scopeNotes                  String   @default("") @map("scope_notes") @db.Text   // Free-text scope notes / rules of engagement
+
   // ========== SCAN MODULES ==========
   scanModules                 String[] @default(["domain_discovery", "port_scan", "http_probe", "resource_enum", "vuln_scan"]) @map("scan_modules")
   passiveReconOnly            Boolean  @default(false) @map("passive_recon_only")
@@ -280,6 +285,7 @@ model Project {
   agentOperatingMode                     String   @default("guided") @map("agent_operating_mode")
 
   reconSchedules ReconSchedule[]
+  killChainRuns  KillChainRun[]
 
   @@map("projects")
 }
@@ -422,3 +428,423 @@ model AIScanSchedule {
   @@map("ai_scan_schedules")
 }
 
+// ========== VULNERABILITY FINDING STATE (Phase 3) ==========
+
+model FindingState {
+  id                    String    @id @default(cuid())
+  projectId             String    @map("project_id")
+  vulnId                String    @map("vuln_id")  // legacy; for new records set = findingKey
+  findingKey            String?   @map("finding_key")  // stable join key from Neo4j (preferred for join)
+  status                String    @default("open") // open | in_progress | fixed | verified | risk_accepted | false_positive
+  ownerId               String?   @map("owner_id")
+  watcherIds            String[]  @default([]) @map("watcher_ids")
+  firstSeenAt           DateTime? @map("first_seen_at")
+  lastSeenAt            DateTime? @map("last_seen_at")
+  targetDueAt           DateTime? @map("target_due_at")
+  overdue               Boolean   @default(false) @map("overdue")
+  // Risk acceptance
+  riskReason            String?   @map("risk_reason") @db.Text
+  riskApproverId        String?   @map("risk_approver_id")
+  riskExpiresAt         DateTime? @map("risk_expires_at")
+  riskReviewRequired    Boolean   @default(false) @map("risk_review_required")
+  // False positive
+  fpReason              String?   @map("fp_reason") @db.Text
+  fpEvidenceRef         String?   @map("fp_evidence_ref")
+  // Verification (fixed -> verified)
+  verificationRunId     String?   @map("verification_run_id")
+  verificationProofRef  String?   @map("verification_proof_ref")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  updatedById           String?   @map("updated_by_id")
+
+  comments    FindingComment[]
+  auditLogs   FindingAuditLog[]
+  ticket      FindingTicket?
+  retestRuns  RetestRun[]
+
+  @@unique([projectId, vulnId])
+  @@index([projectId, findingKey])
+  @@index([projectId])
+  @@index([status])
+  @@index([overdue])
+  @@index([targetDueAt])
+  @@map("finding_states")
+}
+
+model FindingComment {
+  id             String          @id @default(cuid())
+  findingStateId String         @map("finding_state_id")
+  findingState   FindingState   @relation(fields: [findingStateId], references: [id], onDelete: Cascade)
+  authorId       String         @map("author_id")
+  body           String         @db.Text
+  parentId       String?        @map("parent_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([findingStateId])
+  @@map("finding_comments")
+}
+
+model FindingAuditLog {
+  id            String       @id @default(cuid())
+  findingStateId String      @map("finding_state_id")
+  findingState  FindingState @relation(fields: [findingStateId], references: [id], onDelete: Cascade)
+  actorId       String       @map("actor_id")
+  action        String       // status_change | owner_change | risk_accepted | false_positive | verified
+  fromValue     String?      @map("from_value")
+  toValue       String?      @map("to_value")
+  metadata      Json?        // extra context
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([findingStateId])
+  @@index([createdAt])
+  @@map("finding_audit_logs")
+}
+
+model FindingTicket {
+  id            String       @id @default(cuid())
+  findingStateId String      @unique @map("finding_state_id")
+  findingState  FindingState @relation(fields: [findingStateId], references: [id], onDelete: Cascade)
+  provider      String       // jira | github | servicenow
+  ticketId      String       @map("ticket_id")
+  ticketUrl     String       @map("ticket_url")
+  status        String?      // synced status from provider
+  lastSyncAt    DateTime?   @map("last_sync_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([findingStateId])
+  @@map("finding_tickets")
+}
+
+model RetestRun {
+  id            String       @id @default(cuid())
+  findingStateId String      @map("finding_state_id")
+  findingState  FindingState @relation(fields: [findingStateId], references: [id], onDelete: Cascade)
+  status        String       // running | still_vulnerable | no_longer_detected
+  proofRef      String?      @map("proof_ref")
+  runAt         DateTime     @default(now()) @map("run_at")
+  metadata      Json?        // scan id, etc.
+
+  @@index([findingStateId])
+  @@map("retest_runs")
+}
+
+model SavedView {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  projectId   String   @map("project_id")
+  name        String   // Exec view | Dev triage | Overdue | Newly discovered | Risk accepted expiring soon
+  filterJson  Json     @map("filter_json") // { severity?, status?, asset?, source?, ... }
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, projectId, name])
+  @@index([userId, projectId])
+  @@map("saved_views")
+}
+
+// =============================================================================
+// Kill Chain Run Persistence
+// =============================================================================
+// Stores the state of each kill chain run so it can survive container restarts.
+// The kill chain orchestrator reads/writes this table via the webapp API.
+
+model KillChainRun {
+  id              String    @id @default(cuid())
+  projectId       String    @map("project_id")
+  userId          String    @map("user_id")
+  status          String    @default("idle")   // idle | starting | running | paused | completed | error
+  currentStage    Int       @default(1)         @map("current_stage")
+  currentSubStep  String?   @map("current_sub_step")
+  startStage      Int       @default(1)         @map("start_stage")
+  // JSON blobs for attack path and payload info passed between stages
+  selectedAttackPath  Json? @map("selected_attack_path")
+  payloadRef          Json? @map("payload_ref")
+  sessionObtained     Boolean @default(false)   @map("session_obtained")
+  error           String?
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now())     @map("created_at")
+  updatedAt       DateTime  @updatedAt          @map("updated_at")
+
+  // Engagement metadata — editable by the operator post-run
+  name            String?                         // e.g. "Q1 External Pentest"
+  notes           String?                         // Markdown operator notes
+  tags            String[]  @default([])          @map("tags")
+  stagesCompleted Int[]     @default([])          @map("stages_completed")
+  duration        Int?                            // total seconds from start to complete
+
+  // HITL (Human-in-the-Loop) state
+  waitingForOperator  Boolean @default(false)     @map("waiting_for_operator")
+  operatorBriefing    Json?                       @map("operator_briefing")  // current stage briefing shown to operator
+
+  logs            KillChainLog[]
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@map("kill_chain_runs")
+}
+
+/// Persisted log lines from a kill chain run — archived at run completion/error
+model KillChainLog {
+  id          String    @id @default(cuid())
+  runId       String    @map("run_id")
+  projectId   String    @map("project_id")
+  stage       Int
+  stageName   String    @map("stage_name")
+  subStep     String?   @map("sub_step")
+  level       String    @default("info")  // info | success | error | action | warning
+  log         String
+  toolName    String?   @map("tool_name")
+  metadata    Json?
+  timestamp   DateTime
+
+  run         KillChainRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([projectId])
+  @@index([runId, stage])
+  @@map("kill_chain_logs")
+}
+
+
+// =============================================================================
+// Agent Swarm — Multi-Agent Orchestration
+// =============================================================================
+
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  WAITING_FOR_HITL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum SwarmStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+/// Represents a reusable agent profile — its identity, model, system prompt, skills and MCP tools.
+model AgentProfile {
+  id              String   @id @default(cuid())
+  slug            String   @unique          // "recon-specialist"
+  name            String                    // "Recon Specialist"
+  description     String
+  icon            String   @default("bot")  // lucide icon name or emoji
+  color           String   @default("#6366f1") // brand color hex
+  tags            String[]                  // ["recon","osint","passive"]
+  systemPrompt    String   @db.Text         // injected into agent.json context field
+  promptFiles     Json     @default("{}")   // { "system.md": "content..." }
+  modelProvider   String   @default("anthropic")
+  modelName       String   @default("claude-opus-4-5")
+  utilModelName   String   @default("claude-haiku-4-5")
+  mcpTools        String[]                  // tool IDs: ["spiderfoot","nmap","curl"]
+  skills          String[]                  // skill pack names: ["PandaExploit","SpiderFoot"]
+  memoryRecall    Boolean  @default(true)
+  isBuiltin       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  runCount        Int      @default(0)
+  successCount    Int      @default(0)
+  createdAt       DateTime @default(now())  @map("created_at")
+  updatedAt       DateTime @updatedAt       @map("updated_at")
+
+  runs            AgentRun[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("agent_profiles")
+}
+
+/// One execution of an agent for a specific task.
+model AgentRun {
+  id          String         @id @default(cuid())
+  profileId   String         @map("profile_id")
+  profile     AgentProfile   @relation(fields: [profileId], references: [id])
+  projectId   String?        @map("project_id")
+  swarmJobId  String?        @map("swarm_job_id")
+  swarmJob    SwarmJob?      @relation(fields: [swarmJobId], references: [id])
+  task        String         @db.Text
+  status      AgentRunStatus @default(QUEUED)
+  result      String?        @db.Text
+  logs        Json?          // [{ timestamp, level, message, tool }]
+  a0ContextId String?        @map("a0_context_id")  // Agent Zero context ID
+  startedAt   DateTime?      @map("started_at")
+  completedAt DateTime?      @map("completed_at")
+  durationMs  Int?           @map("duration_ms")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([profileId])
+  @@index([status])
+  @@index([projectId])
+  @@map("agent_runs")
+}
+
+/// A multi-stage swarm job that coordinates multiple agent runs.
+model SwarmJob {
+  id             String      @id @default(cuid())
+  name           String
+  projectId      String?     @map("project_id")
+  orchestratorId String      @map("orchestrator_id")  // AgentProfile.id
+  stages         Json        // [{ stage, profileId, task, dependsOn }]
+  parallelism    Int         @default(2)
+  hitlCheckpoints String[]   @map("hitl_checkpoints")  // stage IDs requiring approval
+  status         SwarmStatus @default(PENDING)
+  startedAt      DateTime?   @map("started_at")
+  completedAt    DateTime?   @map("completed_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt      @map("updated_at")
+
+  runs           AgentRun[]
+
+  @@index([status])
+  @@index([projectId])
+  @@map("swarm_jobs")
+}
+
+enum MobilePlatform {
+  ANDROID
+  IOS
+  WINDOWS
+}
+
+enum MobileScanStatus {
+  UPLOADING
+  SCANNING
+  COMPLETE
+  FAILED
+}
+
+model MobileScan {
+  id              String           @id @default(cuid())
+  projectId       String?          @map("project_id")
+  mobileProjectId String?          @map("mobile_project_id")
+  appName         String           @map("app_name")
+  packageName     String?          @map("package_name")
+  version         String?
+  platform        MobilePlatform
+  fileName        String           @map("file_name")
+  fileSize        Int?             @map("file_size")
+  mobsfHash       String?          @map("mobsf_hash")
+  status          MobileScanStatus @default(UPLOADING)
+  score           Int?
+  grade           String?
+  findings        Json?
+  scorecard       Json?
+  cveData         Json?            @map("cve_data")
+  agentRunId      String?          @map("agent_run_id")
+  startedAt       DateTime?        @map("started_at")
+  completedAt     DateTime?        @map("completed_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt      @map("updated_at")
+
+  mobileProject   MobileProject?   @relation(fields: [mobileProjectId], references: [id])
+
+  @@index([projectId])
+  @@index([mobileProjectId])
+  @@index([status])
+  @@index([platform])
+  @@map("mobile_scans")
+}
+
+model MobileProject {
+  id              String         @id @default(cuid())
+  userId          String?        @map("user_id")
+  name            String
+  description     String?        @db.Text
+  platform        MobilePlatform
+  targetUrl       String?        @map("target_url")
+  appStoreUrl     String?        @map("app_store_url")
+  bundleId        String?        @map("bundle_id")
+  testingTypes    String[]       @map("testing_types")
+  agentEnabled    Boolean        @default(true) @map("agent_enabled")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  scans           MobileScan[]
+  runs            MobileRun[]
+
+  @@index([userId])
+  @@map("mobile_projects")
+}
+
+model MobileRun {
+  id                 String          @id @default(cuid())
+  projectId          String          @map("project_id")
+  status             String          @default("idle")
+  currentStage       Int             @default(1) @map("current_stage")
+  currentSubStep     String?         @map("current_sub_step")
+  startStage         Int             @default(1) @map("start_stage")
+  stagesCompleted    Int[]           @map("stages_completed")
+  startedAt          DateTime?       @map("started_at")
+  completedAt        DateTime?       @map("completed_at")
+  duration           Int?
+  mobsfHash          String?         @map("mobsf_hash")
+  mobileScanId       String?         @map("mobile_scan_id")
+  waitingForOperator Boolean         @default(false) @map("waiting_for_operator")
+  operatorBriefing   Json?           @map("operator_briefing")
+  name               String?
+  notes              String?         @db.Text
+  tags               String[]
+  error              String?         @db.Text
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  project            MobileProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs               MobileRunLog[]
+
+  @@index([projectId])
+  @@index([status])
+  @@map("mobile_runs")
+}
+
+model MobileRunLog {
+  id        String    @id @default(cuid())
+  runId     String    @map("run_id")
+  stage     Int
+  stageName String    @map("stage_name")
+  subStep   String?   @map("sub_step")
+  level     String
+  log       String    @db.Text
+  toolName  String?   @map("tool_name")
+  metadata  Json?
+  timestamp DateTime  @default(now())
+
+  run       MobileRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([runId, stage])
+  @@map("mobile_run_logs")
+}
+
+enum ComplianceFramework {
+  OWASP_MOBILE
+  GDPR
+  PCI_DSS
+  HIPAA
+  SOC2
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  PARTIAL
+  NON_COMPLIANT
+}
+
+model ComplianceReport {
+  id            String              @id @default(cuid())
+  mobileScanId  String              @map("mobile_scan_id")
+  framework     ComplianceFramework
+  score         Int                 // 0-100 % controls passing
+  status        ComplianceStatus
+  controls      Json                // ControlResult[]
+  summary       String              @db.Text
+  generatedAt   DateTime            @default(now()) @map("generated_at")
+
+  @@index([mobileScanId])
+  @@index([framework])
+  @@map("compliance_reports")
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { GlobalHeader } from '../GlobalHeader'
-import { NavigationBar } from '../NavigationBar'
+import { SideNav } from '../SideNav'
 import { Footer } from '../Footer'
 import styles from './AppLayout.module.css'
 
@@ -12,10 +12,12 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className={styles.layout}>
-      <GlobalHeader />
-      <NavigationBar />
-      <main className={styles.main}>{children}</main>
-      <Footer />
+      <SideNav />
+      <div className={styles.rightCol}>
+        <GlobalHeader />
+        <main className={styles.main}>{children}</main>
+        <Footer />
+      </div>
     </div>
   )
 }

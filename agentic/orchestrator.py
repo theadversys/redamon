@@ -119,6 +119,7 @@ class AgentOrchestrator:
         self._initialized = False
         self._streaming_callback = None  # Set during invoke_with_streaming
         self._guidance_queue = None  # Set during invoke_with_streaming
+        self._engagement_brief = None  # Set during invoke_with_streaming (live engagement context)
 
     async def initialize(self) -> None:
         """Initialize tools and graph (LLM setup deferred until project_id is known)."""
@@ -935,6 +936,11 @@ class AgentOrchestrator:
             info_to_expl_behavior=info_to_expl_behavior,
             expl_to_postexpl_behavior=expl_to_postexpl_behavior,
         )
+
+        # Inject live engagement brief (if provided at session init)
+        engagement_brief = getattr(self, '_engagement_brief', None)
+        if engagement_brief:
+            system_prompt = engagement_brief + "\n\n" + system_prompt
 
         # CHECK: Is there a pending tool output to analyze?
         # When execute_tool ran before this think node, _current_step has tool_output but no output_analysis yet
@@ -2295,7 +2301,8 @@ class AgentOrchestrator:
         session_id: str,
         streaming_callback,
         guidance_queue=None,
-        operating_mode_override: Optional[str] = None
+        operating_mode_override: Optional[str] = None,
+        engagement_brief: Optional[str] = None
     ) -> InvokeResponse:
         """
         Invoke agent with streaming callbacks for real-time updates.
@@ -2323,6 +2330,8 @@ class AgentOrchestrator:
         # Store streaming callback and guidance queue for use in nodes
         self._streaming_callback = streaming_callback
         self._guidance_queue = guidance_queue
+        # Store engagement brief for injection into system prompts
+        self._engagement_brief = engagement_brief
 
         try:
             config = create_config(user_id, project_id, session_id, operating_mode_override)

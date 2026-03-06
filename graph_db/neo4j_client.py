@@ -55,6 +55,54 @@ def sanitize_raw_output(raw: str | None) -> str:
 load_dotenv(Path(__file__).parent / ".env")
 
 
+def _confidence_from_finding(source: str, cvss_score: float | None, tool_name: str | None) -> str:
+    """Derive confidence from source and CVSS (high/med/low)."""
+    cvss = cvss_score or 0
+    if source == "nuclei" and cvss >= 7:
+        return "high"
+    if source in ("gvm", "nuclei"):
+        return "med"
+    if source == "custom":
+        return "low"
+    return "med"  # default for security_check, nikto, sqlmap
+
+
+def _stable_suffix(data: str, mod: int = 10000) -> int:
+    """Deterministic suffix from string (replaces hash() which is not stable in Python 3)."""
+    return int(hashlib.sha256(data.encode()).hexdigest()[:8], 16) % mod
+
+
+def _compute_finding_key(
+    project_id: str,
+    rule_id: str,
+    path_pattern: str,
+    param: str | None = None,
+) -> str:
+    """
+    Compute stable finding_key for join across Neo4j and Postgres.
+    SHA-256, first 16 bytes (32 hex chars), no timestamps.
+    Derived from: project_id + rule_id + normalized path + param.
+    """
+    path_norm = (path_pattern or "/").strip().lower()
+    param_norm = (param or "").strip().lower()
+    canonical = f"{project_id}|{rule_id}|{path_norm}|{param_norm}"
+    return hashlib.sha256(canonical.encode()).hexdigest()[:32].lower()
+
+
+def _compute_instance_id(
+    project_id: str,
+    finding_key: str,
+    asset_key: str,
+    endpoint_key: str,
+) -> str:
+    """
+    Compute instance_id for a specific occurrence (asset+endpoint).
+    Used for evidence and timeline.
+    """
+    canonical = f"{project_id}|{finding_key}|{asset_key}|{endpoint_key}"
+    return hashlib.sha256(canonical.encode()).hexdigest()[:32].lower()
+
+
 def _is_ip_address(host: str) -> bool:
     """Check if a string is an IP address (IPv4 or IPv6)."""
     if not host:
@@ -110,6 +158,11 @@ class Neo4jClient:
         ]
 
         # Tenant composite indexes
+        # ScanRun index for timeline queries
+        scanrun_indexes = [
+            "CREATE INDEX idx_scanrun_tenant IF NOT EXISTS FOR (s:ScanRun) ON (s.project_id, s.user_id)",
+        ]
+
         tenant_indexes = [
             "CREATE INDEX idx_domain_tenant IF NOT EXISTS FOR (d:Domain) ON (d.user_id, d.project_id)",
             "CREATE INDEX idx_subdomain_tenant IF NOT EXISTS FOR (s:Subdomain) ON (s.user_id, s.project_id)",
@@ -138,6 +191,7 @@ class Neo4jClient:
             "CREATE INDEX vuln_severity IF NOT EXISTS FOR (v:Vulnerability) ON (v.severity)",
             "CREATE INDEX vuln_category IF NOT EXISTS FOR (v:Vulnerability) ON (v.category)",
             "CREATE INDEX vuln_template IF NOT EXISTS FOR (v:Vulnerability) ON (v.template_id)",
+            "CREATE INDEX idx_vuln_project IF NOT EXISTS FOR (v:Vulnerability) ON (v.project_id)",
             # Parameter indexes
             "CREATE INDEX param_injectable IF NOT EXISTS FOR (p:Parameter) ON (p.is_injectable)",
             # CVE indexes
@@ -153,7 +207,7 @@ class Neo4jClient:
             "CREATE INDEX idx_exploit_type IF NOT EXISTS FOR (e:Exploit) ON (e.attack_type)",
         ]
 
-        for query in constraints + tenant_indexes + additional_indexes:
+        for query in constraints + scanrun_indexes + tenant_indexes + additional_indexes:
             try:
                 session.run(query)
             except Exception as e:
@@ -1407,6 +1461,30 @@ class Neo4jClient:
             discovered_urls = vuln_scan_data.get("discovered_urls", {})
             by_target = vuln_scan_data.get("by_target", {})
 
+            # Create ScanRun node for timeline (one per vuln scan execution)
+            scan_timestamp = scan_metadata.get("scan_timestamp") or datetime.utcnow().isoformat()
+            tool = scan_metadata.get("tool", "nuclei")
+            scan_run_input = f"{project_id}|{scan_timestamp}|{tool}"
+            scan_run_id = f"scan-{hashlib.sha256(scan_run_input.encode()).hexdigest()[:24]}"
+            scan_run_props = {
+                "project_id": project_id,
+                "user_id": user_id,
+                "tool": tool,
+                "started_at": scan_timestamp,
+                "finished_at": scan_timestamp,
+                "status": "completed",
+            }
+            session.run(
+                """
+                MERGE (s:ScanRun {id: $scan_run_id})
+                ON CREATE SET s += $props, s.created_at = datetime()
+                SET s.updated_at = datetime()
+                """,
+                scan_run_id=scan_run_id,
+                props=scan_run_props,
+            )
+            stats["relationships_created"] += 1
+
             # Track created endpoints and parameters for deduplication
             created_endpoints = set()  # (baseurl, path, method)
             created_parameters = set()  # (endpoint_path, param_name, param_position)
@@ -1536,11 +1614,13 @@ class Neo4jClient:
                         raw_info = raw.get("info", {})
                         raw_metadata = raw_info.get("metadata", {})
 
-                        # Generate unique vulnerability ID
+                        # Generate stable vulnerability ID (deterministic across re-ingests)
                         template_id = finding.get("template_id", "unknown")
                         matched_at = finding.get("matched_at", "")
                         fuzzing_param = raw.get("fuzzing_parameter", "")
-                        vuln_id = f"{template_id}-{target_host}-{fuzzing_param}-{hash(matched_at) % 10000}"
+                        host_canonical = (target_host or "").split(":")[0].lower()
+                        canonical = f"{template_id}|{matched_at}|{host_canonical}|{fuzzing_param}"
+                        vuln_id = f"{template_id}-{host_canonical}-{fuzzing_param}-{_stable_suffix(canonical)}"
 
                         # Extract path from matched_at URL
                         from urllib.parse import urlparse
@@ -1548,6 +1628,15 @@ class Neo4jClient:
                         vuln_path = matched_parsed.path or "/"
                         vuln_scheme = matched_parsed.scheme or "http"
                         vuln_host = matched_parsed.netloc or target_host
+
+                        # Compute stable finding_key for Postgres join (no host/timestamp)
+                        rule_id = template_id or finding.get("name", "unknown")
+                        finding_key = _compute_finding_key(
+                            project_id=project_id,
+                            rule_id=rule_id,
+                            path_pattern=vuln_path,
+                            param=fuzzing_param,
+                        )
 
                         # Also check if matched_at URL host is in scope
                         vuln_host_only = vuln_host.split(":")[0] if ":" in vuln_host else vuln_host
@@ -1563,10 +1652,12 @@ class Neo4jClient:
                         # Create Vulnerability node with all fields
                         vuln_props = {
                             "id": vuln_id,
+                            "finding_key": finding_key,
                             "user_id": user_id,
                             "project_id": project_id,
                             "source": finding_source,  # CRITICAL: Set source for filtering
                             "template_id": template_id,
+                            "rule_id": rule_id,
                             "template_path": finding.get("template_path"),
                             "template_url": raw.get("template-url"),
                             "name": finding.get("name"),
@@ -1620,6 +1711,13 @@ class Neo4jClient:
 
                             # Tool name (for custom/A0 tools: dirb, hydra, etc.)
                             "tool_name": finding.get("tool_name"),
+
+                            # Confidence (derived from source + CVSS for UI)
+                            "confidence": _confidence_from_finding(
+                                finding_source,
+                                finding.get("cvss_score"),
+                                finding.get("tool_name"),
+                            ),
                         }
 
                         # Remove None values
@@ -1665,6 +1763,9 @@ class Neo4jClient:
                                 e.created_at = datetime()
                             WITH v, e
                             MERGE (v)-[:HAS_EVIDENCE]->(e)
+                            WITH e
+                            MATCH (s:ScanRun {id: $scan_run_id})
+                            MERGE (e)-[:OBSERVED_IN]->(s)
                             """,
                             vuln_id=vuln_id, evidence_id=evidence_id,
                             project_id=project_id, user_id=user_id,
@@ -1673,6 +1774,7 @@ class Neo4jClient:
                             severity_val=severity_val or None,
                             fuzzing_param=fuzzing_param or None,
                             summary=summary, raw_output=raw_output_sanitized,
+                            scan_run_id=scan_run_id,
                         )
                         stats["relationships_created"] += 1
 
@@ -1958,8 +2060,8 @@ class Neo4jClient:
                         status_code = check.get("status_code")
                         content_length = check.get("content_length")
 
-                        # Generate unique vulnerability ID
-                        vuln_id = f"sec_{check_type}_{ip_address}_{hash(url) % 10000}"
+                        # Generate stable vulnerability ID
+                        vuln_id = f"sec_{check_type}_{ip_address}_{_stable_suffix(url)}"
 
                         # Human-readable names for check types
                         check_names = {
@@ -1987,6 +2089,7 @@ class Neo4jClient:
                             "matched_ip": ip_address,
                             "template_id": None,
                             "is_dast_finding": False,
+                            "confidence": "med",
                         }
 
                         if evidence:
@@ -2116,9 +2219,9 @@ class Neo4jClient:
                     missing_header = finding.get("missing_header")
                     port = finding.get("port")
 
-                    # Generate unique vulnerability ID
+                    # Generate stable vulnerability ID
                     unique_key = f"{finding_type}_{url}_{matched_ip or hostname or ''}"
-                    vuln_id = f"seccheck_{finding_type}_{hash(unique_key) % 100000}"
+                    vuln_id = f"seccheck_{finding_type}_{_stable_suffix(unique_key, 100000)}"
 
                     # Create Vulnerability node
                     vuln_props = {
@@ -2133,6 +2236,7 @@ class Neo4jClient:
                         "url": url,
                         "matched_at": url,
                         "is_dast_finding": False,
+                        "confidence": "med",
                     }
 
                     if matched_ip:
@@ -2826,6 +2930,8 @@ class Neo4jClient:
                             "source": "gvm",
                             "scanner": "OpenVAS",
                             "scan_timestamp": scan_timestamp,
+                            "confidence": _confidence_from_finding("gvm", cvss_score, None),
+                            "discovered_at": scan_timestamp,
                         }
 
                         # Remove None values

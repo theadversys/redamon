@@ -58,6 +58,7 @@ from recon.http_probe import run_http_probe
 from recon.resource_enum import run_resource_enum
 from recon.vuln_scan import run_vuln_scan
 from recon.add_mitre import run_mitre_enrichment
+from recon.passive_recon import run_passive_recon
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent / "output"
@@ -1024,6 +1025,18 @@ def main():
                 print(f"[!] GitHub graph update failed: {e}")
     else:
         print("\n[*] GitHub Secret Hunt: SKIPPED (add 'github' to SCAN_MODULES to enable)")
+
+    # Phase 4: Passive Recon — Shodan & Censys (gated by API keys in env)
+    domain_result = run_passive_recon(
+        domain_result,
+        target=root_domain,
+        output_file=output_file,
+        settings=_settings,
+    )
+
+    # Phase 5: SpiderFoot OSINT scan is now triggered by the recon orchestrator
+    # (container_manager.py) and runs concurrently via IntelligenceBridge.
+    # Results are ingested into Neo4j in real-time — no synchronous phase needed here.
 
     # Final summary
     end_time = datetime.now()

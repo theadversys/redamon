@@ -2,7 +2,7 @@
  * Types for Recon Process Management
  */
 
-export type ReconStatus = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'stopping'
+export type ReconStatus = 'idle' | 'starting' | 'running' | 'paused' | 'waiting_for_operator' | 'completed' | 'error' | 'stopping'
 
 export interface ReconState {
   project_id: string

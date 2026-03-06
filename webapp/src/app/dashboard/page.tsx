@@ -137,7 +137,7 @@ export default function DashboardPage() {
                 <div className={styles.titleSection}>
                     <div className={styles.statusPulse} style={{ backgroundColor: riskLevel.color, boxShadow: `0 0 10px ${riskLevel.glow}` }} />
                     <div>
-                        <h1>Tactical Overview</h1>
+                        <h1>Command Center</h1>
                         <p className={styles.subtitle}>
                             Operational Status: <span style={{ color: riskLevel.color }}>{riskLevel.label}</span> • Project: {project?.name || '...'}
                         </p>

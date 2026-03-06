@@ -6,6 +6,7 @@ import styles from './RecordActionModal.module.css'
 
 const ACTION_TYPES = [
   'exfil',
+  'recon',
   'lateral_movement',
   'objective',
   'privilege_escalation',
@@ -121,7 +122,7 @@ export function RecordActionModal({
           />
         </div>
         <div className={styles.field}>
-          <label>Session ID (optional)</label>
+          <label>Session ID (optional, Metasploit session number)</label>
           <input
             type="text"
             value={sessionIdInput}

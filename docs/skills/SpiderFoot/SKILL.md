@@ -158,3 +158,47 @@ SpiderFoot scans take time. Use this pattern:
 - **Results persist** — SpiderFoot stores results in its database. Use `osint_list_scans` to find past scans.
 - **Cleanup** — Call `osint_stop_scan(scan_id)` when done to free resources for long-running scans
 - **Rate limiting** — SpiderFoot handles its own rate limiting per module. No need to throttle.
+
+## Kill Chain Integration
+
+SpiderFoot is now automatically triggered as part of **Kill Chain Stage 1 (Reconnaissance)**.
+
+When `start_kill_chain()` is called:
+1. The recon orchestrator starts active scanning (naabu, httpx, nuclei) AND launches a SpiderFoot scan concurrently
+2. SpiderFoot runs `usecase="all"` — maximum coverage
+3. The IntelligenceBridge polls SpiderFoot events every 30 seconds and ingests them into Neo4j in real-time
+4. Kill chain log stream shows SpiderFoot status updates (RUNNING → FINISHED + risk matrix)
+5. At Stage 2 (Weaponization), SpiderFoot-discovered leaked credentials, CVEs, and cloud assets are surfaced to inform attack path selection
+
+**You do NOT need to call `osint_scan()` manually before running the kill chain** — it happens automatically.
+
+### What Gets Ingested into Neo4j from SpiderFoot
+
+| Neo4j Node Type | SpiderFoot Events |
+|----------------|-------------------|
+| `Subdomain` | INTERNET_NAME, INTERNET_NAME_UNRESOLVED |
+| `IP` | IP_ADDRESS, DNS_A_RECORD |
+| `Email` | EMAILADDR |
+| `LeakedCredential` | EMAILADDR_COMPROMISED, PASSWORD_COMPROMISED, HASH_COMPROMISED |
+| `OpenPort` | TCP_PORT_OPEN, UDP_PORT_OPEN |
+| `Vulnerability` | VULNERABILITY_CVE_CRITICAL/HIGH/MEDIUM/LOW |
+| `CloudAsset` | CLOUD_STORAGE_OBJECT |
+| `Certificate` | SSL_CERTIFICATE_ISSUED |
+| `Finding` | SSL_CERTIFICATE_MISMATCH, SSL_CERTIFICATE_EXPIRED |
+| `SocialProfile` | SOCIAL_MEDIA |
+
+### Get OSINT Summary for a Project
+
+To see what SpiderFoot found for a project during kill chain:
+```
+GET /api/graph/osint-summary?projectId=<id>
+```
+Returns counts and samples of all SpiderFoot-sourced nodes in the graph.
+
+### Use OSINT Independently (Standalone)
+
+If you want to run OSINT outside the kill chain for a specific target:
+1. `osint_scan("target.com", usecase="all")` — start scan
+2. `osint_scan_status(scan_id)` — poll every 30s
+3. `osint_scan_summary(scan_id)` — review findings
+4. Results from standalone scans are **not automatically ingested into Neo4j** — use pandaexploit MCP ingest tools or report them directly.

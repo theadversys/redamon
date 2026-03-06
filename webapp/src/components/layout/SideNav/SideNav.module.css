@@ -1,0 +1,235 @@
+/* ═══════════════════════════════════════════════
+   SideNav — Left Sidebar Navigation
+   ═══════════════════════════════════════════════ */
+
+.sidebar {
+  --sidebar-w: 220px;
+  --sidebar-w-collapsed: 56px;
+
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--nav-bg, var(--bg-primary));
+  border-right: 1px solid var(--glass-border);
+  flex-shrink: 0;
+  transition: width 250ms ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 20;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-w-collapsed);
+}
+
+/* ── Header ───────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.logoImg {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+}
+
+.logoAccent {
+  color: var(--accent-primary);
+  text-shadow: 0 0 24px var(--color-crimson-glow-20);
+}
+
+/* ── Nav ──────────────────────────────────────── */
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-2) 0;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Group Header ─────────────────────────────── */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.groupLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.groupDot {
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--glass-border);
+  margin: 0 auto;
+}
+
+/* ── Nav Item ─────────────────────────────────── */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-2) var(--space-3);
+  margin: 1px var(--space-1-5);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-smooth),
+              color var(--duration-fast) var(--ease-smooth);
+  border-left: 2px solid transparent;
+}
+
+.navItem:hover:not(.disabled) {
+  background: var(--glass-bg-light);
+  color: var(--text-primary);
+}
+
+.navItem.active {
+  background: linear-gradient(90deg, var(--color-crimson-glow-08, rgba(229,57,53,0.08)) 0%, transparent 100%);
+  color: var(--accent-primary);
+  border-left-color: var(--accent-primary);
+}
+
+.navItem.active .icon {
+  color: var(--accent-primary);
+  filter: drop-shadow(0 0 4px var(--color-crimson-glow-20));
+}
+
+.navItem.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Icon ─────────────────────────────────────── */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+}
+
+/* ── Label ────────────────────────────────────── */
+.label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Coming Soon Badge ────────────────────────── */
+.soon {
+  font-size: 9px;
+  padding: 1px 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+/* ── Tooltip (collapsed mode) ─────────────────── */
+.sidebar.collapsed .navItem[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(var(--sidebar-w-collapsed) - 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-secondary, #1a1a2e);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 100;
+}
+
+.sidebar.collapsed .navItem[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* ── Collapse Button ──────────────────────────── */
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-smooth),
+              color var(--duration-fast) var(--ease-smooth);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.collapseBtn:hover {
+  background: var(--glass-bg-light);
+  color: var(--text-primary);
+}
+
+.collapseBtnLabel {
+  white-space: nowrap;
+}

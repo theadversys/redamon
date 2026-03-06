@@ -48,7 +48,8 @@ Create a new project for https://ginandjuice.shop/ and run a full Cyber Kill Cha
 
 ## Notes
 
+- **Automated option:** Use `start_kill_chain(project_id)` to run all 7 stages automatically (same as Launch Test in the UI). Logs stream via the Graph Map.
 - **BlackArch MCP URL:** `http://66.228.39.20:8080/sse` (Linode)
 - **Kali MCP:** Internal Docker network (`kali-sandbox:8000-8009`)
-- **PandaExploit MCP:** Project creation, graph ingest, payload generation, record_persistence, record_action
-- See [TOOL_ROUTING_STRATEGY.md](TOOL_ROUTING_STRATEGY.md) and [blackarch-offensive-tools-table.md](blackarch-offensive-tools-table.md) for full tool reference.
+- **PandaExploit MCP:** Project creation, graph ingest, payload generation, record_persistence, record_action, start_kill_chain
+- See [AGENT_ZERO_SETUP.md](AGENT_ZERO_SETUP.md) for kill chain env vars and [TOOL_ROUTING_STRATEGY.md](TOOL_ROUTING_STRATEGY.md) for tool reference.

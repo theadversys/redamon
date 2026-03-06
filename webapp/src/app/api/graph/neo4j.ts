@@ -6,7 +6,8 @@ declare global {
 
 const uri = process.env.NEO4J_URI || 'bolt://localhost:7687'
 const user = process.env.NEO4J_USER || 'neo4j'
-const password = process.env.NEO4J_PASSWORD || 'password'
+// Must match NEO4J_AUTH in Neo4j container (Docker Compose default: neo4j/changeme123)
+const password = process.env.NEO4J_PASSWORD || 'changeme123'
 
 function createDriver(): Driver {
   return neo4j.driver(uri, neo4j.auth.basic(user, password), {

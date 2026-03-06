@@ -107,6 +107,31 @@ SERVERS = {
         "module": "weaponizer_server",
         "port": 8012,
         "description": "Payload Generator (msfvenom)"
+    },
+    "privesc": {
+        "module": "privesc_server",
+        "port": 8015,
+        "description": "Privilege Escalation (LinPEAS/WinPEAS)"
+    },
+    "lateral-movement": {
+        "module": "lateral_movement_server",
+        "port": 8016,
+        "description": "Lateral Movement (Impacket)"
+    },
+    "mitm": {
+        "module": "mitm_server",
+        "port": 8017,
+        "description": "MITM / Credential Capture (Responder)"
+    },
+    "password-crack": {
+        "module": "cracker_server",
+        "port": 8018,
+        "description": "Password Cracking (hashcat + john)"
+    },
+    "sliver": {
+        "module": "sliver_server",
+        "port": 8019,
+        "description": "Sliver C2 Framework"
     }
 }
 

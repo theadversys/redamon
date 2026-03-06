@@ -1,0 +1,293 @@
+id: "adversys-graph-workflow-arch-v2"
+title: "Modified Architecture Plan (Based on Current Diagram) — Production-Ready, Minimal Complexity"
+decision: "Keep Neo4j as the domain graph. Add Postgres/Prisma as the workflow system-of-record. Update ingest to dual-write. Update APIs to join workflow state by stable finding_key."
+
+context:
+  current_architecture_from_diagram:
+    data_sources:
+      - kill_chain_orchestrator
+      - recon_orchestrator
+      - graph_ingest_api
+    frontend_pages:
+      - graph_page
+      - vulnerabilities_page
+      - vulnerability_detail_page
+    webapp_apis:
+      - /api/graph
+      - /api/vulnerabilities
+    storage:
+      primary: "Neo4j (Domain, IP, Vulnerability, CVE, Evidence, etc.)"
+  primary_gap_identified:
+    - "Architecture is effectively Neo4j-only; workflow persistence, auditability, ticketing, and collaboration are not first-class."
+    - "No explicit ScanRun entity in the ingest path, limiting timelines/deltas/verification."
+    - "Workflow seeding on UI load (if still present anywhere) must be removed."
+
+goals:
+  - "Preserve current functionality and UI pages."
+  - "Make identifiers stable across rescans so status/owner don’t reset."
+  - "Make workflow collaborative + auditable (multi-user, RBAC-friendly)."
+  - "Enable credible timelines and reporting (ScanRun-driven)."
+  - "Avoid unnecessary complexity (no microservices explosion)."
+
+target_architecture_v2:
+  overview:
+    neo4j:
+      role: "Domain graph + evidence + relationships + kill-chain context"
+      write_sources:
+        - graph_ingest_api
+        - kill_chain_orchestrator
+        - recon_orchestrator
+    postgres_prisma:
+      role: "Workflow + audit log + comments + ticket links + SLA policies"
+      write_sources:
+        - graph_ingest_api   # for default state creation only
+        - webapp_api         # for user-driven workflow updates (status/owner/comments/tickets)
+    api_layer:
+      /api/graph:
+        reads: "Neo4j"
+        purpose: "Graph visualization and attack path views"
+      /api/vulnerabilities:
+        reads:
+          - "Neo4j findings + instances + evidence summaries"
+          - "Postgres workflow state joined by finding_key"
+        writes:
+          - "Postgres only (workflow actions)"
+        purpose: "Client triage + detail views with workflow and proof"
+
+  diagram_delta_changes:
+    add_components:
+      - name: "Postgres (Prisma)"
+        placement: "Alongside Neo4j, connected to Webapp APIs and Graph Ingest API"
+      - name: "Workflow API surface"
+        placement: "Under Webapp APIs (e.g., /api/finding-state, /api/comments, /api/tickets)"
+      - name: "ScanRun model"
+        placement: "Created by Graph Ingest API and stored in Neo4j"
+    change_connections:
+      - "Graph Ingest API now dual-writes to Neo4j (domain graph) and Postgres (default FindingState only when missing)."
+      - "/api/vulnerabilities now performs join (Neo4j + Postgres) before returning to UI."
+    keep_connections:
+      - "Kill Chain Orchestrator and Recon Orchestrator continue feeding Graph Ingest API / Neo4j."
+      - "Graph Page continues to read /api/graph."
+
+identifiers_and_keys:
+  stable_key_strategy:
+    finding_key:
+      purpose: "Stable join key across Neo4j and Postgres; survives rescans"
+      compute_in: "Graph Ingest API"
+      derived_from:
+        - "project_id"
+        - "rule_id (preferred) OR normalized vuln_type"
+        - "normalized path_pattern"
+        - "normalized parameter (optional)"
+        - "optional proof signature"
+      notes:
+        - "Do NOT use timestamps in finding_key."
+        - "Prefer rule/template IDs (e.g., nuclei template id) for stability."
+    instance_id:
+      purpose: "Specific occurrence (asset+endpoint) for evidence and timeline"
+      compute_in: "Graph Ingest API"
+      derived_from:
+        - "project_id"
+        - "finding_key"
+        - "asset_key"
+        - "endpoint_key"
+
+data_models:
+  neo4j_domain_graph:
+    nodes:
+      - Finding:
+          keys: ["project_id", "finding_key"]
+          fields: ["title", "severity", "confidence", "category", "rule_id", "created_at", "updated_at"]
+      - FindingInstance:
+          keys: ["project_id", "instance_id"]
+          fields: ["finding_key", "asset_key", "endpoint_key", "first_seen_at", "last_seen_at"]
+      - Evidence:
+          keys: ["project_id", "evidence_id"]
+          fields: ["scan_run_id", "request_redacted", "response_redacted", "proof_highlight", "raw_redacted", "captured_at"]
+      - ScanRun:
+          keys: ["project_id", "scan_run_id"]
+          fields: ["tool", "started_at", "finished_at", "status", "target_scope_hash", "config_hash"]
+      - Asset:
+          keys: ["project_id", "asset_key"]
+          fields: ["label", "environment", "inferred", "source"]
+      - Endpoint:
+          keys: ["project_id", "endpoint_key"]
+          fields: ["method", "path_pattern"]
+    relationships:
+      - "Finding -[:HAS_INSTANCE]-> FindingInstance"
+      - "FindingInstance -[:HAS_EVIDENCE]-> Evidence"
+      - "FindingInstance -[:OBSERVED_IN]-> ScanRun"
+      - "FindingInstance -[:AFFECTS_ASSET]-> Asset"
+      - "FindingInstance -[:AFFECTS_ENDPOINT]-> Endpoint"
+
+  postgres_workflow:
+    prisma_tables:
+      - FindingState:
+          pk: ["project_id", "finding_key"]
+          fields:
+            - status
+            - owner_user_id
+            - watchers
+            - sla_due_at
+            - risk_reason
+            - risk_approver
+            - risk_expires_at
+            - fp_reason
+            - fp_evidence_ref
+            - created_at
+            - updated_at
+      - FindingAuditLog:
+          pk: ["id"]
+          fields:
+            - project_id
+            - finding_key
+            - actor_user_id
+            - action
+            - before_json
+            - after_json
+            - created_at
+      - FindingComment:
+          pk: ["id"]
+          fields:
+            - project_id
+            - finding_key
+            - author_user_id
+            - body
+            - created_at
+      - TicketLink:
+          pk: ["id"]
+          fields:
+            - project_id
+            - finding_key
+            - provider
+            - ticket_key
+            - ticket_url
+            - status
+            - last_synced_at
+            - created_at
+      - SlaPolicy:
+          pk: ["project_id", "severity"]
+          fields:
+            - days_to_due
+            - created_at
+            - updated_at
+
+ingestion_changes:
+  component: "Graph Ingest API"
+  responsibilities:
+    - "Compute finding_key + instance_id deterministically for every scanner result."
+    - "Create ScanRun for each tool execution (or orchestrated run)."
+    - "Upsert Neo4j graph nodes/relationships."
+    - "Upsert Postgres FindingState ONLY IF missing (default open, sla_due_at derived)."
+    - "Never create workflow state from UI reads."
+  steps:
+    - create_scan_run:
+        inputs: ["project_id", "tool", "config", "targets"]
+        outputs: ["scan_run_id", "started_at", "finished_at", "status"]
+    - normalize_targets:
+        actions:
+          - "normalizeAsset() -> asset_key"
+          - "normalizeEndpoint() -> endpoint_key"
+    - compute_keys:
+        actions:
+          - "finding_key = stable hash(project + rule_id/vuln_type + path_pattern + param)"
+          - "instance_id = hash(project + finding_key + asset_key + endpoint_key)"
+    - upsert_neo4j:
+        actions:
+          - "MERGE Finding(project_id,finding_key)"
+          - "MERGE FindingInstance(project_id,instance_id) set first_seen_at if new; update last_seen_at"
+          - "CREATE Evidence(...) redacted + proof highlight"
+          - "MERGE ScanRun(...)"
+          - "MERGE relationships"
+    - upsert_postgres_defaults:
+        actions:
+          - "If FindingState missing: create {status: open, owner: null, sla_due_at}."
+        notes:
+          - "Do not overwrite existing workflow states."
+
+api_changes:
+  /api/vulnerabilities:
+    list:
+      query_plan:
+        - "Neo4j: aggregate by finding_key (occurrence_count, assets, entrypoints, first_seen_at, last_seen_at, latest proof highlight)"
+        - "Postgres: fetch FindingState for returned finding_keys"
+        - "Join in API response"
+      must_not:
+        - "Create or mutate FindingState during reads."
+    detail:
+      query_plan:
+        - "Neo4j: fetch Finding + instances + evidence bundles + scan run timeline by finding_key"
+        - "Postgres: fetch FindingState + comments + tickets + audit log"
+        - "Join in API response"
+  /api/graph:
+    unchanged:
+      - "Read from Neo4j only; continue serving graph visualization."
+
+workflow_actions_api:
+  new_endpoints:
+    - "POST /api/finding-state/{projectId}/{finding_key}/assign"
+    - "POST /api/finding-state/{projectId}/{finding_key}/status"
+    - "POST /api/finding-state/{projectId}/{finding_key}/comment"
+    - "POST /api/finding-state/{projectId}/{finding_key}/ticket"
+  enforcement:
+    - "Write FindingAuditLog entry for every workflow change."
+    - "Apply governance rules (verified requires retest artifact; risk accepted requires fields; false positive requires evidence)."
+
+governance_rules:
+  verified_requires_retest:
+    - "Cannot set verified unless a ScanRun indicates not present OR a verification artifact is attached."
+  risk_accepted_requires:
+    - "reason"
+    - "approver"
+    - "expires_at"
+  false_positive_requires:
+    - "reason"
+    - "evidence_ref"
+  reopen_logic:
+    - "If fixed/verified and finding appears in a new ScanRun -> reopen + audit entry."
+    - "If risk_accepted and appears -> keep risk_accepted; flag still_present."
+    - "If false_positive and appears with stronger evidence -> mark needs_review."
+
+migration_plan:
+  approach: "Incremental, low-risk; keep UI working throughout."
+  phases:
+    - M1_add_keys_and_scanrun:
+        - "Implement finding_key + instance_id in Graph Ingest API."
+        - "Add ScanRun nodes in Neo4j and connect evidence to ScanRun."
+        - "Update /api/vulnerabilities to use finding_key."
+    - M2_move_workflow_key:
+        - "Update Prisma schema: FindingState keyed by (project_id, finding_key)."
+        - "Create mapping from legacy vulnId -> finding_key during backfill."
+        - "Migrate existing states; dedupe conflicts; preserve latest updates."
+    - M3_remove_read_side_effects:
+        - "Remove any UI/read-based seeding."
+        - "Ensure default state created only during ingestion."
+    - M4_enable_audit_comments_tickets:
+        - "Add AuditLog, Comments, TicketLink tables and endpoints."
+        - "Wire UI actions to persisted workflow."
+    - M5_reporting_ready:
+        - "Add deltas using ScanRun (new vs fixed since last run)."
+        - "Enable exports (CSV/Markdown) from joined data."
+
+acceptance_criteria:
+  stability:
+    - "Statuses/owners persist across rescans because finding_key is stable."
+    - "No workflow state is created by merely opening the vulnerabilities page."
+  credibility:
+    - "Detail page timeline shows ScanRun history."
+    - "Verified findings include verification run reference."
+  operability:
+    - "All workflow changes are auditable (who/what/when)."
+    - "Risk acceptance includes expiry and shows in 'expiring soon' view."
+  minimal_complexity:
+    - "No new services required beyond existing Graph Ingest API + Webapp APIs."
+    - "Neo4j stays primary for domain; Postgres stays primary for workflow."
+
+next_steps_for_cursor:
+  immediate:
+    - "Update Graph Ingest API to compute finding_key/instance_id and write ScanRun."
+    - "Update /api/vulnerabilities list+detail to use finding_key and join workflow from Postgres."
+    - "Remove read-side seeding entirely."
+  then:
+    - "Implement workflow write endpoints + audit log."
+    - "Implement retest->verified governance."

@@ -16,6 +16,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import styles from './AIAssistantDrawer.module.css'
 import { useAgentWebSocket } from '@/hooks/useAgentWebSocket'
+import { useEngagementBrief, formatBriefForPrompt, generateSuggestedPrompts } from '@/hooks/useEngagementBrief'
 import {
   MessageType,
   ConnectionStatus,
@@ -30,7 +31,10 @@ import type { ThinkingItem, ToolExecutionItem } from './AgentTimeline'
 import { useProject } from '@/providers/ProjectProvider'
 import { useProjectById } from '@/hooks'
 import type { ReconStatus } from '@/lib/recon-types'
-import type { ExplainPayload } from '../AIPanel/AIPanel'
+
+export interface ExplainPayload {
+  text: string
+}
 
 type Phase = 'informational' | 'exploitation' | 'post_exploitation'
 
@@ -529,11 +533,18 @@ export function AIAssistantDrawer({
   useEffect(() => {
     setModeOverride(null)
   }, [projectId])
+
+  // Live engagement brief — injected into agent system prompt on every query
+  const { brief: engagementBrief } = useEngagementBrief(projectId || null)
+  const formattedBrief = engagementBrief ? formatBriefForPrompt(engagementBrief) : undefined
+  const dynamicSuggestions = engagementBrief ? generateSuggestedPrompts(engagementBrief) : null
+
   const { status, isConnected, reconnectAttempt, sendQuery, sendApproval, sendAnswer, sendGuidance, sendStop, sendResume } = useAgentWebSocket({
     userId: userId || process.env.NEXT_PUBLIC_USER_ID || 'default_user',
     projectId: projectId || process.env.NEXT_PUBLIC_PROJECT_ID || 'default_project',
     sessionId: sessionId || process.env.NEXT_PUBLIC_SESSION_ID || 'default_session',
     operatingMode,
+    engagementBrief: formattedBrief,
     enabled: isOpen,
     onMessage: handleWebSocketMessage,
     onError: (error) => {
@@ -908,6 +919,17 @@ export function AIAssistantDrawer({
           </div>
         </div>
         <div className={styles.headerActions}>
+          {/* Kill chain stage badge */}
+          {engagementBrief && engagementBrief.killChain.status !== 'idle' && (
+            <div
+              className={styles.killChainBadge}
+              title={`Kill Chain: Stage ${engagementBrief.killChain.stage} — ${engagementBrief.killChain.stageName}`}
+              data-status={engagementBrief.killChain.status}
+            >
+              <Target size={11} />
+              <span>S{engagementBrief.killChain.stage}</span>
+            </div>
+          )}
           <button
             className={styles.iconButton}
             onClick={handleNewChat}
@@ -1089,27 +1111,20 @@ export function AIAssistantDrawer({
               Ask me about vulnerabilities, scan results, or query the graph database.
             </p>
             <div className={styles.suggestions}>
-              <button
-                className={styles.suggestion}
-                onClick={() => setInputValue('What vulnerabilities were found?')}
-                disabled={!isConnected}
-              >
-                What vulnerabilities were found?
-              </button>
-              <button
-                className={styles.suggestion}
-                onClick={() => setInputValue('Show me all CVEs with critical severity')}
-                disabled={!isConnected}
-              >
-                Show me critical CVEs
-              </button>
-              <button
-                className={styles.suggestion}
-                onClick={() => setInputValue('What technologies are in use?')}
-                disabled={!isConnected}
-              >
-                What technologies are in use?
-              </button>
+              {(dynamicSuggestions ?? [
+                'What vulnerabilities were found?',
+                'Show me all CVEs with critical severity',
+                'What technologies are in use?',
+              ]).map((prompt) => (
+                <button
+                  key={prompt}
+                  className={styles.suggestion}
+                  onClick={() => setInputValue(prompt)}
+                  disabled={!isConnected}
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
           </div>
         )}

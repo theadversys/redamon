@@ -46,9 +46,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     const savedUserId = localStorage.getItem(STORAGE_KEY_USER)
     const projectIdToLoad = urlProjectId || savedProjectId
 
-    // Load user ID
+    // Load user ID (or auto-select first user so project selector works)
     if (savedUserId) {
       setUserIdState(savedUserId)
+    } else {
+      fetch('/api/users')
+        .then(res => res.ok ? res.json() : [])
+        .then((users: { id: string }[]) => {
+          if (users && users.length > 0) {
+            // Auto-select first user so ProjectSelector always shows projects
+            const firstId = users[0].id
+            setUserIdState(firstId)
+            localStorage.setItem(STORAGE_KEY_USER, firstId)
+          }
+        })
+        .catch(() => {})
     }
 
     // Load project
@@ -71,6 +83,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               githubTargetOrg: project.githubTargetOrg,
             })
             localStorage.setItem(STORAGE_KEY_PROJECT, project.id)
+            // If no userId set yet, use project owner so ProjectSelector shows projects
+            if (!savedUserId && project.userId) {
+              setUserIdState(project.userId)
+              localStorage.setItem(STORAGE_KEY_USER, project.userId)
+            }
           } else {
             // Remove stale project ID from localStorage if project no longer exists
             localStorage.removeItem(STORAGE_KEY_PROJECT)
@@ -88,7 +105,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (project) {
       localStorage.setItem(STORAGE_KEY_PROJECT, project.id)
       // Update URL without navigation if we're on a page that uses project context
-      if (pathname.startsWith('/graph') || pathname.startsWith('/projects')) {
+      if (pathname.startsWith('/graph') || pathname.startsWith('/projects') || pathname.startsWith('/vulnerabilities') || pathname.startsWith('/secrets')) {
         const params = new URLSearchParams(searchParams.toString())
         params.set('project', project.id)
         router.replace(`${pathname}?${params.toString()}`, { scroll: false })

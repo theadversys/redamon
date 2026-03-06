@@ -1,6 +1,21 @@
-# Recon Logs - Terminal Viewing
+# Scripts
 
-This directory contains scripts to view Docker container logs in your terminal in real-time.
+## Kill Chain End-to-End Test
+
+Run the full kill chain (Stages 1–7) and verify SSE logs, pause/resume:
+
+```bash
+./scripts/test_kill_chain_e2e.sh <project_id>
+./scripts/test_kill_chain_e2e.sh <project_id> --pause-resume   # Test pause/resume
+```
+
+Prerequisites: Docker services running (recon-orchestrator, kill-chain-orchestrator, webapp, agent, kali-sandbox). Get project ID from the webapp Projects list.
+
+---
+
+## Recon Logs - Terminal Viewing
+
+Scripts to view Docker container logs in your terminal in real-time.
 
 ## Quick Start
 

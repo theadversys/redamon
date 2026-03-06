@@ -1,0 +1,6 @@
+{
+  "spiderfoot":   { "url": "http://pandaexploit-spiderfoot:5009/sse", "transport": "sse" },
+  "nmap":         { "url": "http://kali-sandbox:8006/sse", "transport": "sse" },
+  "naabu":        { "url": "http://kali-sandbox:8000/sse", "transport": "sse" },
+  "curl":         { "url": "http://kali-sandbox:8001/sse", "transport": "sse" }
+}

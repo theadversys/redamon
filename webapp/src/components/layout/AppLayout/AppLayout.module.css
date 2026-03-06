@@ -1,5 +1,14 @@
 .layout {
   display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.rightCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
@@ -10,5 +19,5 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }

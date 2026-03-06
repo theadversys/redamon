@@ -77,6 +77,7 @@ class InitMessage(BaseModel):
     project_id: str
     session_id: str
     operating_mode: Optional[str] = None  # "guided" | "offensive" - overrides project setting for this session
+    engagement_brief: Optional[str] = None  # Live engagement context injected into system prompt
 
 
 class QueryMessage(BaseModel):
@@ -113,6 +114,7 @@ class WebSocketConnection:
         self.project_id: Optional[str] = None
         self.session_id: Optional[str] = None
         self.operating_mode: Optional[str] = None  # Per-session override: "guided" | "offensive"
+        self.engagement_brief: Optional[str] = None  # Live engagement context for system prompt injection
         self.authenticated = False
         self.connected_at = datetime.utcnow()
         self.last_ping = datetime.utcnow()
@@ -174,7 +176,8 @@ class WebSocketManager:
         user_id: str,
         project_id: str,
         session_id: str,
-        operating_mode: Optional[str] = None
+        operating_mode: Optional[str] = None,
+        engagement_brief: Optional[str] = None
     ):
         """Authenticate and register connection"""
         async with self.lock:
@@ -182,8 +185,9 @@ class WebSocketManager:
             connection.project_id = project_id
             connection.session_id = session_id
             connection.operating_mode = _normalize_operating_mode(operating_mode) if operating_mode else None
+            connection.engagement_brief = engagement_brief
             connection.authenticated = True
-            logger.info(f"Session {session_id} init: operating_mode={connection.operating_mode or '(use project settings)'}")
+            logger.info(f"Session {session_id} init: operating_mode={connection.operating_mode or '(use project settings)'}, brief={'yes' if engagement_brief else 'no'}")
 
             session_key = connection.get_key()
 
@@ -363,7 +367,8 @@ class WebSocketHandler:
                 init_msg.user_id,
                 init_msg.project_id,
                 init_msg.session_id,
-                init_msg.operating_mode
+                init_msg.operating_mode,
+                init_msg.engagement_brief
             )
 
             # Send connected confirmation
@@ -426,6 +431,7 @@ class WebSocketHandler:
                 streaming_callback=callback,
                 guidance_queue=connection.guidance_queue,
                 operating_mode_override=operating_mode_override,
+                engagement_brief=connection.engagement_brief,
             )
             logger.info(f"Query completed for session {connection.session_id}")
         except asyncio.CancelledError:

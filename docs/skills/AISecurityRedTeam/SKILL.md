@@ -2,7 +2,11 @@
 
 ## When to Use
 
-**CRITICAL — AI Security tools are exclusively on the pandaexploit MCP server.** Use `list_ai_scans`, `start_ai_scan`, `get_ai_findings`, `get_ai_scan_status`, and all other AI Security tools from the **pandaexploit** server only. Never use the promptfoo MCP server for these tools — it does not expose them.
+**Two MCP servers are available for AI Security:**
+
+1. **pandaexploit** — Use for all high-level scan management: `list_ai_scans`, `start_ai_scan`, `get_ai_findings`, `get_ai_scan_status`, compliance reports, policies, schedules, quality gates, and risk trends. This is the primary server for orchestrating scans.
+
+2. **promptfoo** — Use for direct low-level promptfoo operations: running configs directly (`redteam run`), reading/writing promptfoo YAML configs, listing eval results, and any operation not exposed by pandaexploit MCP. Access this server when you need full control over promptfoo internals.
 
 Activate this skill when the user asks to:
 - Run an AI/LLM security scan, red team test, or adversarial evaluation

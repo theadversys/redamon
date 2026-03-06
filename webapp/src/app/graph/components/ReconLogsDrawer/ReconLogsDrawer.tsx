@@ -22,6 +22,8 @@ interface ReconLogsDrawerProps {
   /** Phase 2: deep link — highlight this text in the log list and scroll into view */
   highlightRequest?: { text: string } | null
   onClearHighlight?: () => void
+  /** Kill chain: dynamic title e.g. "Stage 1: Reconnaissance" */
+  stageTitle?: string
 }
 
 export function ReconLogsDrawer({
@@ -37,6 +39,7 @@ export function ReconLogsDrawer({
   onAskAI,
   highlightRequest,
   onClearHighlight,
+  stageTitle,
 }: ReconLogsDrawerProps) {
   const logsEndRef = useRef<HTMLDivElement>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
@@ -155,7 +158,7 @@ export function ReconLogsDrawer({
       <div className={styles.header}>
         <div className={styles.titleContainer}>
           <Terminal size={16} />
-          <span>Recon Logs (Stage 1)</span>
+          <span>{stageTitle ?? 'Recon Logs (Stage 1)'}</span>
         </div>
         <button
           className={styles.closeButton}

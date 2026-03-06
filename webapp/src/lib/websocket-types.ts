@@ -49,6 +49,8 @@ export interface InitPayload {
   project_id: string
   session_id: string
   operating_mode?: 'guided' | 'offensive'
+  /** Live engagement context — injected into agent system prompt */
+  engagement_brief?: string
 }
 
 export interface QueryPayload {

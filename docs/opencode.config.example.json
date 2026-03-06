@@ -1,0 +1,11 @@
+{
+  "mcp": {
+    "pandaexploit": {
+      "type": "remote",
+      "url": "http://localhost:8011/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_AGENT_SERVICE_TOKEN_HERE"
+      }
+    }
+  }
+}

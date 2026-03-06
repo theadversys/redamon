@@ -1,23 +1,9 @@
 import asyncio
 import logging
-import json
-from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict
 from spiderfoot_client import SpiderFootClient
-from ingest import _extract_root_domain
 
 logger = logging.getLogger(__name__)
-
-# Mapping SpiderFoot events to our Neo4j ingestion formats
-# This is a simplified mapping for the initial bridge
-EVENT_MAPPING = {
-    "INTERNET_NAME": "subdomain",
-    "IP_ADDRESS": "ip",
-    "EMAILADDR": "email",
-    "VULNERABILITY": "vuln",
-    "LEAKED_EMAIL": "leak",
-    # Add more as needed
-}
 
 class IntelligenceBridge:
     """
@@ -47,25 +33,30 @@ class IntelligenceBridge:
 
     async def _poll_loop(self, project_id: str, user_id: str, scan_id: str, target_domain: str):
         """Background loop to poll SpiderFoot events and ingest into graph"""
-        last_seen_event_id = None
-        
+        # Track how many events we've already ingested to avoid redundant writes
+        last_ingested_count = 0
+
         try:
             while True:
                 # Poll scan status — returns [name, target, created, started, ended, status, riskmatrix]
                 status_res = self.sf.get_scan_status(scan_id)
                 if not status_res or not isinstance(status_res, list) or len(status_res) < 6:
                     break
-                
+
                 status = status_res[5]
-                if status in ["FINISHED", "ABORTED", "FAILED", "ERROR-FAILED"]:
+                is_done = status in ["FINISHED", "ABORTED", "FAILED", "ERROR-FAILED"]
+                if is_done:
                     logger.info(f"SpiderFoot scan {scan_id} finished with status: {status}")
-                    # Final ingest then stop
-                    await self._ingest_new_events(project_id, user_id, scan_id, target_domain)
+
+                # Only ingest if there are new events (avoids Neo4j constraint races)
+                new_count = await self._ingest_new_events(
+                    project_id, user_id, scan_id, target_domain, last_ingested_count
+                )
+                last_ingested_count = new_count
+
+                if is_done:
                     break
-                
-                # Ingest new events
-                await self._ingest_new_events(project_id, user_id, scan_id, target_domain)
-                
+
                 # Wait before next poll (OSINT is slower than local recon)
                 await asyncio.sleep(30)
                 
@@ -77,52 +68,29 @@ class IntelligenceBridge:
             if project_id in self.active_polls:
                 del self.active_polls[project_id]
 
-    async def _ingest_new_events(self, project_id: str, user_id: str, scan_id: str, target_domain: str):
-        """Fetch news events from SpiderFoot and process them for Neo4j"""
+    async def _ingest_new_events(self, project_id: str, user_id: str, scan_id: str, target_domain: str, last_count: int = 0) -> int:
+        """Fetch events from SpiderFoot and ingest only NEW events into Neo4j.
+
+        Returns the total event count seen so far (caller stores this as last_count).
+        """
         events = self.sf.get_scan_events(scan_id)
         if not events:
-            return
+            return last_count
 
-        # Prepare data for Neo4j ingestion
-        # We'll use the existing ingest logic by simulating structured tool output
-        # For subdomains/IPs, we can use the naabu/nmap ingestion logic
-        # For vulnerabilities, we can use the nuclei ingestion logic
-        
-        subdomains_found = []
-        vulns_found = []
-        
-        for event in events:
-            # event format: [timestamp, data, source, module, type_descr, type, ...]
-            # Based on sfcli.py: data is at index 1, type is at index 10
-            evt_data = event[1]
-            evt_type = event[10]
-            
-            if evt_type == "INTERNET_NAME":
-                subdomains_found.append(evt_data)
-            elif evt_type in ["VULNERABILITY", "LEAKED_EMAIL"]:
-                vulns_found.append({
-                    "template-id": f"spiderfoot-{evt_type}",
-                    "info": {
-                        "name": f"OSINT: {evt_type}",
-                        "severity": "medium",
-                        "description": evt_data,
-                        "tags": ["osint", "spiderfoot"]
-                    },
-                    "matched-at": evt_data,
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+        total = len(events)
+        if total <= last_count:
+            return last_count  # No new events since last poll — skip ingest
 
-        # Implementation Note: To avoid duplication, we'd need to track event UUIDs from SpiderFoot.
-        # For this MVP integration, we rely on Neo4j's MERGE capabilities in our client.
-        
-        if subdomains_found:
-            # Use a mock Naabu output to trigger subdomain ingestion
-            mock_naabu = "\n".join([json.dumps({"host": h, "ip": "", "port": 0}) for h in subdomains_found])
-            from ingest import ingest_naabu
-            ingest_naabu(project_id, user_id, mock_naabu, target_domain)
-            
-        if vulns_found:
-            # Use a mock Nuclei output to trigger vuln ingestion
-            mock_nuclei = "\n".join([json.dumps(v) for v in vulns_found])
-            from ingest import ingest_nuclei
-            ingest_nuclei(project_id, user_id, mock_nuclei, target_domain)
+        from ingest import ingest_spiderfoot
+        result = ingest_spiderfoot(project_id, user_id, events, target_domain)
+        if result.get("stats"):
+            logger.info(f"SpiderFoot ingest complete for {project_id}: {result['stats']}")
+        if result.get("errors"):
+            # Filter out constraint violations — they are benign (MERGE idempotency race)
+            real_errors = [
+                e for e in result["errors"]
+                if "ConstraintValidationFailed" not in str(e) and "already exists" not in str(e)
+            ]
+            if real_errors:
+                logger.warning(f"SpiderFoot ingest errors [{project_id}]: {real_errors}")
+        return total

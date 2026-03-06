@@ -1,16 +1,19 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { ProjectForm } from '@/components/projects'
 import { useProjectById, useUpdateProject } from '@/hooks/useProjects'
 import { useProject } from '@/providers/ProjectProvider'
 import styles from './page.module.css'
 
-export default function ProjectSettingsPage() {
+function ProjectSettingsInner() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const projectId = params.id as string
   const { setCurrentProject } = useProject()
+  const initialTab = (searchParams.get('tab') ?? 'target') as Parameters<typeof ProjectForm>[0]['initialTab']
 
   const { data: project, isLoading, error } = useProjectById(projectId)
   const updateProjectMutation = useUpdateProject()
@@ -32,7 +35,7 @@ export default function ProjectSettingsPage() {
         updatedAt: updated.updatedAt.toString()
       })
 
-      router.push(`/graph?project=${projectId}`)
+      router.push(`/operations`)
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to update project')
     }
@@ -71,7 +74,16 @@ export default function ProjectSettingsPage() {
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isSubmitting={updateProjectMutation.isPending}
+        initialTab={initialTab}
       />
     </div>
+  )
+}
+
+export default function ProjectSettingsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', color: '#94a3b8' }}>Loading…</div>}>
+      <ProjectSettingsInner />
+    </Suspense>
   )
 }

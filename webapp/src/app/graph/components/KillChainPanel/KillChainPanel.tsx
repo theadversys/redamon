@@ -20,6 +20,8 @@ interface KillChainPanelProps {
   projectId: string
   reconStatus: ReconStatus
   data: GraphData | undefined
+  /** When using kill chain orchestrator, pass explicit current stage */
+  killChainStage?: number
 }
 
 function deriveCurrentStage(
@@ -60,10 +62,10 @@ function getNextStepHint(
   return ''
 }
 
-export function KillChainPanel({ projectId, reconStatus, data }: KillChainPanelProps) {
+export function KillChainPanel({ projectId, reconStatus, data, killChainStage }: KillChainPanelProps) {
   const currentStage = useMemo(
-    () => deriveCurrentStage(reconStatus, data?.nodes),
-    [reconStatus, data?.nodes]
+    () => (killChainStage != null ? killChainStage : deriveCurrentStage(reconStatus, data?.nodes)),
+    [killChainStage, reconStatus, data?.nodes]
   )
   const hasNodes = (data?.nodes?.length ?? 0) > 0
   const nextStepHint = getNextStepHint(currentStage, reconStatus, hasNodes)

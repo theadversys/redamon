@@ -55,10 +55,16 @@ export function AttackPathsDrawer({
   if (!isOpen) return null
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
+    <div className={styles.overlay} onClick={onClose} role="presentation">
+      <div
+        className={styles.drawer}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="attack-paths-title"
+      >
         <div className={styles.header}>
-          <h3 className={styles.title}>Attack Paths</h3>
+          <h3 id="attack-paths-title" className={styles.title}>Attack Paths</h3>
           <button className={styles.closeButton} onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
@@ -67,7 +73,7 @@ export function AttackPathsDrawer({
           {loading && <div className={styles.loading}>Loading...</div>}
           {error && <div className={styles.error}>{error}</div>}
           {!loading && !error && paths.length === 0 && (
-            <div className={styles.empty}>
+            <div className={styles.empty} role="status">
               No attack paths found. Run recon to discover vulnerabilities.
             </div>
           )}

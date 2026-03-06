@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ['neo4j-driver'],
 
+  experimental: {
+    // Allow large APK/IPA uploads (up to 200MB) through the Next.js proxy layer
+    proxyClientMaxBodySize: '200mb',
+  } as any,
+
   images: {
     remotePatterns: [],
   },

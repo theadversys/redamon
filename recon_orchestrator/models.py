@@ -37,6 +37,7 @@ class ReconState(BaseModel):
     completed_at: Optional[datetime] = None
     error: Optional[str] = None
     container_id: Optional[str] = None
+    sf_scan_id: Optional[str] = None  # SpiderFoot scan ID (set when OSINT scan is started)
 
 
 class ReconLogEvent(BaseModel):
@@ -129,3 +130,10 @@ class IngestCustomRequest(BaseModel):
     user_id: str
     findings: list
     target_domain: str
+
+
+class IngestGitHubRequest(BaseModel):
+    """Request to ingest GitHub secret scan findings from JSON file into graph"""
+    project_id: str
+    user_id: str
+    github_json_path: Optional[str] = None

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "cleanup-orphan-finding-states": "node scripts/cleanup-orphan-finding-states.mjs"
   },
   "overrides": {
     "three": "^0.170.0"

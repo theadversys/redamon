@@ -27,6 +27,8 @@ interface UseAgentWebSocketConfig {
   projectId: string
   sessionId: string
   operatingMode?: 'guided' | 'offensive'
+  /** Pre-formatted engagement brief string to inject into agent context */
+  engagementBrief?: string
   enabled?: boolean
   onMessage?: (message: ServerMessage) => void
   onError?: (error: Error) => void
@@ -60,6 +62,7 @@ export function useAgentWebSocket({
   projectId,
   sessionId,
   operatingMode,
+  engagementBrief,
   enabled = true,
   onMessage,
   onError,
@@ -105,10 +108,11 @@ export function useAgentWebSocket({
       project_id: projectId,
       session_id: sessionId,
       ...(operatingMode && { operating_mode: operatingMode }),
+      ...(engagementBrief && { engagement_brief: engagementBrief }),
     }
 
     sendMessage(MessageType.INIT, initPayload)
-  }, [userId, projectId, sessionId, operatingMode, sendMessage])
+  }, [userId, projectId, sessionId, operatingMode, engagementBrief, sendMessage])
 
   // Public API: Send query
   const sendQuery = useCallback((question: string) => {

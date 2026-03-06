@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from './neo4j'
+import prisma from '@/lib/prisma'
 
 interface Neo4jNode {
   identity: { low: number; high: number }
@@ -28,10 +29,19 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  })
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+  const userId = project.userId
+
   const session = getSession()
 
   try {
-    // Query all nodes and relationships connected to the project
+    // Query all nodes and relationships connected to the project (filtered by user_id for multi-tenant safety)
     // Uses UNION to capture:
     // 1. Direct relationships where source has project_id
     // 2. Extended paths for CVE/MITRE chain (Technology -> CVE -> MitreData -> Capec)
@@ -39,23 +49,23 @@ export async function GET(request: NextRequest) {
       `
       // Get direct relationships from project nodes
       MATCH (n)-[r]->(m)
-      WHERE n.project_id = $projectId
+      WHERE n.project_id = $projectId AND n.user_id = $userId
       RETURN n, r, m
 
       UNION
 
       // Get CVE chain: Technology -> CVE -> MitreData -> Capec
-      MATCH (t:Technology {project_id: $projectId})-[r1:HAS_KNOWN_CVE]->(c:CVE)
+      MATCH (t:Technology {user_id: $userId, project_id: $projectId})-[r1:HAS_KNOWN_CVE]->(c:CVE)
       RETURN t as n, r1 as r, c as m
 
       UNION
 
-      MATCH (t:Technology {project_id: $projectId})-[:HAS_KNOWN_CVE]->(c:CVE)-[r2:HAS_CWE]->(cwe:MitreData)
+      MATCH (t:Technology {user_id: $userId, project_id: $projectId})-[:HAS_KNOWN_CVE]->(c:CVE)-[r2:HAS_CWE]->(cwe:MitreData)
       RETURN c as n, r2 as r, cwe as m
 
       UNION
 
-      MATCH (t:Technology {project_id: $projectId})-[:HAS_KNOWN_CVE]->(c:CVE)-[:HAS_CWE]->(cwe:MitreData)-[r3:HAS_CAPEC]->(cap:Capec)
+      MATCH (t:Technology {user_id: $userId, project_id: $projectId})-[:HAS_KNOWN_CVE]->(c:CVE)-[:HAS_CWE]->(cwe:MitreData)-[r3:HAS_CAPEC]->(cap:Capec)
       RETURN cwe as n, r3 as r, cap as m
 
       UNION
@@ -63,93 +73,93 @@ export async function GET(request: NextRequest) {
       // Get Vulnerability relationships (FOUND_AT -> Endpoint, AFFECTS_PARAMETER -> Parameter)
       // Note: We don't query BaseURL -> Vulnerability as that's redundant
       // Vulnerabilities connect to Endpoints/Parameters which are already under BaseURL
-      MATCH (v:Vulnerability {project_id: $projectId})-[r5]->(target)
+      MATCH (v:Vulnerability {user_id: $userId, project_id: $projectId})-[r5]->(target)
       RETURN v as n, r5 as r, target as m
 
       UNION
 
       // Get SecurityCheck Vulnerabilities linked to IPs
-      MATCH (i:IP {project_id: $projectId})-[r6:HAS_VULNERABILITY]->(v:Vulnerability)
+      MATCH (i:IP {user_id: $userId, project_id: $projectId})-[r6:HAS_VULNERABILITY]->(v:Vulnerability)
       RETURN i as n, r6 as r, v as m
 
       UNION
 
       // Get SecurityCheck Vulnerabilities linked to Subdomains
-      MATCH (s:Subdomain {project_id: $projectId})-[r7:HAS_VULNERABILITY]->(v:Vulnerability)
+      MATCH (s:Subdomain {user_id: $userId, project_id: $projectId})-[r7:HAS_VULNERABILITY]->(v:Vulnerability)
       RETURN s as n, r7 as r, v as m
 
       UNION
 
       // Get SecurityCheck Vulnerabilities linked to Domain
-      MATCH (d:Domain {project_id: $projectId})-[r8:HAS_VULNERABILITY]->(v:Vulnerability)
+      MATCH (d:Domain {user_id: $userId, project_id: $projectId})-[r8:HAS_VULNERABILITY]->(v:Vulnerability)
       RETURN d as n, r8 as r, v as m
 
       UNION
 
       // Get GVM Vulnerability -> CVE chain (for CVE enrichment from GVM findings)
-      MATCH (v:Vulnerability {project_id: $projectId})-[r9:HAS_CVE]->(c:CVE)
+      MATCH (v:Vulnerability {user_id: $userId, project_id: $projectId})-[r9:HAS_CVE]->(c:CVE)
       RETURN v as n, r9 as r, c as m
 
       UNION
 
       // Get CVE -> CWE -> CAPEC chain from GVM-linked CVEs
-      MATCH (v:Vulnerability {project_id: $projectId})-[:HAS_CVE]->(c:CVE)-[r10:HAS_CWE]->(cwe:MitreData)
+      MATCH (v:Vulnerability {user_id: $userId, project_id: $projectId})-[:HAS_CVE]->(c:CVE)-[r10:HAS_CWE]->(cwe:MitreData)
       RETURN c as n, r10 as r, cwe as m
 
       UNION
 
-      MATCH (v:Vulnerability {project_id: $projectId})-[:HAS_CVE]->(c:CVE)-[:HAS_CWE]->(cwe:MitreData)-[r11:HAS_CAPEC]->(cap:Capec)
+      MATCH (v:Vulnerability {user_id: $userId, project_id: $projectId})-[:HAS_CVE]->(c:CVE)-[:HAS_CWE]->(cwe:MitreData)-[r11:HAS_CAPEC]->(cap:Capec)
       RETURN cwe as n, r11 as r, cap as m
 
       UNION
 
       // Get TLS Certificates linked to BaseURLs
-      MATCH (u:BaseURL {project_id: $projectId})-[r12:HAS_CERTIFICATE]->(c:Certificate)
+      MATCH (u:BaseURL {user_id: $userId, project_id: $projectId})-[r12:HAS_CERTIFICATE]->(c:Certificate)
       RETURN u as n, r12 as r, c as m
 
       UNION
 
       // Get Exploit nodes linked to IPs
-      MATCH (e:Exploit {project_id: $projectId})-[r13:TARGETED_IP]->(ip:IP)
+      MATCH (e:Exploit {user_id: $userId, project_id: $projectId})-[r13:TARGETED_IP]->(ip:IP)
       RETURN e as n, r13 as r, ip as m
 
       UNION
 
       // Get Exploit nodes linked to CVEs
-      MATCH (e:Exploit {project_id: $projectId})-[r14:EXPLOITED_CVE]->(c:CVE)
+      MATCH (e:Exploit {user_id: $userId, project_id: $projectId})-[r14:EXPLOITED_CVE]->(c:CVE)
       RETURN e as n, r14 as r, c as m
 
       UNION
 
       // Get Exploit nodes linked to Ports (brute force)
-      MATCH (e:Exploit {project_id: $projectId})-[r15:VIA_PORT]->(p:Port)
+      MATCH (e:Exploit {user_id: $userId, project_id: $projectId})-[r15:VIA_PORT]->(p:Port)
       RETURN e as n, r15 as r, p as m
 
       UNION
 
       // Get Persistence nodes (Kill Chain Stage 5)
-      MATCH (p:Persistence {project_id: $projectId})-[r16:INSTALLED_ON]->(ip:IP)
+      MATCH (p:Persistence {user_id: $userId, project_id: $projectId})-[r16:INSTALLED_ON]->(ip:IP)
       RETURN p as n, r16 as r, ip as m
 
       UNION
 
       // Get Action nodes (Kill Chain Stage 7)
-      MATCH (a:Action {project_id: $projectId})-[r17:TARGETED]->(ip:IP)
+      MATCH (a:Action {user_id: $userId, project_id: $projectId})-[r17:TARGETED]->(ip:IP)
       RETURN a as n, r17 as r, ip as m
 
       UNION
 
       // Get GitHubSecret nodes (exposed secrets from recon)
-      MATCH (g:GitHubSecret {project_id: $projectId})
+      MATCH (g:GitHubSecret {user_id: $userId, project_id: $projectId})
       RETURN g as n, null as r, g as m
 
       UNION
 
       // Get Evidence linked to Vulnerabilities
-      MATCH (v:Vulnerability {project_id: $projectId})-[r18:HAS_EVIDENCE]->(e:Evidence)
+      MATCH (v:Vulnerability {user_id: $userId, project_id: $projectId})-[r18:HAS_EVIDENCE]->(e:Evidence)
       RETURN v as n, r18 as r, e as m
       `,
-      { projectId }
+      { projectId, userId }
     )
 
     const nodesMap = new Map<string, { id: string; name: string; type: string; properties: Record<string, unknown> }>()
@@ -227,6 +237,15 @@ export async function DELETE(request: NextRequest) {
     )
   }
 
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  })
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+  const userId = project.userId
+
   const session = getSession()
 
   try {
@@ -234,11 +253,11 @@ export async function DELETE(request: NextRequest) {
     const result = await session.run(
       `
       MATCH (n:Exploit)
-      WHERE id(n) = toInteger($nodeId) AND n.project_id = $projectId
+      WHERE id(n) = toInteger($nodeId) AND n.project_id = $projectId AND n.user_id = $userId
       DETACH DELETE n
       RETURN count(n) as deleted
       `,
-      { nodeId, projectId }
+      { nodeId, projectId, userId }
     )
 
     const deleted = result.records[0]?.get('deleted')?.low ?? 0

@@ -1,0 +1,509 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   New Mobile Project Form — new.module.css
+   Uses CSS semantic tokens — NEVER hardcode hex colors
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 1.5rem 2rem 4rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Back button ─────────────────────────────────────────────────────────── */
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  margin-bottom: 1.5rem;
+  transition: color 0.15s;
+}
+.backBtn:hover { color: var(--text-primary); }
+
+/* ── Form container ──────────────────────────────────────────────────────── */
+
+.formContainer {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 2rem;
+}
+
+/* ── Step indicator ──────────────────────────────────────────────────────── */
+
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.stepLine {
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: var(--border-subtle);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.stepDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+  transition: all 0.2s;
+}
+
+.stepDotActive {
+  background: var(--accent-primary, #6366f1);
+  border-color: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+.stepDotDone {
+  background: var(--accent-green, #00c864);
+  border-color: var(--accent-green, #00c864);
+  color: #fff;
+}
+
+/* ── Form section ────────────────────────────────────────────────────────── */
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.formTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.formDesc {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  margin: -0.5rem 0 0;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.6rem 0.875rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--accent-primary, #6366f1); }
+.input::placeholder { color: var(--text-tertiary, var(--text-secondary)); opacity: 0.6; }
+
+.textarea {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.6rem 0.875rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+}
+.textarea:focus { border-color: var(--accent-primary, #6366f1); }
+
+/* ── Platform toggle ─────────────────────────────────────────────────────── */
+
+.platformToggle {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.platformBtn {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+.platformBtn:hover { border-color: var(--accent-primary, #6366f1); color: var(--text-primary); }
+
+.platformBtnActive {
+  background: var(--accent-primary, #6366f1);
+  border-color: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+/* ── Target tabs ─────────────────────────────────────────────────────────── */
+
+.targetTabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.targetTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.targetTab:hover { color: var(--text-primary); }
+
+.targetTabActive {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+/* ── Drop zone ───────────────────────────────────────────────────────────── */
+
+.dropZone {
+  border: 2px dashed var(--border-subtle);
+  border-radius: 10px;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  background: var(--bg-primary);
+}
+.dropZone:hover {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.dropZoneActive {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.dropZoneHasFile {
+  border-style: solid;
+  border-color: var(--accent-green, #00c864);
+  background: rgba(0, 200, 100, 0.04);
+  padding: 1.25rem 1.5rem;
+}
+
+.fileSelected {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.fileIcon { font-size: 1.5rem; }
+
+.fileName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.fileSize {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.removeFile {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.removeFile:hover { color: var(--accent-red, #ff3b30); }
+
+.dropText {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.dropSub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.fileTypes {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.fileTypes span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--bg-tertiary, rgba(99, 102, 241, 0.1));
+  color: var(--accent-primary, #6366f1);
+  font-family: monospace;
+}
+
+/* ── URL inputs ──────────────────────────────────────────────────────────── */
+
+.urlInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.urlNote {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Testing type grid ───────────────────────────────────────────────────── */
+
+.testingTypeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.testingTypeCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg-primary);
+}
+.testingTypeCard:hover { border-color: var(--accent-primary, #6366f1); }
+
+.testingTypeCardSelected {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.testingTypeHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.testingTypeIcon { font-size: 1rem; }
+
+.testingTypeLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.checkboxChecked {
+  background: var(--accent-primary, #6366f1);
+  border-color: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+.testingTypeDesc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0.3rem 0 0 1.5rem;
+}
+
+/* ── Agent toggle ────────────────────────────────────────────────────────── */
+
+.agentToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  background: var(--bg-primary);
+  margin-top: 0.25rem;
+}
+.agentToggle:hover { border-color: var(--accent-primary, #6366f1); }
+
+.agentToggleLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.agentToggleSub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+.toggle {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--border-subtle);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggleOn { background: var(--accent-primary, #6366f1); }
+
+.toggleKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggleOn .toggleKnob { transform: translateX(18px); }
+
+/* ── Form actions ────────────────────────────────────────────────────────── */
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.btnNext {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btnNext:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnNext:not(:disabled):hover { opacity: 0.88; }
+
+.btnCreate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-green, #00c864);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btnCreate:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnCreate:not(:disabled):hover { opacity: 0.88; }
+
+@media (max-width: 640px) {
+  .page { padding: 1rem 1rem 3rem; }
+  .formContainer { padding: 1.25rem; }
+  .platformToggle { flex-direction: column; }
+  .platformBtn { min-width: unset; }
+}

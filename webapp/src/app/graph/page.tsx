@@ -9,14 +9,13 @@ import { AIPanel } from './components/AIPanel/AIPanel'
 import { A0Panel } from './components/A0Panel/A0Panel'
 import { PageBottomBar } from './components/PageBottomBar'
 import { ReconConfirmModal } from './components/ReconConfirmModal'
-import { KillChainPanel } from './components/KillChainPanel/KillChainPanel'
 import { AttackPathsDrawer } from './components/AttackPathsDrawer/AttackPathsDrawer'
 import { PayloadGeneratorModal } from './components/PayloadGeneratorModal/PayloadGeneratorModal'
 import { RecordPersistenceModal } from './components/RecordPersistenceModal/RecordPersistenceModal'
 import { RecordActionModal } from './components/RecordActionModal/RecordActionModal'
 import { PanelLayout } from './components/PanelLayout/PanelLayout'
 import { useGraphData, useNodeSelection } from './hooks'
-import { useTheme, useSession, useReconStatus, useReconSSE, useProjectById, usePanelLayout } from '@/hooks'
+import { useTheme, useSession, useKillChainStatus, useKillChainSSE, useProjectById, usePanelLayout } from '@/hooks'
 import { useProject } from '@/providers/ProjectProvider'
 import { NODE_COLORS } from './config'
 import { getNodeId } from './utils/linkHelpers'
@@ -75,36 +74,43 @@ export default function GraphPage() {
     showAI,
   } = usePanelLayout()
 
-  // Recon status hook - must be before useGraphData to provide isReconRunning
+  // Kill chain status hook - must be before useGraphData to provide isTestRunning
   const {
-    state: reconState,
-    isLoading: isReconLoading,
-    startRecon,
-    stopRecon,
-    pauseRecon,
-    resumeRecon,
-  } = useReconStatus({
+    state: killChainState,
+    isLoading: isKillChainLoading,
+    error: killChainError,
+    startKillChain,
+    stopKillChain,
+    pauseKillChain,
+    resumeKillChain,
+  } = useKillChainStatus({
     projectId,
     enabled: !!projectId,
   })
 
-  // Check if recon is running to enable auto-refresh of graph data
-  const isReconRunning = reconState?.status === 'running' || reconState?.status === 'starting'
+  // Check if kill chain test is running to enable auto-refresh of graph data
+  const isTestRunning = killChainState?.status === 'running' || killChainState?.status === 'starting'
 
-  // Graph data with auto-refresh every 5 seconds while recon is running
+  // Graph data with auto-refresh every 5 seconds while test is running
   const { data, isLoading, error, refetch: refetchGraph } = useGraphData(projectId, {
-    isReconRunning,
+    isReconRunning: isTestRunning,
   })
 
-  // Recon logs SSE hook
+  // Kill chain logs SSE hook
   const {
     logs: reconLogs,
     currentPhase,
     currentPhaseNumber,
     clearLogs,
-  } = useReconSSE({
+    currentStage,
+    currentStageName,
+  } = useKillChainSSE({
     projectId,
-    enabled: reconState?.status === 'running' || reconState?.status === 'starting' || reconState?.status === 'paused',
+    enabled:
+      killChainState?.status === 'running' ||
+      killChainState?.status === 'starting' ||
+      killChainState?.status === 'paused',
+    status: killChainState?.status ?? null,
   })
 
   // Check if recon data exists
@@ -167,40 +173,54 @@ export default function GraphPage() {
     checkReconData()
   }, [checkReconData])
 
-  // Refresh graph data when recon completes
+  // Refresh graph data when kill chain completes
   useEffect(() => {
-    if (reconState?.status === 'completed' || reconState?.status === 'error') {
+    if (killChainState?.status === 'completed' || killChainState?.status === 'error') {
       refetchGraph()
       checkReconData()
     }
-  }, [reconState?.status, refetchGraph, checkReconData])
+  }, [killChainState?.status, refetchGraph, checkReconData])
 
-  // Auto-switch to Panda AI tab when recon starts (if in tab mode)
+  // Auto-switch to Panda AI tab when test starts (if in tab mode)
   useEffect(() => {
-    if ((reconState?.status === 'running' || reconState?.status === 'starting') && effectiveViewMode === 'tab') {
+    if ((killChainState?.status === 'running' || killChainState?.status === 'starting') && effectiveViewMode === 'tab') {
       setActiveTab('panda-ai')
     }
-  }, [reconState?.status, effectiveViewMode])
+  }, [killChainState?.status, effectiveViewMode])
 
   const handleStartRecon = useCallback(() => {
     setIsReconModalOpen(true)
   }, [])
 
-  const handleConfirmRecon = useCallback(async () => {
-    clearLogs()
-    const result = await startRecon()
-    if (result) {
-      setIsReconModalOpen(false)
-      // Auto-switch to Panda AI tab (Recon tab) when recon starts
-      if (effectiveViewMode === 'tab') {
-        setActiveTab('panda-ai')
+  const handleConfirmRecon = useCallback(
+    async (startStage: number) => {
+      clearLogs()
+      console.log(`[Launch Test] startStage=${startStage} sending ${startStage === 2 ? '{ startStage: 2 }' : 'undefined'}`)
+      const result = await startKillChain(
+        startStage === 2 ? { startStage: 2 } : undefined
+      )
+      if (result) {
+        setIsReconModalOpen(false)
+        // Auto-switch to Panda AI tab when test starts
+        if (effectiveViewMode === 'tab') {
+          setActiveTab('panda-ai')
+        }
       }
-    }
-  }, [startRecon, clearLogs, effectiveViewMode])
+    },
+    [startKillChain, clearLogs, effectiveViewMode]
+  )
 
   const handleStopRecon = useCallback(async () => {
-    await stopRecon()
-  }, [stopRecon])
+    await stopKillChain()
+  }, [stopKillChain])
+
+  const handlePauseRecon = useCallback(async () => {
+    await pauseKillChain()
+  }, [pauseKillChain])
+
+  const handleResumeRecon = useCallback(async () => {
+    await resumeKillChain()
+  }, [resumeKillChain])
 
   const handleDownloadJSON = useCallback(async () => {
     if (!projectId) return
@@ -267,26 +287,16 @@ export default function GraphPage() {
         // Recon props
         onStartRecon={handleStartRecon}
         onStopRecon={handleStopRecon}
-        onPauseRecon={pauseRecon}
-        onResumeRecon={resumeRecon}
+        onPauseRecon={handlePauseRecon}
+        onResumeRecon={handleResumeRecon}
         onDownloadJSON={handleDownloadJSON}
-        reconStatus={reconState?.status || 'idle'}
+        reconStatus={killChainState?.status || 'idle'}
         hasReconData={hasReconData}
         onViewAttackPaths={() => setIsAttackPathsOpen(true)}
         onGeneratePayload={() => setIsPayloadModalOpen(true)}
         onRecordPersistence={() => setIsPersistenceModalOpen(true)}
         onRecordAction={() => setIsActionModalOpen(true)}
       />
-
-      {projectId && (
-        <div className={styles.killChainRow}>
-          <KillChainPanel
-            projectId={projectId}
-            reconStatus={reconState?.status || 'idle'}
-            data={data}
-          />
-        </div>
-      )}
 
       <div className={styles.body}>
         <NodeDrawer
@@ -320,11 +330,12 @@ export default function GraphPage() {
                 reconLogs={reconLogs}
                 currentPhase={currentPhase}
                 currentPhaseNumber={currentPhaseNumber}
-                reconStatus={reconState?.status || 'idle'}
+                reconStatus={killChainState?.status || 'idle'}
                 onClearLogs={clearLogs}
                 onStartRecon={handleStartRecon}
                 onStopRecon={handleStopRecon}
-                isReconLoading={isReconLoading}
+                isReconLoading={isKillChainLoading}
+                stageTitle={`Stage ${currentStage}: ${currentStageName}`}
                 showBothPanes={effectiveLayoutMode === 'all'}
                 onCloseChat={() => {
                   hideAI()
@@ -349,11 +360,12 @@ export default function GraphPage() {
                 reconLogs={reconLogs}
                 currentPhase={currentPhase}
                 currentPhaseNumber={currentPhaseNumber}
-                reconStatus={reconState?.status || 'idle'}
+                reconStatus={killChainState?.status || 'idle'}
                 onClearLogs={clearLogs}
                 onStartRecon={handleStartRecon}
                 onStopRecon={handleStopRecon}
-                isReconLoading={isReconLoading}
+                isReconLoading={isKillChainLoading}
+                stageTitle={`Stage ${currentStage}: ${currentStageName}`}
                 showBothPanes={effectiveLayoutMode === 'all'}
                 onCloseChat={() => {
                   hideAI()
@@ -384,10 +396,11 @@ export default function GraphPage() {
         isOpen={isReconModalOpen}
         onClose={() => setIsReconModalOpen(false)}
         onConfirm={handleConfirmRecon}
+        launchError={killChainError}
         projectName={currentProject?.name || 'Unknown'}
         targetDomain={currentProject?.targetDomain || 'Unknown'}
         stats={graphStats}
-        isLoading={isReconLoading}
+        isLoading={isKillChainLoading}
         scanModules={fullProject?.scanModules}
         githubTargetOrg={fullProject?.githubTargetOrg}
       />

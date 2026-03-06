@@ -93,8 +93,34 @@ RUN chmod +x /opt/entrypoint.sh
 
 WORKDIR /opt/mcp_servers
 
-# Expose ports for MCP servers (SSE/HTTP transport)
-EXPOSE 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009
+# ===========================================================================
+# Post-exploitation tools
+# ===========================================================================
+
+# PEASS-ng: LinPEAS and WinPEAS for privilege escalation enumeration
+ARG PEASS_VERSION=20240101
+RUN mkdir -p /opt/peass && \
+    wget -q "https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh" \
+        -O /opt/peass/linpeas.sh && \
+    wget -q "https://github.com/peass-ng/PEASS-ng/releases/latest/download/winPEASx64.exe" \
+        -O /opt/peass/winPEASx64.exe && \
+    wget -q "https://github.com/peass-ng/PEASS-ng/releases/latest/download/winPEASany.exe" \
+        -O /opt/peass/winPEASany.exe && \
+    chmod +x /opt/peass/linpeas.sh || true
+
+# Impacket: full suite for lateral movement (secretsdump, psexec, wmiexec, etc.)
+RUN pip install impacket 2>/dev/null || true
+
+# Responder: LLMNR/NBT-NS/MDNS poisoner for credential capture
+RUN apt-get update -qq && apt-get install -y --no-install-recommends responder \
+    && rm -rf /var/lib/apt/lists/* || true
+
+# Hashcat: GPU/CPU password cracker; John the Ripper: classic offline cracker
+RUN apt-get update -qq && apt-get install -y --no-install-recommends hashcat john \
+    && rm -rf /var/lib/apt/lists/* || true
+
+# Expose additional MCP server ports (privesc, lateral, mitm, cracker, sliver-client)
+EXPOSE 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009 8015 8016 8017 8018 8019
 
 # Initialize Metasploit database (speeds up first run)
 RUN msfdb init || true

@@ -31,7 +31,7 @@ interface MenuProps {
 
 export function Menu({ trigger, children, align = 'left' }: MenuProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [position, setPosition] = useState<{ top: number; left: number; useRightAlign?: boolean }>({ top: 0, left: 0 })
   const triggerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -43,20 +43,37 @@ export function Menu({ trigger, children, align = 'left' }: MenuProps) {
     setIsOpen((prev) => !prev)
   }, [])
 
-  // Calculate position when opening
+  // Calculate position when opening (with overflow protection)
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       const gap = 4
+      const menuWidth = 160
+      const padding = 8
 
       let left = rect.left
-      if (align === 'right') {
+      let useRightAlign = align === 'right'
+      if (useRightAlign) {
         left = rect.right
+      }
+
+      // Prevent menu from going off-screen
+      if (typeof window !== 'undefined') {
+        const maxLeft = window.innerWidth - menuWidth - padding
+        const minLeft = padding
+        if (useRightAlign && left - menuWidth < minLeft) {
+          left = rect.left
+          useRightAlign = false
+        } else if (!useRightAlign && left + menuWidth > maxLeft) {
+          left = Math.min(rect.right, maxLeft)
+          useRightAlign = true
+        }
       }
 
       setPosition({
         top: rect.bottom + gap,
         left,
+        useRightAlign,
       })
     }
   }, [isOpen, align])
@@ -127,7 +144,7 @@ export function Menu({ trigger, children, align = 'left' }: MenuProps) {
     }
   }
 
-  const alignClass = align === 'right' ? styles.menuRight : ''
+  const alignClass = (position.useRightAlign ?? align === 'right') ? styles.menuRight : ''
 
   return (
     <MenuContext.Provider value={{ isOpen, close }}>

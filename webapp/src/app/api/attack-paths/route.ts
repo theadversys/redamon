@@ -5,7 +5,7 @@
  * Returns CVE + endpoint + target IP/port + Metasploit hint for agent exploitation.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '../graph/neo4j'
+import { getSession, neo4j } from '../graph/neo4j'
 
 export interface AttackPath {
   rank: number
@@ -100,7 +100,10 @@ export async function GET(request: NextRequest) {
       LIMIT $limit
     `
 
-    const vulnResult = await session.run(vulnQuery, { projectId, limit })
+    const vulnResult = await session.run(vulnQuery, {
+      projectId,
+      limit: neo4j.int(limit),
+    })
 
     const attackPaths: AttackPath[] = []
     let rank = 1
@@ -168,7 +171,7 @@ export async function GET(request: NextRequest) {
       const remaining = limit - attackPaths.length
       const techResult = await session.run(techCveQuery, {
         projectId,
-        remaining,
+        remaining: neo4j.int(remaining),
       })
 
       for (const record of techResult.records) {

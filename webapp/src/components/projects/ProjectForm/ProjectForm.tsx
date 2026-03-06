@@ -18,6 +18,8 @@ import { CveLookupSection } from './sections/CveLookupSection'
 import { MitreSection } from './sections/MitreSection'
 import { SecurityChecksSection } from './sections/SecurityChecksSection'
 import { GithubSection } from './sections/GithubSection'
+import { JiraSection } from './sections/JiraSection'
+import { ScopeSection } from './sections/ScopeSection'
 import { AgentBehaviourSection } from './sections/AgentBehaviourSection'
 
 type ProjectFormData = Omit<Project, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'user'>
@@ -41,6 +43,7 @@ interface ProjectFormProps {
   onCancel: () => void
   isSubmitting?: boolean
   mode: 'create' | 'edit'
+  initialTab?: TabId
 }
 
 const TABS = [
@@ -51,6 +54,7 @@ const TABS = [
   { id: 'vuln', label: 'Vulnerability Scanning' },
   { id: 'cve', label: 'CVE & MITRE' },
   { id: 'security', label: 'Security Checks' },
+  { id: 'scope', label: 'Scope & Exclusions' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'agent', label: 'Agent Behaviour' },
 ] as const
@@ -64,6 +68,9 @@ const MINIMAL_DEFAULTS: Partial<ProjectFormData> = {
   description: '',
   targetDomain: '',
   subdomainList: [],
+  scopeIpRanges: [],
+  excludedHosts: [],
+  scopeNotes: '',
   scanModules: ['domain_discovery', 'port_scan', 'http_probe', 'resource_enum', 'vuln_scan'],
 }
 
@@ -89,9 +96,10 @@ export function ProjectForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
-  mode
+  mode,
+  initialTab,
 }: ProjectFormProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('target')
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'target')
   const [isLoadingDefaults, setIsLoadingDefaults] = useState(mode === 'create')
   const [formData, setFormData] = useState<ProjectFormData>(() => ({
     ...MINIMAL_DEFAULTS,
@@ -330,12 +338,19 @@ export function ProjectForm({
           <SecurityChecksSection data={formData} updateField={updateField} />
         )}
 
+        {activeTab === 'scope' && (
+          <ScopeSection data={formData} updateField={updateField} />
+        )}
+
         {activeTab === 'integrations' && (
-          <GithubSection
-            data={formData}
-            updateField={updateField}
-            projectId={initialData?.id}
-          />
+          <>
+            <GithubSection
+              data={formData}
+              updateField={updateField}
+              projectId={initialData?.id}
+            />
+            <JiraSection projectId={initialData?.id} />
+          </>
         )}
 
         {activeTab === 'agent' && (

@@ -1,0 +1,731 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile Operations Page — ops.module.css
+   Uses CSS semantic tokens — NEVER hardcode hex colors
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.page {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 1.25rem 2rem 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.backBtn:hover { color: var(--text-primary); }
+
+.projectInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.platformEmoji { font-size: 1.6rem; }
+
+.projectName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.projectMeta {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.bundleId {
+  font-family: monospace;
+  font-size: 0.73rem;
+}
+
+/* ── Ops layout ──────────────────────────────────────────────────────────── */
+
+.opsLayout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .opsLayout { grid-template-columns: 1fr; }
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Kill chain card ─────────────────────────────────────────────────────── */
+
+.killChainCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.killChainTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.stageRow {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+}
+
+.stageNodeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.stageNode {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-subtle);
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.stageCompleted {
+  background: var(--accent-green, #00c864);
+  border-color: var(--accent-green, #00c864);
+  color: #fff;
+}
+
+.stageActive {
+  border-color: var(--accent-primary, #6366f1);
+  background: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+.stagePulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.stageConnector {
+  width: 2px;
+  height: 28px;
+  background: var(--border-subtle);
+  margin: 2px 0;
+  transition: background 0.2s;
+}
+
+.stageConnectorDone {
+  background: var(--accent-green, #00c864);
+}
+
+.stageInfo {
+  padding: 3px 0 28px;
+  flex: 1;
+  min-width: 0;
+}
+
+.stageName {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stageIcon { font-size: 0.9rem; }
+
+.hitlBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  letter-spacing: 0.3px;
+}
+
+.stageDesc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+.stageSubStep {
+  font-size: 0.72rem;
+  color: var(--accent-primary, #6366f1);
+  margin-top: 0.2rem;
+  font-style: italic;
+}
+
+/* ── Controls card ───────────────────────────────────────────────────────── */
+
+.controlsCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.duration {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+/* ── HITL panel ──────────────────────────────────────────────────────────── */
+
+.hitlPanel {
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 10px;
+  padding: 1rem;
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.hitlHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.hitlTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f87171;
+}
+
+.hitlDesc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.625rem;
+  line-height: 1.5;
+}
+
+.hitlRisk {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.875rem;
+}
+.hitlRisk strong { color: var(--text-primary); }
+
+.hitlActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ── Error panel ─────────────────────────────────────────────────────────── */
+
+.errorPanel {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  font-size: 0.78rem;
+  color: var(--accent-red, #ff3b30);
+}
+
+/* ── Control buttons ─────────────────────────────────────────────────────── */
+
+.controlButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.startConfig {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.startLabel {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.stageSelect {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.btnLaunch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btnLaunch:hover { opacity: 0.88; }
+.btnLaunch:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.noBinaryNote {
+  font-size: 0.73rem;
+  color: var(--accent-orange, #ff9500);
+  margin: 0;
+  text-align: center;
+}
+
+.btnAiAgent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent-primary, #6366f1);
+  background: transparent;
+  color: var(--accent-primary, #6366f1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btnAiAgent:hover {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+}
+
+.btnPause, .btnResume, .btnStop, .btnApprove, .btnSkip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 7px;
+  border: 1px solid var(--border-subtle);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnPause {
+  background: var(--bg-primary);
+  color: var(--accent-orange, #ff9500);
+  border-color: var(--accent-orange, #ff9500);
+}
+
+.btnResume {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  border: none;
+}
+
+.btnStop {
+  background: var(--bg-primary);
+  color: var(--accent-red, #ff3b30);
+  border-color: var(--accent-red, #ff3b30);
+}
+
+.btnApprove {
+  background: var(--accent-green, #00c864);
+  color: #fff;
+  border: none;
+  flex: 1;
+  justify-content: center;
+}
+
+.btnSkip {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  flex: 1;
+  justify-content: center;
+}
+
+.btnPause:hover, .btnResume:hover, .btnStop:hover, .btnApprove:hover, .btnSkip:hover { opacity: 0.82; }
+
+/* ── Upload card ─────────────────────────────────────────────────────────── */
+
+.uploadCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 2px dashed var(--border-subtle);
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.uploadCard:hover {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.uploadCardDrag {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.uploadText {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── Past runs ───────────────────────────────────────────────────────────── */
+
+.pastRunsCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pastRunsHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.pastRunsHeader:hover { color: var(--text-primary); }
+.pastRunsHeader span:nth-child(3) { margin-left: auto; }
+
+.pastRunsList {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pastRunRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  transition: background 0.1s;
+}
+.pastRunRow:hover { background: var(--bg-primary); }
+
+.pastRunDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pastRunStatus { font-weight: 500; color: var(--text-primary); flex: 1; }
+.pastRunDate { font-size: 0.72rem; }
+.pastRunDuration { font-size: 0.72rem; font-family: monospace; }
+
+/* ── Logs card ───────────────────────────────────────────────────────────── */
+
+.logsCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+  max-height: 600px;
+}
+
+.logsHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.liveBadge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--accent-green, #00c864);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.logsBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.logsEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.logLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.logTime {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.logStage {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--bg-tertiary, rgba(99, 102, 241, 0.1));
+  color: var(--accent-primary, #6366f1);
+  flex-shrink: 0;
+}
+
+.logTool {
+  color: var(--text-secondary);
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.logText {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* ── Results card ────────────────────────────────────────────────────────── */
+
+.resultsCard {
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.resultsBody {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.scoreSection {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.scoreBig {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.scoreLabel {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.gradeBadge {
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  background: var(--accent-green, #00c864);
+  color: #fff;
+}
+
+.resultActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btnViewScans {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: 7px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  text-decoration: none;
+}
+.btnViewScans:hover { border-color: var(--accent-primary, #6366f1); }
+
+.btnDownload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: 7px;
+  border: none;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+.btnDownload:hover { opacity: 0.88; }
+
+@media (max-width: 640px) {
+  .page { padding: 1rem 1rem 3rem; }
+}

@@ -11,6 +11,7 @@ import {
   Filter,
   Github,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react'
 import { Drawer, Skeleton } from '@/components/ui'
 import styles from './page.module.css'
@@ -103,6 +104,8 @@ export default function SecretsPage() {
   const [clientSeverityFilter, setClientSeverityFilter] = useState<'critical_high' | null>(null)
   const [selectedFinding, setSelectedFinding] = useState<GitHubFinding | null>(null)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle')
+  const [ingestLoading, setIngestLoading] = useState(false)
+  const [ingestError, setIngestError] = useState<string | null>(null)
 
   // Sync URL -> state when URL changes (e.g. deep link, back navigation)
   useEffect(() => {
@@ -220,6 +223,51 @@ export default function SecretsPage() {
     setCopyStatus('idle')
   }, [selectedFinding?.id])
 
+  const handleIngestFromFile = useCallback(async () => {
+    if (!projectId) return
+    setIngestLoading(true)
+    setIngestError(null)
+    try {
+      const res = await fetch('/api/github-findings/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean
+        stats?: { secrets_created?: number }
+        error?: string
+        errors?: string[]
+      }
+      if (!res.ok) {
+        const msg = data.error || data.errors?.join('; ') || 'Import failed'
+        setIngestError(msg)
+        return
+      }
+      if (data.success) {
+        setError(null)
+        // Refetch findings
+        const [findingsRes, statsRes] = await Promise.all([
+          fetch(`/api/github-findings?projectId=${projectId}&limit=200&offset=0`),
+          fetch(`/api/github-stats?projectId=${projectId}`),
+        ])
+        if (findingsRes.ok) {
+          const findingsData = await findingsRes.json()
+          setFindings(findingsData.findings || [])
+          setPageInfo(findingsData.pageInfo || null)
+        }
+        if (statsRes.ok) {
+          const statsData = await statsRes.json()
+          setStats(statsData)
+        }
+      }
+    } catch (err) {
+      setIngestError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setIngestLoading(false)
+    }
+  }, [projectId])
+
   const handleCopySecret = async (findingId: string) => {
     if (!projectId) return
     setCopyStatus('copying')
@@ -312,7 +360,26 @@ export default function SecretsPage() {
           {stats && (
             <span className={styles.badge}>{stats.totalFindings}</span>
           )}
+          <button
+            type="button"
+            className={styles.syncButton}
+            onClick={handleIngestFromFile}
+            disabled={ingestLoading}
+            title="Import from github_secrets JSON file (if recon has run)"
+          >
+            {ingestLoading ? (
+              <RefreshCw size={16} className={styles.spin} />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            {ingestLoading ? 'Syncing...' : 'Sync from file'}
+          </button>
         </div>
+        {ingestError && (
+          <div className={styles.ingestError} role="alert">
+            {ingestError}
+          </div>
+        )}
         <p className={styles.subtitle}>
           Secrets, AI usage, and high-entropy candidates discovered in your
           GitHub org for this project.
@@ -442,10 +509,24 @@ export default function SecretsPage() {
                 ? 'No findings match your filters.'
                 : 'Run a GitHub secret scan to discover exposed secrets and credentials.'}
             </p>
-            <p className={styles.subtitle}>
+            <p className={styles.emptySubtitle}>
               Configure GitHub target org and token in Project Settings, then add
-              &quot;github&quot; to scan modules and run Recon.
+              &quot;github&quot; to scan modules and run Recon. If recon has already
+              run and produced a github_secrets JSON file, use Sync from file.
             </p>
+            <button
+              type="button"
+              className={styles.syncButton}
+              onClick={handleIngestFromFile}
+              disabled={ingestLoading}
+            >
+              {ingestLoading ? (
+                <RefreshCw size={18} className={styles.spin} />
+              ) : (
+                <RefreshCw size={18} />
+              )}
+              {ingestLoading ? 'Syncing...' : 'Sync from file'}
+            </button>
           </div>
         ) : (
           <div className={styles.tableWrapper}>

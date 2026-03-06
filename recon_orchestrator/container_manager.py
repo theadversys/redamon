@@ -280,9 +280,10 @@ class ContainerManager:
             try:
                 if target_domain:
                     scan_name = f"Panda-{project_id[:8]}"
-                    sf_scan_id = self.sf_client.start_scan(scan_name, target_domain, usecase="Footprint")
+                    sf_scan_id = self.sf_client.start_scan(scan_name, target_domain, usecase="all")
                     if sf_scan_id:
                         logger.info(f"Triggered SpiderFoot scan {sf_scan_id} for {target_domain}")
+                        state.sf_scan_id = sf_scan_id
                         # Start real-time intelligence bridge
                         asyncio.create_task(
                             self.intel_bridge.start_monitoring(

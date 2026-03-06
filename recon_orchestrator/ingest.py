@@ -1431,3 +1431,347 @@ def ingest_curl(
             logger.exception("Curl probe update failed")
 
     return result
+
+
+def ingest_github(project_id: str, user_id: str, github_json_path: str = None) -> dict:
+    """
+    Ingest GitHub secret scan findings from github_secrets_{project_id}.json into Neo4j.
+    Called when the file exists (e.g. after recon container runs GitHub phase, or manual import).
+    """
+    from graph_db import Neo4jClient
+
+    result = {"success": False, "stats": {}, "errors": []}
+
+    if not project_id or not user_id:
+        result["errors"].append("project_id and user_id required")
+        return result
+
+    # Resolve path: explicit path, RECON_OUTPUT_PATH, RECON_PATH/output, or /app/recon/output
+    if github_json_path:
+        json_path = Path(github_json_path)
+    else:
+        candidates = []
+        if os.environ.get("RECON_OUTPUT_PATH"):
+            candidates.append(Path(os.environ["RECON_OUTPUT_PATH"]))
+        if os.environ.get("RECON_PATH"):
+            candidates.append(Path(os.environ["RECON_PATH"]) / "output")
+        candidates.append(Path("/app/recon/output"))  # Orchestrator container default
+        candidates.append(Path(__file__).parent.parent / "recon" / "output")  # Local dev
+        base = None
+        for c in candidates:
+            if c.exists():
+                base = c
+                break
+        base = base or candidates[-1]
+        json_path = base / f"github_secrets_{project_id}.json"
+
+    if not json_path.exists():
+        result["errors"].append(f"File not found: {json_path}")
+        return result
+
+    neo4j_uri = os.environ.get("NEO4J_URI_INGEST") or os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
+    neo4j_password = os.environ.get("NEO4J_PASSWORD", "")
+
+    with Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password) as client:
+        if not client.verify_connection():
+            result["errors"].append("Neo4j connection failed")
+            return result
+
+        try:
+            stats = client.update_graph_from_github(
+                project_id=project_id,
+                user_id=user_id,
+                github_json_path=str(json_path),
+            )
+            result["stats"] = stats
+            result["success"] = True
+        except Exception as e:
+            result["errors"].append(str(e))
+            logger.exception("GitHub ingest failed")
+
+    return result
+
+
+# ── SpiderFoot event type → Neo4j label mapping ───────────────────────────────
+_SF_EVENT_TO_NEO4J: dict[str, str] = {
+    "INTERNET_NAME": "Subdomain",
+    "INTERNET_NAME_UNRESOLVED": "Subdomain",
+    "IP_ADDRESS": "IP",
+    "IPV6_ADDRESS": "IP",
+    "DNS_A_RECORD": "IP",
+    "EMAILADDR": "Email",
+    "EMAILADDR_COMPROMISED": "LeakedCredential",
+    "PASSWORD_COMPROMISED": "LeakedCredential",
+    "ACCOUNT_EXTERNAL_OWNED_COMPROMISED": "LeakedCredential",
+    "HASH_COMPROMISED": "LeakedCredential",
+    "TCP_PORT_OPEN": "OpenPort",
+    "UDP_PORT_OPEN": "OpenPort",
+    "TCP_PORT_OPEN_BANNER": "Banner",
+    "WEBSERVER_BANNER": "Banner",
+    "VULNERABILITY_CVE_CRITICAL": "Vulnerability",
+    "VULNERABILITY_CVE_HIGH": "Vulnerability",
+    "VULNERABILITY_CVE_MEDIUM": "Vulnerability",
+    "VULNERABILITY_CVE_LOW": "Vulnerability",
+    "VULNERABILITY_GENERAL": "Vulnerability",
+    "CLOUD_STORAGE_OBJECT": "CloudAsset",
+    "CLOUD_STORAGE_OBJECT_ACCESSED": "CloudAsset",
+    "SSL_CERTIFICATE_ISSUED": "Certificate",
+    "SSL_CERTIFICATE_MISMATCH": "Finding",
+    "SSL_CERTIFICATE_EXPIRED": "Finding",
+    "SOCIAL_MEDIA": "SocialProfile",
+    "HUMAN_NAME": "Person",
+    "USERNAME": "Username",
+    "LINKED_URL_INTERNAL": "URL",
+    "PROVIDER_HOSTING": "Provider",
+    "PROVIDER_DNS": "Provider",
+    "PROVIDER_MAIL": "Provider",
+    "NETBLOCK_OWNER": "Netblock",
+    "BGP_AS_OWNER": "ASN",
+}
+
+# SpiderFoot /scaneventresults row indices
+_SF_IDX_DATA = 1
+_SF_IDX_MODULE = 3
+_SF_IDX_TYPE = 10
+
+
+def ingest_spiderfoot(
+    project_id: str,
+    user_id: str,
+    events: list,
+    target_domain: str,
+) -> dict:
+    """
+    Ingest SpiderFoot scan events into the Neo4j graph.
+
+    Creates typed nodes (Subdomain, IP, Email, LeakedCredential, OpenPort,
+    Vulnerability, CloudAsset, Certificate, SocialProfile, etc.) and
+    connects them to the project's Domain node via [:DISCOVERED_BY {source:'spiderfoot'}].
+
+    Args:
+        project_id: PandaExploit project UUID
+        user_id: User UUID (for graph attribution)
+        events: Raw event list from SpiderFootClient.get_scan_events()
+                Each item is a list where index 1=data, index 10=event_type
+        target_domain: Root domain for the project (used for bootstrap/linking)
+
+    Returns:
+        dict with success, stats (counts by node type), and errors
+    """
+    from graph_db import Neo4jClient
+
+    result: dict = {"success": False, "stats": {}, "errors": []}
+
+    if not events:
+        result["errors"].append("No events to ingest")
+        return result
+
+    # Parse events by Neo4j label
+    by_label: dict[str, list[dict]] = {}
+    for evt in events:
+        if not isinstance(evt, (list, tuple)) or len(evt) < 11:
+            continue
+        evt_type: str = evt[_SF_IDX_TYPE]
+        evt_data: str = evt[_SF_IDX_DATA]
+        evt_module: str = evt[_SF_IDX_MODULE] if len(evt) > _SF_IDX_MODULE else ""
+
+        label = _SF_EVENT_TO_NEO4J.get(evt_type)
+        if not label or not evt_data:
+            continue
+
+        by_label.setdefault(label, [])
+        entry = {"data": evt_data, "evt_type": evt_type, "module": evt_module}
+        # Deduplicate by data value within each label
+        if not any(e["data"] == evt_data for e in by_label[label]):
+            by_label[label].append(entry)
+
+    if not by_label:
+        result["errors"].append("No mappable events found")
+        return result
+
+    neo4j_uri = os.environ.get("NEO4J_URI_INGEST") or os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
+    neo4j_password = os.environ.get("NEO4J_PASSWORD", "")
+
+    root_domain = _extract_root_domain(target_domain) or target_domain
+
+    with Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password) as client:
+        if not client.verify_connection():
+            result["errors"].append("Neo4j connection failed")
+            return result
+
+        def _run(session, query, **params):
+            """Run a single MERGE and silently skip Neo4j constraint-violation races."""
+            try:
+                session.run(query, **params)
+            except Exception as exc:
+                msg = str(exc)
+                if "ConstraintValidationFailed" in msg or "already exists" in msg:
+                    pass  # benign race — node already written by a concurrent call
+                else:
+                    raise
+
+        session = client.driver.session()
+        try:
+            # Ensure Domain node exists
+            _run(
+                session,
+                "MERGE (d:Domain {name: $domain, projectId: $pid}) "
+                "ON CREATE SET d.createdAt = datetime(), d.source = 'spiderfoot'",
+                domain=root_domain, pid=project_id,
+            )
+
+            counts: dict[str, int] = {}
+
+            # ── Subdomains ────────────────────────────────────────────────────
+            for item in by_label.get("Subdomain", []):
+                subdomain = item["data"].lower().strip()
+                _run(
+                    session,
+                    "MERGE (s:Subdomain {name: $sub, projectId: $pid}) "
+                    "ON CREATE SET s.createdAt = datetime(), s.source = 'spiderfoot' "
+                    "WITH s "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_SUBDOMAIN {source: 'spiderfoot'}]->(s)",
+                    sub=subdomain, pid=project_id, domain=root_domain,
+                )
+            counts["Subdomain"] = len(by_label.get("Subdomain", []))
+
+            # ── IPs ───────────────────────────────────────────────────────────
+            for item in by_label.get("IP", []):
+                ip = item["data"].strip()
+                _run(
+                    session,
+                    "MERGE (i:IP {address: $ip, projectId: $pid}) "
+                    "ON CREATE SET i.createdAt = datetime(), i.source = 'spiderfoot' "
+                    "WITH i "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:RESOLVES_TO {source: 'spiderfoot'}]->(i)",
+                    ip=ip, pid=project_id, domain=root_domain,
+                )
+            counts["IP"] = len(by_label.get("IP", []))
+
+            # ── Emails ───────────────────────────────────────────────────────
+            for item in by_label.get("Email", []):
+                email = item["data"].strip().lower()
+                _run(
+                    session,
+                    "MERGE (e:Email {address: $email, projectId: $pid}) "
+                    "ON CREATE SET e.createdAt = datetime(), e.source = 'spiderfoot' "
+                    "WITH e "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:EXPOSES_EMAIL {source: 'spiderfoot'}]->(e)",
+                    email=email, pid=project_id, domain=root_domain,
+                )
+            counts["Email"] = len(by_label.get("Email", []))
+
+            # ── Leaked Credentials ────────────────────────────────────────────
+            for item in by_label.get("LeakedCredential", []):
+                _run(
+                    session,
+                    "MERGE (lc:LeakedCredential {data: $data, projectId: $pid}) "
+                    "ON CREATE SET lc.createdAt = datetime(), lc.eventType = $evt_type, "
+                    "lc.source = 'spiderfoot', lc.severity = 'HIGH' "
+                    "WITH lc "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_LEAKED_CREDENTIAL {source: 'spiderfoot'}]->(lc)",
+                    data=item["data"], pid=project_id, evt_type=item["evt_type"],
+                    domain=root_domain,
+                )
+            counts["LeakedCredential"] = len(by_label.get("LeakedCredential", []))
+
+            # ── Open Ports ────────────────────────────────────────────────────
+            for item in by_label.get("OpenPort", []):
+                port_data = item["data"].strip()
+                _run(
+                    session,
+                    "MERGE (p:OpenPort {data: $data, projectId: $pid}) "
+                    "ON CREATE SET p.createdAt = datetime(), p.source = 'spiderfoot', "
+                    "p.protocol = $proto "
+                    "WITH p "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_OPEN_PORT {source: 'spiderfoot'}]->(p)",
+                    data=port_data, pid=project_id,
+                    proto="tcp" if item["evt_type"] == "TCP_PORT_OPEN" else "udp",
+                    domain=root_domain,
+                )
+            counts["OpenPort"] = len(by_label.get("OpenPort", []))
+
+            # ── Vulnerabilities ───────────────────────────────────────────────
+            sev_map = {
+                "VULNERABILITY_CVE_CRITICAL": "critical",
+                "VULNERABILITY_CVE_HIGH": "high",
+                "VULNERABILITY_CVE_MEDIUM": "medium",
+                "VULNERABILITY_CVE_LOW": "low",
+                "VULNERABILITY_GENERAL": "medium",
+            }
+            for item in by_label.get("Vulnerability", []):
+                sev = sev_map.get(item["evt_type"], "medium")
+                _run(
+                    session,
+                    "MERGE (v:Vulnerability {data: $data, projectId: $pid}) "
+                    "ON CREATE SET v.createdAt = datetime(), v.source = 'spiderfoot', "
+                    "v.severity = $severity, v.eventType = $evt_type "
+                    "WITH v "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_VULNERABILITY {source: 'spiderfoot', severity: $severity}]->(v)",
+                    data=item["data"], pid=project_id, severity=sev,
+                    evt_type=item["evt_type"], domain=root_domain,
+                )
+            counts["Vulnerability"] = len(by_label.get("Vulnerability", []))
+
+            # ── Cloud Assets ─────────────────────────────────────────────────
+            for item in by_label.get("CloudAsset", []):
+                _run(
+                    session,
+                    "MERGE (c:CloudAsset {url: $url, projectId: $pid}) "
+                    "ON CREATE SET c.createdAt = datetime(), c.source = 'spiderfoot' "
+                    "WITH c "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_CLOUD_ASSET {source: 'spiderfoot'}]->(c)",
+                    url=item["data"], pid=project_id, domain=root_domain,
+                )
+            counts["CloudAsset"] = len(by_label.get("CloudAsset", []))
+
+            # ── TLS Certificates / Findings ───────────────────────────────────
+            for item in by_label.get("Certificate", []) + by_label.get("Finding", []):
+                label_used = "Certificate" if item["evt_type"].startswith("SSL_CERTIFICATE_ISSUED") else "Finding"
+                _run(
+                    session,
+                    f"MERGE (f:{label_used} {{data: $data, projectId: $pid}}) "
+                    "ON CREATE SET f.createdAt = datetime(), f.source = 'spiderfoot', "
+                    "f.eventType = $evt_type "
+                    "WITH f "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_FINDING {{source: 'spiderfoot'}}]->(f)",
+                    data=item["data"], pid=project_id, evt_type=item["evt_type"],
+                    domain=root_domain,
+                )
+            counts["Certificate"] = len(by_label.get("Certificate", []))
+            counts["Finding"] = len(by_label.get("Finding", []))
+
+            # ── Social Profiles ───────────────────────────────────────────────
+            for item in by_label.get("SocialProfile", []):
+                _run(
+                    session,
+                    "MERGE (sp:SocialProfile {data: $data, projectId: $pid}) "
+                    "ON CREATE SET sp.createdAt = datetime(), sp.source = 'spiderfoot' "
+                    "WITH sp "
+                    "MATCH (d:Domain {name: $domain, projectId: $pid}) "
+                    "MERGE (d)-[:HAS_SOCIAL_PROFILE {source: 'spiderfoot'}]->(sp)",
+                    data=item["data"], pid=project_id, domain=root_domain,
+                )
+            counts["SocialProfile"] = len(by_label.get("SocialProfile", []))
+
+            result["stats"] = {k: v for k, v in counts.items() if v > 0}
+            result["success"] = True
+            logger.info(f"SpiderFoot ingest complete for {project_id}: {result['stats']}")
+
+        except Exception as e:
+            result["errors"].append(str(e))
+            logger.exception("SpiderFoot ingest failed")
+        finally:
+            session.close()
+
+    return result

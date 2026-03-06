@@ -99,7 +99,7 @@ export function RecordPersistenceModal({
     >
       <div className={styles.content}>
         <div className={styles.field}>
-          <label>Session ID *</label>
+          <label>Session ID * (Metasploit session number)</label>
           <input
             type="text"
             value={sessionIdInput}

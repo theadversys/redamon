@@ -19,6 +19,7 @@ from models import (
     IngestCurlRequest,
     IngestCustomRequest,
     IngestDirbRequest,
+    IngestGitHubRequest,
     IngestHydraRequest,
     IngestNaabuRequest,
     IngestNiktoRequest,
@@ -294,6 +295,38 @@ async def list_running():
     return {"running": [s.dict() for s in running]}
 
 
+@app.get("/recon/{project_id}/osint-status")
+async def get_osint_status(project_id: str):
+    """Get SpiderFoot OSINT scan status for a project.
+
+    Returns the SpiderFoot scan ID and live status so the kill chain
+    can surface OSINT progress in the Stage 1 log stream.
+    """
+    if not container_manager:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    state = await container_manager.get_status(project_id)
+    sf_scan_id = state.sf_scan_id
+
+    if not sf_scan_id:
+        return {"sf_scan_id": None, "status": "not_started"}
+
+    try:
+        status_res = container_manager.sf_client.get_scan_status(sf_scan_id)
+        if isinstance(status_res, list) and len(status_res) >= 7:
+            return {
+                "sf_scan_id": sf_scan_id,
+                "status": status_res[5],
+                "risk_matrix": status_res[6],
+                "name": status_res[0],
+                "target": status_res[1],
+            }
+        return {"sf_scan_id": sf_scan_id, "status": "unknown"}
+    except Exception as e:
+        logger.warning(f"SpiderFoot status check failed for {project_id}: {e}")
+        return {"sf_scan_id": sf_scan_id, "status": "unreachable", "error": str(e)}
+
+
 @app.post("/ingest/naabu")
 async def ingest_naabu_endpoint(request: IngestNaabuRequest):
     """
@@ -453,6 +486,26 @@ async def ingest_hydra_endpoint(request: IngestHydraRequest):
         return result
     except Exception as e:
         logger.exception("Hydra ingest failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ingest/github")
+async def ingest_github_endpoint(request: IngestGitHubRequest):
+    """
+    Ingest GitHub secret scan findings from github_secrets_{project_id}.json into Neo4j.
+    Used when the file exists (e.g. after recon container runs GitHub phase) but
+    findings were not yet written to the graph, or for manual re-import.
+    """
+    try:
+        from ingest import ingest_github as do_ingest
+        result = do_ingest(
+            project_id=request.project_id,
+            user_id=request.user_id,
+            github_json_path=request.github_json_path,
+        )
+        return result
+    except Exception as e:
+        logger.exception("GitHub ingest failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -134,6 +134,78 @@ Then paste the tool reference from `docs/skills/PandaExploit/SKILL.md`.
 
 When the user says "work on project X", call `set_pandaexploit_context(project_id, user_id)` first. Other PandaExploit tools will use this context when `project_id` is omitted. `user_id` is required for `start_recon`.
 
+## Full Cyber Kill Chain
+
+PandaExploit supports two ways to run the full 7-stage Cyber Kill Chain:
+
+### 1. Automated Kill Chain (Launch Test)
+
+The **Launch Test** button in the Graph Map runs the full chain automatically:
+
+1. **Stage 1 (Reconnaissance)** — Recon orchestrator runs domain discovery, port scan, HTTP probe, resource enum, vuln scan, MITRE enrichment, GitHub secret hunt
+2. **Stage 2 (Weaponization)** — Fetches attack paths from graph, selects top path, generates payload via weaponizer
+3. **Stage 3 (Delivery)** — Headless agent starts Metasploit listener and web delivery
+4. **Stage 4 (Exploitation)** — Agent runs exploit against top attack path
+5. **Stage 5 (Installation)** — Agent runs persistence if session obtained
+6. **Stage 6 (C2)** — Agent lists listeners/sessions
+7. **Stage 7 (Actions on Objectives)** — Agent records action via graph API
+
+**Flow:** Webapp → Kill Chain Orchestrator (port 8015) → Recon Orchestrator (Stage 1) + Agent (Stages 3–7). SSE streams logs to the UI. Pause/Resume available between stages.
+
+### 2. Agent Zero–Driven Kill Chain
+
+Agent Zero uses MCP tools to run each stage manually. See [AGENT_ZERO_CYBER_KILL_CHAIN_TEST_PROMPT.md](AGENT_ZERO_CYBER_KILL_CHAIN_TEST_PROMPT.md) for the full prompt.
+
+| Stage | Agent Zero Tools |
+|-------|------------------|
+| 1 | `start_recon`, `execute_naabu`, `execute_nuclei`, BlackArch `run_security_tool`, `ingest_*` |
+| 2 | `generate_payload`, `generate_hta_payload` |
+| 3–4 | Metasploit MCP, `execute_sqlmap`, BlackArch tools |
+| 5 | `record_persistence` |
+| 6 | Metasploit MCP (listeners) |
+| 7 | `record_action` |
+
+### Kill Chain Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `KILL_CHAIN_ORCHESTRATOR_URL` | Kill chain service URL. Local: `http://localhost:8015`. Docker: `http://kill-chain-orchestrator:8015` |
+| `KILL_CHAIN_LHOST` | LHOST for payload generation (Stage 2). Override project `agentLhost` if set. Example: `10.0.0.1` |
+| `AGENT_API_URL` | Agent service for Stages 3–7. Docker: `http://agent:8080` |
+| `RECON_ORCHESTRATOR_URL` | Recon orchestrator for Stage 1. Docker: `http://recon-orchestrator:8010` |
+| `WEBAPP_API_URL` | Webapp API for attack paths, payloads, persistence, actions. Docker: `http://webapp:3000` |
+| `RECON_WEBAPP_API_URL` | URL passed to recon container (uses `network_mode: host`). Docker: `http://localhost:3000` |
+
+### How to Run and Test
+
+**Docker (full stack):**
+
+```bash
+docker compose up -d
+```
+
+Ensure `kill-chain-orchestrator`, `agent`, `recon-orchestrator`, `agent-zero`, `kali-sandbox` are running. Set `KILL_CHAIN_LHOST` in `.env` if payload generation is needed (e.g. `KILL_CHAIN_LHOST=10.0.0.1` or your host IP).
+
+**Local dev:**
+
+1. Start recon-orchestrator (8010), kill-chain-orchestrator (8015), agent (8080), webapp (3000)
+2. Set `KILL_CHAIN_ORCHESTRATOR_URL=http://localhost:8015` for webapp
+3. Set `KILL_CHAIN_LHOST` to your IP for reverse shells
+
+**Test:**
+
+1. Go to Graph Map, select a project
+2. Click **Launch Test** to start the full kill chain
+3. Watch logs in the Panda AI / Agent Zero panel (Stage 1: Reconnaissance → Stage 7: Actions on Objectives)
+4. Use **Pause** / **Resume** between stages
+5. Use **Actions** menu: View Attack Paths, Generate Payload, Record Persistence, Record Action
+
+**Agent Zero test:**
+
+Use the prompt from [AGENT_ZERO_CYBER_KILL_CHAIN_TEST_PROMPT.md](AGENT_ZERO_CYBER_KILL_CHAIN_TEST_PROMPT.md) to run a manual kill chain via MCP tools.
+
+---
+
 ## Capabilities
 
 Agent Zero can:

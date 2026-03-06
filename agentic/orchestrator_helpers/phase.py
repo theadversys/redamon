@@ -9,7 +9,6 @@ from pydantic import ValidationError
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from state import AttackPathClassification
-from prompts import ATTACK_PATH_CLASSIFICATION_PROMPT
 from .json_utils import extract_json
 
 logger = logging.getLogger(__name__)
@@ -36,6 +35,8 @@ async def classify_attack_path(
         - attack_path_type: "cve_exploit" or "brute_force_credential_guess"
         - required_phase: "informational", "exploitation", or "post_exploitation"
     """
+    # Lazy import to break circular dependency: orchestrator_helpers → phase → prompts → utils → orchestrator_helpers
+    from prompts import ATTACK_PATH_CLASSIFICATION_PROMPT
     prompt = ATTACK_PATH_CLASSIFICATION_PROMPT.format(objective=objective)
 
     messages = [
