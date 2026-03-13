@@ -56,23 +56,24 @@ interface MobileProject {
   runs: MobileRun[]
 }
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_DOT_COLORS: Record<string, string> = {
   running: 'var(--accent-green, #00c864)',
   starting: 'var(--accent-orange, #ff9500)',
   paused: 'var(--accent-orange, #ff9500)',
-  waiting_for_operator: '#f87171',
+  waiting_for_operator: 'var(--accent-critical, #f87171)',
   completed: 'var(--accent-green, #00c864)',
   error: 'var(--accent-red, #ff3b30)',
   stopping: 'var(--accent-orange, #ff9500)',
   idle: 'var(--text-secondary)',
 }
 
-const LOG_COLORS: Record<string, string> = {
-  success: 'var(--accent-green, #00c864)',
-  error: 'var(--accent-red, #ff3b30)',
-  warning: 'var(--accent-orange, #ff9500)',
-  action: 'var(--accent-primary)',
-  info: 'var(--text-primary)',
+function logLevelClass(level: string): string {
+  const l = level?.toLowerCase()
+  if (l === 'success') return styles.logSuccess
+  if (l === 'error') return styles.logError
+  if (l === 'warning') return styles.logWarning
+  if (l === 'action') return styles.logAction
+  return styles.logInfo
 }
 
 export default function MobileOpsPage() {
@@ -271,7 +272,7 @@ Please begin the mobile kill chain assessment now.`
           {/* Controls */}
           <div className={styles.controlsCard}>
             <div className={styles.statusRow}>
-              <div className={styles.statusDot} style={{ background: STATUS_COLORS[activeRun?.status ?? 'idle'] }} />
+              <div className={styles.statusDot} style={{ background: STATUS_DOT_COLORS[activeRun?.status ?? 'idle'] }} />
               <span className={styles.statusLabel}>
                 {activeRun?.status === 'running'
                   ? `Running — Stage ${activeRun.currentStage}/6`
@@ -401,7 +402,7 @@ Please begin the mobile kill chain assessment now.`
                 <div className={styles.pastRunsList}>
                   {pastRuns.map((run) => (
                     <div key={run.id} className={styles.pastRunRow} onClick={() => setActiveRun(run)}>
-                      <span className={styles.pastRunDot} style={{ background: STATUS_COLORS[run.status] }} />
+                      <span className={styles.pastRunDot} style={{ background: STATUS_DOT_COLORS[run.status] }} />
                       <span className={styles.pastRunStatus}>{run.status}</span>
                       <span className={styles.pastRunDate}>
                         {run.startedAt ? new Date(run.startedAt).toLocaleDateString() : '--'}
@@ -437,7 +438,7 @@ Please begin the mobile kill chain assessment now.`
                     </span>
                     <span className={styles.logStage}>S{log.stage}</span>
                     {log.toolName && <span className={styles.logTool}>[{log.toolName}]</span>}
-                    <span className={styles.logText} style={{ color: LOG_COLORS[log.level] || 'var(--text-primary)' }}>
+                    <span className={`${styles.logText} ${logLevelClass(log.level)}`}>
                       {log.log}
                     </span>
                   </div>

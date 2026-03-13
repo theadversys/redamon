@@ -13,8 +13,6 @@
   margin: 0 auto;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-
 .header {
   display: flex;
   align-items: center;
@@ -34,11 +32,11 @@
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: var(--accent-primary, #6366f1);
+  background: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-inverse);
   flex-shrink: 0;
 }
 
@@ -61,8 +59,6 @@
   align-items: center;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
-
 .btnPrimary {
   display: inline-flex;
   align-items: center;
@@ -70,14 +66,16 @@
   padding: 0.5rem 1rem;
   border-radius: 8px;
   border: none;
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
 }
 .btnPrimary:hover { opacity: 0.88; }
+.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnPrimary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnSecondary {
   display: inline-flex;
@@ -94,11 +92,11 @@
   transition: border-color 0.15s, color 0.15s;
 }
 .btnSecondary:hover {
-  border-color: var(--accent-primary, #6366f1);
+  border-color: var(--accent-primary);
   color: var(--text-primary);
 }
-
-/* ── Stats row ──────────────────────────────────────────────────────────── */
+.btnSecondary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnSecondary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .statsRow {
   display: flex;
@@ -131,8 +129,6 @@
   letter-spacing: 0.5px;
 }
 
-/* ── Projects grid ──────────────────────────────────────────────────────── */
-
 .projectsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -150,8 +146,8 @@
   overflow: hidden;
 }
 .projectCard:hover {
-  border-color: var(--accent-primary, #6366f1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 16px var(--shadow-lg);
   transform: translateY(-1px);
 }
 
@@ -197,12 +193,12 @@
 }
 
 .platformBadge {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: 6px;
-  background: var(--bg-tertiary, rgba(99, 102, 241, 0.12));
-  color: var(--accent-primary, #6366f1);
+  background: var(--accent-primary-subtle);
+  color: var(--accent-primary);
 }
 
 .bundleId {
@@ -215,8 +211,6 @@
   max-width: 150px;
 }
 
-/* ── Testing types ──────────────────────────────────────────────────────── */
-
 .testingTypes {
   display: flex;
   flex-wrap: wrap;
@@ -225,16 +219,14 @@
 }
 
 .testingTypeBadge {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 6px;
-  background: var(--bg-tertiary, rgba(99, 102, 241, 0.08));
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
 }
-
-/* ── Card body ──────────────────────────────────────────────────────────── */
 
 .cardDesc {
   font-size: 0.8rem;
@@ -265,8 +257,6 @@
   font-style: italic;
 }
 
-/* ── Card footer ──────────────────────────────────────────────────────────*/
-
 .cardFooter {
   display: flex;
   align-items: center;
@@ -287,8 +277,6 @@
   flex-shrink: 0;
 }
 
-/* ── Active indicator strip ─────────────────────────────────────────────── */
-
 .activeIndicator {
   position: absolute;
   top: 0;
@@ -304,8 +292,6 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-
-/* ── Empty / loading states ─────────────────────────────────────────────── */
 
 .loadingState {
   text-align: center;
@@ -338,8 +324,6 @@
   max-width: 320px;
 }
 
-/* ── Bulk toolbar ───────────────────────────────────────────────────────── */
-
 .bulkToolbar {
   display: flex;
   align-items: center;
@@ -371,7 +355,7 @@
 }
 .selectAllLabel:hover { color: var(--text-primary); }
 
-.checkActive  { color: var(--accent-primary, #6366f1); }
+.checkActive  { color: var(--accent-primary); }
 .checkInactive{ color: var(--text-secondary); }
 
 .bulkCount {
@@ -386,8 +370,8 @@
   gap: 0.3rem;
   padding: 0.35rem 0.75rem;
   border-radius: 6px;
-  border: 1px solid rgba(255,59,48,0.4);
-  background: rgba(255,59,48,0.08);
+  border: 1px solid color-mix(in srgb, var(--accent-red, #ff3b30) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-red, #ff3b30) 8%, transparent);
   color: var(--accent-red, #ff3b30);
   font-size: 0.78rem;
   font-weight: 600;
@@ -395,6 +379,7 @@
   transition: opacity 0.15s;
 }
 .btnDangerSm:hover { opacity: 0.8; }
+.btnDangerSm:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnCancelSm {
   display: inline-flex;
@@ -410,8 +395,7 @@
   transition: color 0.15s;
 }
 .btnCancelSm:hover { color: var(--text-primary); }
-
-/* ── Card checkbox ──────────────────────────────────────────────────────── */
+.btnCancelSm:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .cardCheckbox {
   position: absolute;
@@ -434,20 +418,18 @@
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: #fff;
+  color: var(--text-inverse);
   transition: border-color 0.12s, background 0.12s;
 }
 .checkboxChecked {
-  background: var(--accent-primary, #6366f1);
-  border-color: var(--accent-primary, #6366f1);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .projectCardSelected {
-  border-color: var(--accent-primary, #6366f1) !important;
-  background: rgba(99,102,241,0.05);
+  border-color: var(--accent-primary) !important;
+  background: var(--accent-primary-subtle);
 }
-
-/* ── Card top-right area ────────────────────────────────────────────────── */
 
 .cardTopRight {
   display: flex;
@@ -455,8 +437,6 @@
   gap: 0.25rem;
   flex-shrink: 0;
 }
-
-/* ── Three-dot menu ─────────────────────────────────────────────────────── */
 
 .menuWrap {
   position: relative;
@@ -479,6 +459,7 @@
 }
 .projectCard:hover .menuBtn { opacity: 1; }
 .menuBtn:hover { background: var(--glass-bg-light); color: var(--text-primary); }
+.menuBtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .dropdown {
   position: absolute;
@@ -488,7 +469,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 24px var(--shadow-lg);
   z-index: 50;
   overflow: hidden;
   animation: fadeIn 0.1s ease;
@@ -514,7 +495,7 @@
 .dropdownItem:hover { background: var(--glass-bg-light); }
 
 .dropdownItemDanger { color: var(--accent-red, #ff3b30); }
-.dropdownItemDanger:hover { background: rgba(255,59,48,0.08); }
+.dropdownItemDanger:hover { background: color-mix(in srgb, var(--accent-red, #ff3b30) 8%, transparent); }
 
 .dropdownDivider {
   height: 1px;
@@ -522,12 +503,10 @@
   margin: 2px 0;
 }
 
-/* ── Confirm / Edit dialogs ─────────────────────────────────────────────── */
-
 .dialogOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -543,7 +522,8 @@
   max-width: 380px;
   width: 90%;
   text-align: center;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+  box-shadow: 0 24px 48px var(--shadow-lg);
+  animation: modalIn 0.18s ease;
 }
 
 .dialogIcon {
@@ -577,21 +557,21 @@
   transition: color 0.15s;
 }
 .btnCancel:hover { color: var(--text-primary); }
+.btnCancel:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnDanger {
   padding: 0.5rem 1.25rem;
   border-radius: 8px;
   border: none;
   background: var(--accent-red, #ff3b30);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
 }
 .btnDanger:hover { opacity: 0.85; }
-
-/* ── Edit modal ─────────────────────────────────────────────────────────── */
+.btnDanger:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .editModal {
   background: var(--bg-secondary);
@@ -599,9 +579,10 @@
   border-radius: 14px;
   max-width: 460px;
   width: 92%;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+  box-shadow: 0 24px 48px var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  animation: modalIn 0.18s ease;
 }
 
 .editModalHeader {
@@ -631,6 +612,7 @@
   cursor: pointer;
 }
 .editModalClose:hover { background: var(--glass-bg-light); color: var(--text-primary); }
+.editModalClose:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .editModalBody {
   padding: 1.25rem;
@@ -668,7 +650,8 @@
   transition: border-color 0.15s;
   box-sizing: border-box;
 }
-.fieldInput:focus { border-color: var(--accent-primary, #6366f1); }
+.fieldInput:focus { border-color: var(--accent-primary); }
+.fieldInput:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .fieldTextarea {
   width: 100%;
@@ -684,4 +667,38 @@
   transition: border-color 0.15s;
   box-sizing: border-box;
 }
-.fieldTextarea:focus { border-color: var(--accent-primary, #6366f1); }
+.fieldTextarea:focus { border-color: var(--accent-primary); }
+.fieldTextarea:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px) }
+  to   { opacity: 1; transform: scale(1) translateY(0) }
+}
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+.skeletonGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.skeletonCard { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.25rem; }
+.skeletonLine { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; margin-bottom: 0.75rem; }
+.skeletonLine:last-child { margin-bottom: 0; width: 60%; }
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+
+/* ── Responsive breakpoints ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page { padding: 1rem 1rem 3rem; }
+  .statsRow { gap: 0.5rem; }
+  .statCard { padding: 0.625rem 0.875rem; }
+  .projectsGrid { grid-template-columns: 1fr; }
+}
+
+/* ── Status badge classes — used by RunStatusBadge ───────────────────────── */
+.statusBadge { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 4px; }
+.statusRunning { background: color-mix(in srgb, var(--accent-green, #00c864) 15%, transparent); color: var(--accent-green, #00c864); }
+.statusStarting { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusPaused { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusWaiting { background: color-mix(in srgb, var(--accent-critical, #f87171) 15%, transparent); color: var(--accent-critical, #f87171); }
+.statusCompleted { background: color-mix(in srgb, var(--accent-green, #00c864) 15%, transparent); color: var(--accent-green, #00c864); }
+.statusError { background: color-mix(in srgb, var(--accent-red, #ff3b30) 15%, transparent); color: var(--accent-red, #ff3b30); }
+.statusStopping { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusIdle { background: var(--bg-tertiary); color: var(--text-secondary); }
+.statusDotLive { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulseDot 1.2s ease-in-out infinite; }
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.7); } }

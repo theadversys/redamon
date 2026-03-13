@@ -46,6 +46,7 @@
   flex-shrink: 0;
 }
 .backBtn:hover { color: var(--text-primary); }
+.backBtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .projectInfo {
   display: flex;
@@ -158,20 +159,20 @@
 .stageCompleted {
   background: var(--accent-green, #00c864);
   border-color: var(--accent-green, #00c864);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .stageActive {
-  border-color: var(--accent-primary, #6366f1);
-  background: var(--accent-primary, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 .stagePulse {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text-inverse);
   animation: pulseDot 1.2s ease-in-out infinite;
 }
 
@@ -214,9 +215,9 @@
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(248, 113, 113, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: var(--status-error-bg);
+  color: var(--accent-critical, #f87171);
+  border: 1px solid color-mix(in srgb, var(--accent-critical, #f87171) 30%, transparent);
   letter-spacing: 0.3px;
 }
 
@@ -228,7 +229,7 @@
 
 .stageSubStep {
   font-size: 0.72rem;
-  color: var(--accent-primary, #6366f1);
+  color: var(--accent-primary);
   margin-top: 0.2rem;
   font-style: italic;
 }
@@ -274,10 +275,10 @@
 /* ── HITL panel ──────────────────────────────────────────────────────────── */
 
 .hitlPanel {
-  border: 1px solid rgba(248, 113, 113, 0.4);
+  border: 1px solid color-mix(in srgb, var(--accent-critical, #f87171) 30%, transparent);
   border-radius: 10px;
   padding: 1rem;
-  background: rgba(248, 113, 113, 0.06);
+  background: var(--status-error-bg);
 }
 
 .hitlHeader {
@@ -290,7 +291,7 @@
 .hitlTitle {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #f87171;
+  color: var(--accent-critical, #f87171);
 }
 
 .hitlDesc {
@@ -321,10 +322,10 @@
   align-items: flex-start;
   padding: 0.75rem;
   border-radius: 8px;
-  background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.25);
+  background: var(--status-error-bg);
+  border: 1px solid color-mix(in srgb, var(--accent-critical, #ff3b30) 25%, transparent);
   font-size: 0.78rem;
-  color: var(--accent-red, #ff3b30);
+  color: var(--accent-critical, var(--accent-red, #ff3b30));
 }
 
 /* ── Control buttons ─────────────────────────────────────────────────────── */
@@ -366,8 +367,8 @@
   padding: 0.65rem;
   border-radius: 8px;
   border: none;
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -375,6 +376,7 @@
 }
 .btnLaunch:hover { opacity: 0.88; }
 .btnLaunch:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnLaunch:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .noBinaryNote {
   font-size: 0.73rem;
@@ -390,18 +392,19 @@
   gap: 0.4rem;
   padding: 0.6rem;
   border-radius: 8px;
-  border: 1px solid var(--accent-primary, #6366f1);
+  border: 1px solid var(--accent-primary);
   background: transparent;
-  color: var(--accent-primary, #6366f1);
+  color: var(--accent-primary);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .btnAiAgent:hover {
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
 }
+.btnAiAgent:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnPause, .btnResume, .btnStop, .btnApprove, .btnSkip {
   display: inline-flex;
@@ -415,32 +418,37 @@
   cursor: pointer;
   transition: opacity 0.15s;
 }
+.btnPause:disabled, .btnResume:disabled, .btnStop:disabled, .btnApprove:disabled, .btnSkip:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btnPause {
   background: var(--bg-primary);
   color: var(--accent-orange, #ff9500);
   border-color: var(--accent-orange, #ff9500);
 }
+.btnPause:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnResume {
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   border: none;
 }
+.btnResume:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnStop {
   background: var(--bg-primary);
   color: var(--accent-red, #ff3b30);
   border-color: var(--accent-red, #ff3b30);
 }
+.btnStop:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnApprove {
   background: var(--accent-green, #00c864);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   flex: 1;
   justify-content: center;
 }
+.btnApprove:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnSkip {
   background: var(--bg-primary);
@@ -448,6 +456,7 @@
   flex: 1;
   justify-content: center;
 }
+.btnSkip:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnPause:hover, .btnResume:hover, .btnStop:hover, .btnApprove:hover, .btnSkip:hover { opacity: 0.82; }
 
@@ -466,13 +475,13 @@
   transition: all 0.15s;
 }
 .uploadCard:hover {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.04);
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 6%, transparent);
 }
 
 .uploadCardDrag {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
 }
 
 .uploadText {
@@ -504,6 +513,7 @@
   text-align: left;
 }
 .pastRunsHeader:hover { color: var(--text-primary); }
+.pastRunsHeader:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 .pastRunsHeader span:nth-child(3) { margin-left: auto; }
 
 .pastRunsList {
@@ -601,6 +611,8 @@
   flex-wrap: wrap;
 }
 
+.logLine:nth-child(even) { background: color-mix(in srgb, var(--bg-tertiary) 40%, transparent); border-radius: 3px; }
+
 .logTime {
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -612,8 +624,8 @@
   font-weight: 700;
   padding: 0 4px;
   border-radius: 3px;
-  background: var(--bg-tertiary, rgba(99, 102, 241, 0.1));
-  color: var(--accent-primary, #6366f1);
+  background: var(--accent-primary-subtle);
+  color: var(--accent-primary);
   flex-shrink: 0;
 }
 
@@ -683,7 +695,7 @@
   padding: 0.2rem 0.6rem;
   border-radius: 8px;
   background: var(--accent-green, #00c864);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .resultActions {
@@ -707,7 +719,8 @@
   transition: border-color 0.15s;
   text-decoration: none;
 }
-.btnViewScans:hover { border-color: var(--accent-primary, #6366f1); }
+.btnViewScans:hover { border-color: var(--accent-primary); }
+.btnViewScans:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnDownload {
   display: inline-flex;
@@ -716,8 +729,8 @@
   padding: 0.5rem 1rem;
   border-radius: 7px;
   border: none;
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -725,7 +738,29 @@
   text-decoration: none;
 }
 .btnDownload:hover { opacity: 0.88; }
+.btnDownload:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+/* ── Status badge classes — for RunStatusBadge in ops context ────────────── */
+.statusBadge { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 4px; }
+.statusRunning { background: color-mix(in srgb, var(--accent-green, #00c864) 15%, transparent); color: var(--accent-green, #00c864); }
+.statusStarting { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusPaused { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusWaiting { background: color-mix(in srgb, var(--accent-critical, #f87171) 15%, transparent); color: var(--accent-critical, #f87171); }
+.statusCompleted { background: color-mix(in srgb, var(--accent-green, #00c864) 15%, transparent); color: var(--accent-green, #00c864); }
+.statusError { background: color-mix(in srgb, var(--accent-red, #ff3b30) 15%, transparent); color: var(--accent-red, #ff3b30); }
+.statusStopping { background: color-mix(in srgb, var(--accent-orange, #ff9500) 15%, transparent); color: var(--accent-orange, #ff9500); }
+.statusIdle { background: var(--bg-tertiary); color: var(--text-secondary); }
+.statusDotLive { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulseDot 1.2s ease-in-out infinite; }
+
+/* ── Log level classes — replaces inline LOG_COLORS ─────────────────────── */
+.logSuccess { color: var(--accent-green, #00c864); }
+.logError { color: var(--accent-red, #ff3b30); }
+.logWarning { color: var(--accent-orange, #ff9500); }
+.logAction { color: var(--accent-primary); }
+.logInfo { color: var(--text-primary); }
 
 @media (max-width: 640px) {
-  .page { padding: 1rem 1rem 3rem; }
+  .page { padding: 1rem 0.75rem 3rem; }
+  .opsLayout { grid-template-columns: 1fr; }
+  .logsCard { min-height: 300px; max-height: 400px; }
 }

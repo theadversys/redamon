@@ -41,7 +41,7 @@ function ScoreRing({ score, grade, size = 48 }: { score: number | null; grade: s
     : score >= 40 ? 'var(--accent-orange, #ff9500)'
     : 'var(--accent-red, #ff3b30)'
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border-subtle)" strokeWidth={size*0.1} />
       {score !== null && (
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={size*0.1}
@@ -57,21 +57,20 @@ function ScoreRing({ score, grade, size = 48 }: { score: number | null; grade: s
 }
 
 function RunStatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { label: string; color: string }> = {
-    running:              { label: 'Running',          color: 'var(--accent-green, #00c864)' },
-    starting:             { label: 'Starting',         color: 'var(--accent-orange, #ff9500)' },
-    paused:               { label: 'Paused',           color: 'var(--accent-orange, #ff9500)' },
-    waiting_for_operator: { label: 'Awaiting Approval',color: '#f87171' },
-    completed:            { label: 'Completed',        color: 'var(--accent-green, #00c864)' },
-    error:                { label: 'Error',            color: 'var(--accent-red, #ff3b30)' },
-    stopping:             { label: 'Stopping',         color: 'var(--accent-orange, #ff9500)' },
-    idle:                 { label: 'Idle',             color: 'var(--text-secondary)' },
+  const cfg: Record<string, { label: string; cls: string }> = {
+    running:              { label: 'Running',           cls: styles.statusRunning },
+    starting:             { label: 'Starting',          cls: styles.statusStarting },
+    paused:               { label: 'Paused',            cls: styles.statusPaused },
+    waiting_for_operator: { label: 'Awaiting Approval', cls: styles.statusWaiting },
+    completed:            { label: 'Completed',         cls: styles.statusCompleted },
+    error:                { label: 'Error',             cls: styles.statusError },
+    stopping:             { label: 'Stopping',          cls: styles.statusStopping },
+    idle:                 { label: 'Idle',              cls: styles.statusIdle },
   }
   const c = cfg[status] ?? cfg.idle
   return (
-    <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:10,
-      background:`${c.color}22`, color:c.color, letterSpacing:'0.3px' }}>
-      {status === 'running' && <span style={{ marginRight:4 }}>●</span>}
+    <span className={`${styles.statusBadge} ${c.cls}`}>
+      {status === 'running' && <span className={styles.statusDotLive} aria-hidden="true" />}
       {c.label}
     </span>
   )
@@ -83,7 +82,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }: {
 }) {
   return (
     <div className={styles.dialogOverlay} onClick={onCancel}>
-      <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.dialog} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Confirm deletion">
         <div className={styles.dialogIcon}><Trash2 size={20} color="var(--accent-red, #ff3b30)" /></div>
         <p className={styles.dialogMsg}>{message}</p>
         <div className={styles.dialogActions}>
@@ -114,7 +113,7 @@ function EditModal({ project, onSave, onClose }: {
 
   return (
     <div className={styles.dialogOverlay} onClick={onClose}>
-      <div className={styles.editModal} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.editModal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Edit project">
         <div className={styles.editModalHeader}>
           <span className={styles.editModalTitle}>Edit Project</span>
           <button className={styles.editModalClose} onClick={onClose}><X size={16} /></button>
@@ -276,7 +275,16 @@ export default function MobileProjectsPage() {
 
       {/* Grid */}
       {loading ? (
-        <div className={styles.loadingState}>Loading projects...</div>
+        <div className={styles.skeletonGrid}>
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className={styles.skeletonCard}>
+              <div className={styles.skeletonLine} style={{ width: '60%' }} />
+              <div className={styles.skeletonLine} style={{ width: '40%' }} />
+              <div className={styles.skeletonLine} style={{ width: '80%' }} />
+              <div className={styles.skeletonLine} style={{ width: '55%' }} />
+            </div>
+          ))}
+        </div>
       ) : projects.length === 0 ? (
         <div className={styles.emptyState}>
           <Smartphone size={48} strokeWidth={1} style={{ opacity: 0.3 }} />
@@ -306,6 +314,9 @@ export default function MobileProjectsPage() {
                   className={`${styles.cardCheckbox} ${isSelected ? styles.cardCheckboxVisible : ''}`}
                   onClick={(e) => toggleSelect(project.id, e)}
                   title={isSelected ? 'Deselect' : 'Select'}
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={isSelected ? `Deselect ${project.name}` : `Select ${project.name}`}
                 >
                   <div className={`${styles.checkbox} ${isSelected ? styles.checkboxChecked : ''}`}>
                     {isSelected && <span>✓</span>}
@@ -331,6 +342,9 @@ export default function MobileProjectsPage() {
                         className={styles.menuBtn}
                         onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpen ? null : project.id) }}
                         title="Options"
+                        aria-label="Project options"
+                        aria-haspopup="true"
+                        aria-expanded={menuOpen}
                       >
                         <MoreVertical size={15} />
                       </button>

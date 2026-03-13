@@ -12,8 +12,6 @@
   margin: 0 auto;
 }
 
-/* ── Back button ─────────────────────────────────────────────────────────── */
-
 .backBtn {
   display: inline-flex;
   align-items: center;
@@ -28,8 +26,7 @@
   transition: color 0.15s;
 }
 .backBtn:hover { color: var(--text-primary); }
-
-/* ── Form container ──────────────────────────────────────────────────────── */
+.backBtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .formContainer {
   background: var(--bg-card, var(--bg-secondary));
@@ -37,8 +34,6 @@
   border-radius: 14px;
   padding: 2rem;
 }
-
-/* ── Step indicator ──────────────────────────────────────────────────────── */
 
 .stepIndicator {
   display: flex;
@@ -78,18 +73,16 @@
 }
 
 .stepDotActive {
-  background: var(--accent-primary, #6366f1);
-  border-color: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
 }
 
 .stepDotDone {
   background: var(--accent-green, #00c864);
   border-color: var(--accent-green, #00c864);
-  color: #fff;
+  color: var(--text-inverse);
 }
-
-/* ── Form section ────────────────────────────────────────────────────────── */
 
 .formSection {
   display: flex;
@@ -109,8 +102,6 @@
   color: var(--text-secondary);
   margin: -0.5rem 0 0;
 }
-
-/* ── Form fields ─────────────────────────────────────────────────────────── */
 
 .field {
   display: flex;
@@ -138,7 +129,8 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--accent-primary, #6366f1); }
+.input:focus { border-color: var(--accent-primary); }
+.input:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 .input::placeholder { color: var(--text-tertiary, var(--text-secondary)); opacity: 0.6; }
 
 .textarea {
@@ -155,9 +147,8 @@
   resize: vertical;
   font-family: inherit;
 }
-.textarea:focus { border-color: var(--accent-primary, #6366f1); }
-
-/* ── Platform toggle ─────────────────────────────────────────────────────── */
+.textarea:focus { border-color: var(--accent-primary); }
+.textarea:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .platformToggle {
   display: flex;
@@ -182,15 +173,14 @@
   justify-content: center;
   gap: 0.3rem;
 }
-.platformBtn:hover { border-color: var(--accent-primary, #6366f1); color: var(--text-primary); }
+.platformBtn:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+.platformBtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .platformBtnActive {
-  background: var(--accent-primary, #6366f1);
-  border-color: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
 }
-
-/* ── Target tabs ─────────────────────────────────────────────────────────── */
 
 .targetTabs {
   display: flex;
@@ -218,13 +208,12 @@
   transition: all 0.15s;
 }
 .targetTab:hover { color: var(--text-primary); }
+.targetTab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .targetTabActive {
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
 }
-
-/* ── Drop zone ───────────────────────────────────────────────────────────── */
 
 .dropZone {
   border: 2px dashed var(--border-subtle);
@@ -241,13 +230,13 @@
   background: var(--bg-primary);
 }
 .dropZone:hover {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.04);
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
 }
 
 .dropZoneActive {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
 }
 
 .dropZoneHasFile {
@@ -290,6 +279,7 @@
   transition: color 0.15s;
 }
 .removeFile:hover { color: var(--accent-red, #ff3b30); }
+.removeFile:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .dropText {
   font-size: 0.88rem;
@@ -315,12 +305,10 @@
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 5px;
-  background: var(--bg-tertiary, rgba(99, 102, 241, 0.1));
-  color: var(--accent-primary, #6366f1);
+  background: var(--accent-primary-subtle);
+  color: var(--accent-primary);
   font-family: monospace;
 }
-
-/* ── URL inputs ──────────────────────────────────────────────────────────── */
 
 .urlInputs {
   display: flex;
@@ -333,14 +321,12 @@
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  background: rgba(99, 102, 241, 0.06);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--accent-secondary-subtle, var(--bg-tertiary));
+  border: 1px solid var(--border-default);
   font-size: 0.78rem;
   color: var(--text-secondary);
   line-height: 1.5;
 }
-
-/* ── Testing type grid ───────────────────────────────────────────────────── */
 
 .testingTypeGrid {
   display: flex;
@@ -356,11 +342,12 @@
   transition: all 0.15s;
   background: var(--bg-primary);
 }
-.testingTypeCard:hover { border-color: var(--accent-primary, #6366f1); }
+.testingTypeCard:hover { border-color: var(--accent-primary); }
+.testingTypeCard:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .testingTypeCardSelected {
-  border-color: var(--accent-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-subtle);
 }
 
 .testingTypeHeader {
@@ -391,9 +378,9 @@
 }
 
 .checkboxChecked {
-  background: var(--accent-primary, #6366f1);
-  border-color: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
 }
 
 .testingTypeDesc {
@@ -401,8 +388,6 @@
   color: var(--text-secondary);
   margin: 0.3rem 0 0 1.5rem;
 }
-
-/* ── Agent toggle ────────────────────────────────────────────────────────── */
 
 .agentToggle {
   display: flex;
@@ -417,7 +402,8 @@
   background: var(--bg-primary);
   margin-top: 0.25rem;
 }
-.agentToggle:hover { border-color: var(--accent-primary, #6366f1); }
+.agentToggle:hover { border-color: var(--accent-primary); }
+.agentToggle:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .agentToggleLabel {
   font-size: 0.88rem;
@@ -441,7 +427,7 @@
   flex-shrink: 0;
 }
 
-.toggleOn { background: var(--accent-primary, #6366f1); }
+.toggleOn { background: var(--accent-primary); }
 
 .toggleKnob {
   position: absolute;
@@ -450,14 +436,12 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text-inverse);
   transition: transform 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggleOn .toggleKnob { transform: translateX(18px); }
-
-/* ── Form actions ────────────────────────────────────────────────────────── */
 
 .formActions {
   display: flex;
@@ -474,8 +458,8 @@
   padding: 0.6rem 1.25rem;
   border-radius: 8px;
   border: none;
-  background: var(--accent-primary, #6366f1);
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -483,6 +467,7 @@
 }
 .btnNext:disabled { opacity: 0.45; cursor: not-allowed; }
 .btnNext:not(:disabled):hover { opacity: 0.88; }
+.btnNext:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .btnCreate {
   display: inline-flex;
@@ -492,7 +477,7 @@
   border-radius: 8px;
   border: none;
   background: var(--accent-green, #00c864);
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
@@ -500,10 +485,19 @@
 }
 .btnCreate:disabled { opacity: 0.45; cursor: not-allowed; }
 .btnCreate:not(:disabled):hover { opacity: 0.88; }
+.btnCreate:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 @media (max-width: 640px) {
   .page { padding: 1rem 1rem 3rem; }
   .formContainer { padding: 1.25rem; }
   .platformToggle { flex-direction: column; }
   .platformBtn { min-width: unset; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 1rem 0.75rem 3rem; }
+  .formContainer { padding: 1rem; }
+  .platformToggle { flex-direction: column; }
+  .platformBtn { min-width: unset; width: 100%; }
+  .stepIndicator { gap: 1.5rem; }
 }

@@ -457,6 +457,11 @@ function detectSecretType(s: string): string {
   return 'SECRET'
 }
 
+const DRAWER_MIN_WIDTH = 380
+const DRAWER_MAX_WIDTH = typeof window !== 'undefined' ? Math.round(window.innerWidth * 0.95) : 1200
+const DRAWER_DEFAULT_WIDTH = 680
+const DRAWER_WIDTH_KEY = 'mobile-scan-drawer-width'
+
 function ScanDrawer({ scan, onClose }: { scan: MobileScan; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'overview'|'findings'|'evidence'|'network'|'components'|'sbom'|'compliance'>('overview')
   const [revealedSecrets, setRevealedSecrets] = useState<Set<number>>(new Set())
@@ -467,6 +472,48 @@ function ScanDrawer({ scan, onClose }: { scan: MobileScan; onClose: () => void }
   const [aiError, setAiError] = useState<string | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [selectedFinding, setSelectedFinding] = useState<MobileFinding | null>(null)
+
+  // ── Resizable drawer ────────────────────────────────────────────────────────
+  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return DRAWER_DEFAULT_WIDTH
+    const saved = localStorage.getItem(DRAWER_WIDTH_KEY)
+    if (saved) {
+      const n = parseInt(saved, 10)
+      if (n >= DRAWER_MIN_WIDTH && n <= window.innerWidth * 0.95) return n
+    }
+    return DRAWER_DEFAULT_WIDTH
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeStartX = useRef<number>(0)
+  const resizeStartWidth = useRef<number>(DRAWER_DEFAULT_WIDTH)
+
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizeStartX.current = e.clientX
+    resizeStartWidth.current = drawerWidth
+    setIsResizing(true)
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = resizeStartX.current - ev.clientX
+      const next = Math.min(
+        Math.max(resizeStartWidth.current + delta, DRAWER_MIN_WIDTH),
+        Math.round(window.innerWidth * 0.95)
+      )
+      setDrawerWidth(next)
+    }
+    const onUp = () => {
+      setIsResizing(false)
+      setDrawerWidth(prev => {
+        localStorage.setItem(DRAWER_WIDTH_KEY, String(prev))
+        return prev
+      })
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [drawerWidth])
 
   const toggleCategoryExpand = (catId: string) => {
     setExpandedCategories(prev => {
@@ -569,8 +616,21 @@ function ScanDrawer({ scan, onClose }: { scan: MobileScan; onClose: () => void }
   }
 
   return (
-    <div className={styles.drawerOverlay} onClick={onClose}>
-      <div className={styles.drawer} onClick={e => e.stopPropagation()}>
+    <div className={`${styles.drawerOverlay} ${isResizing ? styles.drawerResizing : ''}`} onClick={onClose}>
+      <div
+        className={styles.drawer}
+        style={{ width: drawerWidth }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Resize handle ── */}
+        <div
+          className={styles.resizeHandle}
+          onMouseDown={startResize}
+          title="Drag to resize"
+        >
+          <div className={styles.resizeHandleDots} />
+        </div>
+
         <div className={styles.drawerHeader}>
           <div className={styles.drawerTitle}>
             <span className={platformLabel(scan.platform).cls + ' ' + styles.platformBadge}>
